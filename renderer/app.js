@@ -774,9 +774,14 @@ function switchTab(name) {
   $('pageTitle').textContent = meta.title;
   $('pageSubtitle').textContent = meta.subtitle;
   const onSeo = name === 'seo-gen';
-  if ($('seoNetlifyLoginWrap')) $('seoNetlifyLoginWrap').hidden = !onSeo;
-  // 크레딧 뱃지는 넷리파이 생성 탭에서만
-  updateNetlifyCreditBadgeVisibility(onSeo);
+  const onSites = name === 'sites';
+  // Netlify 로그인 버튼: 생성/사이트 탭에서만
+  if ($('seoNetlifyLoginBtn')) $('seoNetlifyLoginBtn').hidden = !(onSeo || onSites);
+  if ($('seoNetlifyCreditRefreshBtn')) $('seoNetlifyCreditRefreshBtn').hidden = !(onSeo || onSites);
+  // 크레딧: 넷리파이 생성 + 생성 사이트
+  updateNetlifyCreditBadgeVisibility(onSeo || onSites);
+  updateNaverSessionBadge();
+  updateNaverLoginButton();
   if (name === 'results') loadSavedResults();
   if (name === 'sites') loadCreatedSites();
   if (name === 'seo-gen' && !seoKeywordsLoaded) loadSeoKeywords();
@@ -790,14 +795,118 @@ function formatNetlifyCredits(n) {
   return Number(n).toLocaleString('en-US');
 }
 
-function updateNetlifyCreditBadgeVisibility(forceSeo) {
+function updateNetlifyCreditBadgeVisibility(forceShow) {
   const badge = $('netlifyCreditBadge');
   if (!badge) return;
-  const onSeo = forceSeo != null
-    ? !!forceSeo
-    : currentTabName === 'seo-gen';
+  const showTab = forceShow != null
+    ? !!forceShow
+    : (currentTabName === 'seo-gen' || currentTabName === 'sites');
   const hasData = !!(netlifyCreditState && (netlifyCreditState.teamSlug || netlifyCreditState.credits != null || netlifyCreditState.status));
-  badge.hidden = !(onSeo && hasData);
+  badge.hidden = !(showTab && hasData);
+}
+
+let naverSessionState = { status: 'idle', accountId: '', loggedIn: false, siteCount: null };
+
+function updateNaverLoginButton() {
+  const btn = $('naverLoginBtn');
+  const refreshBtn = $('naverSiteCountRefreshBtn');
+  if (!btn) return;
+  const st = naverSessionState.status || 'idle';
+  const loggedIn = st === 'ready' && !!naverSessionState.accountId;
+  if (st === 'starting') {
+    btn.textContent = '로그인 중…';
+    btn.disabled = true;
+  } else if (loggedIn) {
+    btn.textContent = '네이버 재로그인';
+    btn.disabled = false;
+  } else {
+    btn.textContent = '네이버 로그인';
+    btn.disabled = false;
+  }
+  if (refreshBtn) refreshBtn.hidden = !loggedIn;
+}
+
+function updateNaverSessionBadge(data) {
+  if (data) naverSessionState = { ...naverSessionState, ...data };
+  const badge = $('naverSessionBadge');
+  const idEl = $('naverSessionId');
+  const countEl = $('naverSessionCount');
+  if (!badge || !idEl) return;
+  badge.classList.remove('waiting', 'error');
+  const id = naverSessionState.accountId || '';
+  const st = naverSessionState.status || 'idle';
+  const sc = naverSessionState.siteCount;
+  const countText = (sc != null && Number.isFinite(Number(sc))) ? `· ${Number(sc)}개` : '';
+
+  if (countEl) {
+    if (countText) {
+      countEl.textContent = countText;
+      countEl.hidden = false;
+    } else {
+      countEl.textContent = '';
+      countEl.hidden = true;
+    }
+  }
+
+  if (st === 'ready' && id) {
+    idEl.textContent = id;
+    badge.hidden = false;
+  } else if (st === 'starting') {
+    idEl.textContent = '로그인 중…';
+    badge.classList.add('waiting');
+    badge.hidden = false;
+    if (countEl) countEl.hidden = true;
+  } else if (st === 'error') {
+    idEl.textContent = naverSessionState.error ? String(naverSessionState.error).slice(0, 28) : '로그인 실패';
+    badge.classList.add('error');
+    badge.hidden = false;
+    if (countEl) countEl.hidden = true;
+  } else if (id) {
+    idEl.textContent = id;
+    badge.hidden = false;
+  } else {
+    badge.hidden = true;
+  }
+  updateNaverLoginButton();
+}
+
+async function startNaverLogin() {
+  const btn = $('naverLoginBtn');
+  if (btn) btn.disabled = true;
+  updateNaverSessionBadge({ status: 'starting' });
+  try {
+    const forceRelogin = naverSessionState.status === 'ready';
+    const res = await window.electronAPI.naverSessionStart?.({ forceRelogin });
+    if (res && !res.ok) {
+      updateNaverSessionBadge({
+        status: 'error',
+        error: res.error || '로그인 실패',
+        accountId: '',
+        loggedIn: false,
+        siteCount: null,
+      });
+      alert(res.error || '네이버 로그인 실패');
+    } else if (res) {
+      updateNaverSessionBadge(res);
+      if (res.siteCount != null) logLine(`[네이버] 로그인 완료 · 등록 ${res.siteCount}개`);
+    }
+  } catch (e) {
+    updateNaverSessionBadge({ status: 'error', error: e.message || String(e), accountId: '', loggedIn: false });
+    alert(e.message || '네이버 로그인 실패');
+  } finally {
+    updateNaverLoginButton();
+  }
+}
+
+async function refreshNaverSiteCount() {
+  try {
+    const res = await window.electronAPI.naverSessionRefreshSites?.();
+    if (res) updateNaverSessionBadge(res);
+    if (res?.ok && res.siteCount != null) logLine(`[네이버] 등록 사이트 ${res.siteCount}개`);
+    else if (res && !res.ok) alert(res.error || '조회 실패');
+  } catch (e) {
+    alert(e.message || '조회 실패');
+  }
 }
 
 function renderNetlifyCreditBadge(data) {
@@ -2343,6 +2452,8 @@ function setupEvents() {
   // 넷리파이 생성
   $('seoNetlifyLoginBtn')?.addEventListener('click', startNetlifyCreditsLogin);
   $('seoNetlifyLoginBtn2')?.addEventListener('click', startNetlifyCreditsLogin);
+  $('naverLoginBtn')?.addEventListener('click', startNaverLogin);
+  $('naverSiteCountRefreshBtn')?.addEventListener('click', refreshNaverSiteCount);
   $('seoNetlifyCreditRefreshBtn')?.addEventListener('click', refreshNetlifyCreditsUi);
   $('seoRandomSlugBtn')?.addEventListener('click', () => randomSeoSlug(true));
   $('seoSiteSlug')?.addEventListener('input', updateSeoPreviewUrl);
@@ -3308,6 +3419,12 @@ window.electronAPI.onNetlifyCreditsUpdate((data) => {
     };
   }
 });
+window.electronAPI.onNaverSessionUpdate?.((data) => {
+  updateNaverSessionBadge(data || {});
+});
+window.electronAPI.naverSessionStatus?.().then((s) => {
+  if (s) updateNaverSessionBadge(s);
+}).catch(() => {});
 window.electronAPI.onDothomeLog(dhLog);
 window.electronAPI.onTokenGenProgress((data) => {
   if (data.status === 'processing') {

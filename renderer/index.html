@@ -47,7 +47,7 @@
         </button>
       </nav>
       <div class="sidebar-footer">
-        <span class="version-tag">v3.7.0</span>
+        <span class="version-tag">v3.8.1</span>
       </div>
     </aside>
 
@@ -56,6 +56,11 @@
         <div class="topbar-left">
           <div class="topbar-title-row">
             <h2 id="pageTitle">설정</h2>
+            <div id="naverSessionBadge" class="naver-session-badge" hidden>
+              <span class="ns-label">네이버</span>
+              <span class="ns-id" id="naverSessionId">—</span>
+              <span class="ns-count" id="naverSessionCount" hidden></span>
+            </div>
             <div id="netlifyCreditBadge" class="netlify-credit-badge" hidden>
               <span class="nc-label">Netlify</span>
               <span class="nc-id" id="netlifyCreditId">—</span>
@@ -64,9 +69,11 @@
           </div>
           <p id="pageSubtitle">Netlify 대량 배포 및 네이버 서치어드바이저 자동 등록</p>
         </div>
-        <div class="topbar-right" id="seoNetlifyLoginWrap" hidden>
-          <button type="button" class="btn btn-primary btn-sm" id="seoNetlifyLoginBtn">Netlify 로그인</button>
-          <button type="button" class="btn btn-ghost btn-sm" id="seoNetlifyCreditRefreshBtn" title="크레딧 새로고침">↻</button>
+        <div class="topbar-right" id="topbarLoginWrap">
+          <button type="button" class="btn btn-primary btn-sm" id="naverLoginBtn">네이버 로그인</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="naverSiteCountRefreshBtn" title="등록 사이트 수 새로고침" hidden>↻</button>
+          <button type="button" class="btn btn-primary btn-sm" id="seoNetlifyLoginBtn" hidden>Netlify 로그인</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="seoNetlifyCreditRefreshBtn" title="크레딧 새로고침" hidden>↻</button>
         </div>
       </header>
 
