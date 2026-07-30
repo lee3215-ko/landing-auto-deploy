@@ -99,14 +99,18 @@ function Write-VersionJson($cfg, [string]$Version, [string]$ReleaseNotes, $Asset
 }
 
 function Get-ReleaseAssetId($cfg, [string]$Tag) {
-    try {
-        $json = & (Get-GhExe) api "repos/$($cfg.github_owner)/$($cfg.github_repo)/releases/tags/$Tag" 2>$null
-        if (-not $json) { return $null }
-        $rel = $json | ConvertFrom-Json
-        foreach ($a in $rel.assets) {
-            if ($a.name -eq $cfg.release_asset) { return [int64]$a.id }
-        }
-    } catch { }
+    # 릴리스 직후 API 반영 지연이 있어 짧게 재시도
+    for ($i = 0; $i -lt 8; $i++) {
+        try {
+            if ($i -gt 0) { Start-Sleep -Seconds 2 }
+            $json = & (Get-GhExe) api "repos/$($cfg.github_owner)/$($cfg.github_repo)/releases/tags/$Tag" 2>$null
+            if (-not $json) { continue }
+            $rel = $json | ConvertFrom-Json
+            foreach ($a in $rel.assets) {
+                if ($a.name -eq $cfg.release_asset) { return [int64]$a.id }
+            }
+        } catch { }
+    }
     return $null
 }
 
