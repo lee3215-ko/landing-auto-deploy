@@ -9,5 +9,5 @@
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ],
     "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/494903878",
-    "notes":  "자동 업데이트 추가 + 공개 배포"
+    "notes":  "Auto-update + public release"
 }
