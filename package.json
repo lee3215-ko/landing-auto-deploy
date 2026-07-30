@@ -1,0 +1,56 @@
+{
+  "name": "landing-auto-deploy",
+  "version": "3.7.0",
+  "description": "Netlify bulk deploy + Naver Search Advisor",
+  "main": "main.cjs",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "dist": "npx electron-builder --win --dir",
+    "dist:portable": "npx electron-builder --win portable",
+    "dist:dir": "npx electron-builder --win --dir"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@cursor/sdk": "^1.0.24",
+    "basic-ftp": "^6.0.1",
+    "jszip": "^3.10.1",
+    "puppeteer": "^25.1.0",
+    "sharp": "^0.35.1"
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.landing.auto-deploy",
+    "productName": "Landing Auto Deploy",
+    "directories": {
+      "output": "dist-publish"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "package.json",
+      "lib/**/*",
+      "renderer/**/*",
+      "scripts/**/*"
+    ],
+    "asarUnpack": [
+      "**/node_modules/sharp/**",
+      "**/node_modules/@img/**",
+      "**/node_modules/@cursor/sdk-win32-x64/**"
+    ],
+    "win": {
+      "target": [
+        "dir"
+      ]
+    },
+    "portable": {
+      "artifactName": "LandingAutoDeploy-${version}.exe"
+    }
+  }
+}

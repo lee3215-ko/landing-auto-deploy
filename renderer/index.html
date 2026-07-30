@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net;">
+  <title>Landing Auto Deploy</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">🚀</div>
+        <div>
+          <h1>Landing Auto Deploy</h1>
+          <p>Netlify · Cloudflare · 닷홈 · Naver</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="nav-btn active" id="nav-config" type="button" data-tab="config">
+          <span class="icon">⚙️</span> 설정
+        </button>
+        <button class="nav-btn" id="nav-seo-gen" type="button" data-tab="seo-gen">
+          <span class="icon">🌐</span> 넷리파이 생성
+        </button>
+        <button class="nav-btn" id="nav-cf-pages" type="button" data-tab="cf-pages">
+          <span class="icon">☁️</span> Cloudflare Pages 생성
+        </button>
+        <button class="nav-btn" id="nav-dothome" type="button" data-tab="dothome">
+          <span class="icon">🏠</span> 닷홈 호스팅 생성
+        </button>
+        <button class="nav-btn" id="nav-token-gen" type="button" data-tab="token-gen">
+          <span class="icon">🎫</span> 토큰 자동 생성
+        </button>
+        <button class="nav-btn" id="nav-url-crawl" type="button" data-tab="url-crawl">
+          <span class="icon">🔗</span> URL 수집
+        </button>
+        <button class="nav-btn" id="nav-sites" type="button" data-tab="sites">
+          <span class="icon">🗂️</span> 생성 사이트
+          <span class="nav-badge" id="sitesBadge" hidden>0</span>
+        </button>
+        <button class="nav-btn" id="nav-results" type="button" data-tab="results">
+          <span class="icon">📋</span> 배포 결과
+          <span class="nav-badge" id="resultsBadge" hidden>0</span>
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <span class="version-tag">v3.7.0</span>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title-row">
+            <h2 id="pageTitle">설정</h2>
+            <div id="netlifyCreditBadge" class="netlify-credit-badge" hidden>
+              <span class="nc-label">Netlify</span>
+              <span class="nc-id" id="netlifyCreditId">—</span>
+              <span class="nc-amt" id="netlifyCreditAmount">—</span>
+            </div>
+          </div>
+          <p id="pageSubtitle">Netlify 대량 배포 및 네이버 서치어드바이저 자동 등록</p>
+        </div>
+        <div class="topbar-right" id="seoNetlifyLoginWrap" hidden>
+          <button type="button" class="btn btn-primary btn-sm" id="seoNetlifyLoginBtn">Netlify 로그인</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="seoNetlifyCreditRefreshBtn" title="크레딧 새로고침">↻</button>
+        </div>
+      </header>
+
+      <div class="content">
+        <!-- 설정 패널 -->
+        <div id="configPanel" class="panel active">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title"><span class="emoji">🔑</span> API / 계정</div>
+                  <div class="card-sub">OpenAI, Netlify, 네이버 계정</div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="openaiApiKey">OpenAI API Key</label>
+                <input type="password" id="openaiApiKey" placeholder="sk-..." autocomplete="off">
+                <p class="bulk-hint">랜딩 자동 생성·보안문자 OCR에 사용됩니다.</p>
+              </div>
+
+              <div class="form-group">
+                <label for="yesCaptchaClientKey">YesCaptcha Client Key</label>
+                <input type="password" id="yesCaptchaClientKey" placeholder="eec1… (sk- 로 시작하면 안 됨)" autocomplete="off">
+                <p class="bulk-hint">닷홈 reCAPTCHA 자동 통과용. OpenAI 키(sk-…)가 아니라 YesCaptcha 클라이언트 키를 넣으세요. <a href="https://yescaptcha.com" target="_blank" rel="noreferrer">yescaptcha.com</a></p>
+              </div>
+
+              <div class="section-divider">
+                <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;">Netlify Tokens</h3>
+                <div class="bulk-pair-grid">
+                  <div class="form-group">
+                    <label for="bulkTokens">토큰 (한 줄에 하나)</label>
+                    <textarea id="bulkTokens" rows="4" placeholder="nfp_xxxxxxxx&#10;nfp_yyyyyyyy&#10;nfp_zzzzzzzz"></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label for="bulkIds">아이디 (한 줄에 하나, 순서대로 짝지음)</label>
+                    <textarea id="bulkIds" rows="4" placeholder="account1&#10;account2&#10;account3"></textarea>
+                  </div>
+                </div>
+                <p class="bulk-hint">1번째 토큰 ↔ 1번째 아이디, 2번째 ↔ 2번째 … 순서로 매칭됩니다. 아이디가 적으면 토큰만 추가됩니다.</p>
+                <button type="button" class="btn btn-primary btn-sm" id="addBulkTokensBtn" style="margin-top:10px;">+ 다중 추가</button>
+                <div id="netlifyTokens" class="item-list" style="margin-top:16px;"></div>
+              </div>
+
+              <div class="section-divider">
+                <div class="divider-header">
+                  <h3>네이버 계정</h3>
+                  <label class="inline-check">
+                    <input type="checkbox" id="showEmptyAccounts"> 빈 항목 보기
+                  </label>
+                </div>
+                <div id="naverAccounts" class="item-list"></div>
+                <button type="button" class="add-btn" id="addAccountBtn">+ 계정 추가</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title"><span class="emoji">🛠</span> 서비스 & SEO</div>
+                  <div class="card-sub">메타 정보 및 배포 소스</div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="metaTitles">메타 타이틀 (줄바꿈 구분)</label>
+                <textarea id="metaTitles" rows="3" placeholder="서비스명-키워드-슬로건"></textarea>
+              </div>
+              <div class="form-group">
+                <label for="metaDescriptions">메타 디스크립션</label>
+                <textarea id="metaDescriptions" rows="3"></textarea>
+              </div>
+              <div class="form-group">
+                <label for="metaKeywords">메타 키워드</label>
+                <textarea id="metaKeywords" rows="3"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label>배포 ZIP 폴더</label>
+                <div class="row">
+                  <button type="button" class="btn btn-ghost btn-sm" id="selectFolderBtn">📁 폴더 선택</button>
+                  <span id="deployFolderName" style="font-size:12px;color:var(--text-dim);align-self:center;"></span>
+                </div>
+                <div id="deployFolderInfo" class="folder-info" style="display:none;"></div>
+                <p class="bulk-hint" id="sourceModeHint" hidden>ZIP/폴더 소스 배포 모드 — 서비스·SEO 입력 없이 실행 가능합니다. 결과명은 index.html &lt;title&gt;을 사용합니다.</p>
+              </div>
+
+              <div class="checkbox-row">
+                <label><input type="checkbox" id="generateSitemap" checked> Sitemap 생성</label>
+                <label><input type="checkbox" id="generateRobots" checked> Robots.txt 생성</label>
+                <label title="브라우저 창을 띄우지 않고 백그라운드에서 실행"><input type="checkbox" id="headlessMode"> 헤드리스 모드</label>
+              </div>
+              <div class="checkbox-row" style="margin-top:8px;">
+                <label title="네이버 소유확인 화면에서 HTML 메타 태그만 넣고 재배포한 뒤, 소유확인 버튼은 누르지 않고 다음 사이트로 진행합니다. 소유확인은 직접 하세요.">
+                  <input type="checkbox" id="metaInjectOnly"> 소유확인 버튼 생략 (메타 태그만 주입)
+                </label>
+              </div>
+              <p class="bulk-hint" id="headlessHint">헤드리스 ON: Chrome 창이 안 보입니다. 네이버 수동 로그인·캡챠 확인이 필요하면 OFF로 두세요.</p>
+              <p class="bulk-hint" id="metaInjectOnlyHint">체크 시: HTML 태그 메타만 사이트에 넣고 다음 사이트로 넘어갑니다. 「소유확인」은 직접 누르세요.</p>
+
+              <div class="section-divider">
+                <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;">등록할 서비스</h3>
+                <div id="services" class="item-list"></div>
+                <button type="button" class="add-btn" id="addServiceBtn">+ 서비스 추가</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="run-section run-controls">
+            <button class="btn btn-ghost" id="headlessToggleBtn" type="button" title="헤드리스 모드 전환">🖥 창 모드</button>
+            <button class="btn btn-success" id="startBtn" type="button">▶ 전체 실행 시작</button>
+            <button class="btn btn-warning" id="pauseRunBtn" type="button" disabled>⏸ 일시정지</button>
+            <button class="btn btn-primary" id="resumeRunBtn" type="button" disabled>▶ 재개</button>
+            <button class="btn btn-danger" id="stopRunBtn" type="button" disabled>⏹ 정지</button>
+          </div>
+
+          <div class="log-section">
+            <div class="log-header">
+              <h3>실행 로그</h3>
+              <button type="button" class="btn btn-ghost btn-sm" id="clearLogBtn">지우기</button>
+            </div>
+            <div class="log-window" id="logWindow"></div>
+          </div>
+        </div>
+
+        <!-- 토큰 자동 생성 패널 -->
+        <div id="tokenGenPanel" class="panel">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title"><span class="emoji">🎫</span> Netlify 토큰 자동 생성</div>
+                  <div class="card-sub">네이버 메일로 Netlify 회원가입 · 인증 · 토큰 생성</div>
+                </div>
+              </div>
+              <p class="bulk-hint"><strong>Netlify 이메일·비밀번호만 직접 입력</strong>하세요. 중간에 Chrome이나 앱을 꺼도 <strong>다시 실행하면 URL·화면을 인식해 이어서</strong> 진행합니다.</p>
+
+              <div class="form-group" style="margin-top:12px;">
+                <label>실행 모드</label>
+                <div class="checkbox-row" style="margin-top:6px;">
+                  <label><input type="radio" name="tokenGenMode" id="tokenGenModeSignup" value="signup" checked> 회원가입 + 네이버메일 인증 + 토큰</label>
+                  <label><input type="radio" name="tokenGenMode" id="tokenGenModeLogin" value="login"> 기존 Netlify 계정 로그인 + 토큰</label>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-top:14px;">
+                <label for="tokenGenDesc">토큰 설명 접두어</label>
+                <input type="text" id="tokenGenDesc" value="landing-auto-deploy" placeholder="landing-auto-deploy">
+              </div>
+              <p class="bulk-hint">한 번 실행으로 <strong>목록 순서대로</strong> 계정당 토큰 1개씩 생성합니다. 로그아웃 후 로그인 화면에서 다음 계정을 직접 입력하면 자동으로 이어집니다. <strong>정지</strong> 버튼으로 중단할 수 있습니다.</p>
+
+              <div class="section-divider">
+                <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;">Netlify 가입 계정 (네이버)</h3>
+                <div class="bulk-pair-grid">
+                  <div class="form-group">
+                    <label for="bulkGenNaverIds">네이버 아이디 (한 줄에 하나)</label>
+                    <textarea id="bulkGenNaverIds" rows="6" placeholder="naver_id_1&#10;naver_id_2&#10;naver_id_3"></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label for="bulkGenNaverPws">네이버 비밀번호 (한 줄에 하나, 순서대로 짝지음)</label>
+                    <textarea id="bulkGenNaverPws" rows="6" placeholder="password1&#10;password2&#10;password3"></textarea>
+                  </div>
+                </div>
+                <p class="bulk-hint">1번째 아이디 ↔ 1번째 비밀번호, 2번째 ↔ 2번째 … 순서로 매칭됩니다. 식별명은 <strong>네이버 아이디</strong>로 자동 사용됩니다.</p>
+                <div id="netlifyGenAccounts" class="gen-account-list" style="margin-top:14px;"></div>
+              </div>
+
+              <div class="run-section" style="margin-top:16px;">
+                <button class="btn btn-success btn-block" id="startTokenGenBtn" type="button">▶ 회원가입 · 인증 · 토큰 생성</button>
+                <button class="btn btn-danger btn-block" id="stopTokenGenBtn" type="button" style="margin-top:8px;" disabled>⏹ 정지</button>
+                <button class="btn btn-ghost btn-block" id="recordNetlifyBtn" type="button" style="margin-top:8px;">📼 Netlify 동작 기록 (고급)</button>
+                <button class="btn btn-primary btn-block" id="applyGenTokensBtn" type="button" style="margin-top:8px;" disabled>설정 탭 토큰 목록에 추가</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title"><span class="emoji">📋</span> 생성 결과</div>
+                  <div class="card-sub">생성된 토큰 기록 (재시작 후에도 유지)</div>
+                </div>
+              </div>
+              <div id="generatedTokensList" class="item-list">
+                <p class="empty-hint">아직 생성된 토큰이 없습니다.</p>
+              </div>
+              <div class="log-section" style="margin-top:16px;">
+                <div class="log-header">
+                  <h3>생성 로그</h3>
+                  <button type="button" class="btn btn-ghost btn-sm" id="clearTokenGenLogBtn">지우기</button>
+                </div>
+                <div class="log-window" id="tokenGenLog" style="height:220px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- URL 수집 패널 (네이버 웹페이지 수집 진행) -->
+        <div id="urlCrawlPanel" class="panel">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title"><span class="emoji">📡</span> 웹페이지 수집 진행</div>
+                  <div class="card-sub">하위 URL 수집 → 빠르게·robots·사이트맵 → 하위 페이지별 웹페이지 수집</div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="crawlHomeUrls">사이트 홈 주소 (한 줄에 하나)</label>
+                <textarea id="crawlHomeUrls" rows="5" placeholder="https://site1.netlify.app&#10;https://xxx.dothome.co.kr&#10;https://blog.tistory.com"></textarea>
+              </div>
+              <div class="form-group" style="margin-top:12px;">
+                <label>네이버 계정 (이 탭 전용)</label>
+                <div class="row" style="gap:10px;">
+                  <input type="text" id="crawlNaverId" placeholder="아이디" autocomplete="username" style="flex:1;">
+                  <input type="password" id="crawlNaverPw" placeholder="비밀번호" autocomplete="current-password" style="flex:1;">
+                </div>
+                <p class="bulk-hint" style="margin-top:6px;">비워두면 로그인 창만 열어 수동 로그인합니다. (설정 탭 계정과 별개)</p>
+              </div>
+              <div class="form-group" style="margin-top:12px;">
+                <label>수집 옵션</label>
+                <div class="crawl-opt-row">
+                  <label class="check-inline"><input type="checkbox" id="crawlOptFast" checked> 수집주기 빠르게</label>
+                  <label class="check-inline"><input type="checkbox" id="crawlOptRobots" checked> robots.txt 수집요청</label>
+                  <label class="check-inline"><input type="checkbox" id="crawlOptSitemap" checked> 사이트맵 제출</label>
+                  <label class="check-inline"><input type="checkbox" id="crawlOptWebpage" checked> 웹페이지 수집(하위 포함)</label>
+                </div>
+              </div>
+              <p class="bulk-hint">① 하위 URL 수집 → ② 웹페이지 수집 일괄 실행. 수집된 슬러그·하위 페이지까지 모두 신청합니다. 성공 건은 건너뜁니다.</p>
+              <div class="run-section" style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
+                <button class="btn btn-ghost btn-block" id="crawlHeadlessToggleBtn" type="button" title="헤드리스 모드 전환">🖥 창 모드</button>
+                <button class="btn btn-primary btn-block" id="startCrawlBtn" type="button">▶ 하위 URL 수집</button>
+                <button class="btn btn-success btn-block" id="submitNaverCollectBtn" type="button">▶ 웹페이지 수집 일괄 실행</button>
+                <div class="row" style="gap:8px;">
+                  <button class="btn btn-danger" id="stopCrawlBtn" type="button" style="flex:1;" disabled>⏹ 정지</button>
+                  <button class="btn btn-primary" id="restartCrawlBtn" type="button" style="flex:1;" disabled>▶ 재시작</button>
+                </div>
+                <button class="btn btn-ghost btn-block" id="resetCrawlStatusBtn" type="button">상태 초기화 (대기)</button>
+              </div>
+              <div class="form-group" style="margin-top:12px;">
+                <label>수집된 하위 URL</label>
+                <textarea id="crawlUrlOutput" class="crawl-url-output" rows="8" readonly style="min-height:160px;" placeholder="하위 URL 수집 결과가 여기에 표시됩니다."></textarea>
+                <div class="row" style="gap:6px;margin-top:6px;">
+                  <button type="button" class="btn btn-ghost btn-sm" id="copyCrawlUrlsBtn" disabled>복사</button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="clearCrawlUrlsBtn" disabled>지우기</button>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title"><span class="emoji">📋</span> 웹페이지 수집 목록</div>
+                  <div class="card-sub" id="crawlResultHint">0개 사이트</div>
+                </div>
+              </div>
+              <div class="table-wrap crawl-status-wrap">
+                <table class="results-table" id="crawlStatusTable">
+                  <thead>
+                    <tr>
+                      <th style="width:48px;">#</th>
+                      <th>사이트 주소</th>
+                      <th style="width:90px;">수집 상태</th>
+                      <th>메시지</th>
+                      <th style="width:120px;">시각</th>
+                    </tr>
+                  </thead>
+                  <tbody id="crawlStatusBody">
+                    <tr><td colspan="5" class="empty-hint">사이트 주소를 입력하면 목록이 표시됩니다.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="log-section" style="margin-top:14px;">
+                <div class="log-header">
+                  <h3>수집 로그</h3>
+                  <button type="button" class="btn btn-ghost btn-sm" id="clearCrawlLogBtn">지우기</button>
+                </div>
+                <div class="log-window" id="crawlLog" style="height:180px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 넷리파이 생성 패널 (KKang Site Builder) -->
+        <div id="seoGenPanel" class="panel">
+          <div class="grid-2 seo-gen-grid">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title"><span class="emoji">🌐</span> 사이트 기본 설정</div>
+                  <div class="card-sub">키워드 SEO 랜딩 · Cursor AI · Netlify 배포</div>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" id="seoNetlifyLoginBtn2">Netlify 로그인</button>
+              </div>
+              <p class="bulk-hint" style="margin-top:-4px;margin-bottom:12px;">
+                「Netlify 로그인」으로 Chrome을 연 뒤 수동 로그인하세요. 크레딧은 상단 「↻」또는 사이트 배포 완료 시에만 빌링 페이지를 새로고침해 읽습니다.
+              </p>
+
+              <div class="form-group">
+                <label for="seoSiteSlug">Netlify 사이트명</label>
+                <div class="row" style="gap:8px;">
+                  <input type="text" id="seoSiteSlug" placeholder="키워드슬러그-xxxx" style="flex:1;">
+                  <button type="button" class="btn btn-ghost btn-sm" id="seoRandomSlugBtn">랜덤</button>
+                </div>
+                <p class="bulk-hint" id="seoPreviewUrl">https://site-xxxxxx.netlify.app</p>
+                <p class="bulk-hint">「랜덤 선택」시 선택한 키워드 슬러그로 사이트명이 잡힙니다. (예: card-kkang-a3f2)</p>
+              </div>
+
+              <div class="form-group">
+                <label for="seoBrand">업체명</label>
+                <input type="text" id="seoBrand" value="카드깡전문" placeholder="업체명">
+              </div>
+              <div class="form-group">
+                <label for="seoPhone">연락처</label>
+                <input type="text" id="seoPhone" value="010-6338-7124" placeholder="010-0000-0000">
+              </div>
+              <div class="form-group">
+                <label for="seoNaver">네이버 인증 코드 (선택)</label>
+                <input type="text" id="seoNaver" placeholder="비우면 배포 후 자동 추출">
+                <p class="bulk-hint">비워 두면 배포 전에 서치어드바이저 HTML 태그 인증코드를 먼저 받아 head에 넣은 뒤, Netlify에 1회만 배포합니다. (설정 탭 네이버 계정 필요)</p>
+              </div>
+
+              <details class="seo-advanced">
+                <summary>고급 설정 (구글 · 키워드 수 · 저장 폴더 · API · 토큰)</summary>
+                <div class="form-group">
+                  <label for="seoGoogle">구글 인증 코드</label>
+                  <input type="text" id="seoGoogle" placeholder="선택">
+                </div>
+                <div class="form-group">
+                  <label for="seoTopicCount">랜덤 선택 개수</label>
+                  <input type="number" id="seoTopicCount" min="1" max="80" value="16">
+                </div>
+                <div class="form-group">
+                  <label for="seoOutputDir">저장 폴더</label>
+                  <div class="row" style="gap:8px;">
+                    <input type="text" id="seoOutputDir" placeholder="output/kkang-sites" style="flex:1;">
+                    <button type="button" class="btn btn-ghost btn-sm" id="seoBrowseOutBtn">찾기</button>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="seoCursorKey">Cursor API Key</label>
+                  <input type="password" id="seoCursorKey" placeholder="key_..." autocomplete="off">
+                </div>
+                <div class="form-group">
+                  <label for="seoNetlifyId">Netlify 아이디</label>
+                  <input type="text" id="seoNetlifyId" placeholder="계정 이메일 또는 아이디 (표기용)" autocomplete="username">
+                  <p class="bulk-hint">생성 사이트 목록에 표시됩니다. 앱을 다시 켜도 유지됩니다.</p>
+                </div>
+                <div class="form-group">
+                  <label for="seoNetlifyToken">Netlify 토큰</label>
+                  <input type="password" id="seoNetlifyToken" placeholder="nfp_..." autocomplete="off">
+                  <p class="bulk-hint">입력하면 자동 저장됩니다. 비우면 설정 탭 토큰을 사용합니다.</p>
+                </div>
+                <div class="form-group">
+                  <label for="seoBuilderPath">KKang 엔진 경로</label>
+                  <div class="row" style="gap:8px;">
+                    <input type="text" id="seoBuilderPath" placeholder="C:\Users\...\kkang-site-builder" style="flex:1;">
+                    <button type="button" class="btn btn-ghost btn-sm" id="seoBrowseBuilderBtn">찾기</button>
+                  </div>
+                  <p class="bulk-hint" id="seoEngineHint">엔진 연결 상태 확인 중…</p>
+                </div>
+              </details>
+
+              <div class="checkbox-row" style="margin-top:14px;">
+                <label><input type="checkbox" id="seoUseAi" checked> Cursor AI 사용</label>
+                <label><input type="checkbox" id="seoDeploy" checked> 생성 후 Netlify 배포</label>
+                <label><input type="checkbox" id="seoCreateSite" checked> 새 Netlify 사이트 등록</label>
+              </div>
+
+              <div class="run-section" style="margin-top:16px;display:flex;gap:8px;">
+                <button class="btn btn-success" id="seoGenerateBtn" type="button" style="flex:1;">▶ 사이트 생성</button>
+                <button class="btn btn-danger" id="seoStopBtn" type="button" disabled>⏹ 정지</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title"><span class="emoji">🏷️</span> 키워드</div>
+                  <div class="card-sub" id="seoKwHint">선택 0개</div>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <button type="button" class="btn btn-ghost btn-sm" id="seoSelectAllBtn">전체</button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="seoClearKwBtn">해제</button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="seoRandomKwBtn">랜덤</button>
+                  <button type="button" class="btn btn-danger btn-sm" id="seoDeleteKwBtn">선택 삭제</button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="seoReloadKwBtn">새로고침</button>
+                </div>
+              </div>
+
+              <div class="seo-folder-tabs" id="seoFolderTabs"></div>
+              <input type="search" id="seoKwSearch" class="seo-kw-search" placeholder="키워드 검색…">
+              <div class="seo-kw-list" id="seoKwList"></div>
+
+              <details class="seo-advanced" style="margin-top:12px;">
+                <summary>키워드 추가</summary>
+                <div class="bulk-pair-grid">
+                  <div class="form-group">
+                    <label for="seoBulkKw">키워드 (한 줄에 하나)</label>
+                    <textarea id="seoBulkKw" rows="3" placeholder="카드깡서울"></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label for="seoBulkSlug">슬러그 (선택, 한 줄에 하나)</label>
+                    <textarea id="seoBulkSlug" rows="3" placeholder="card-seoul"></textarea>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" id="seoAddKwBtn" style="margin-top:8px;">+ 추가</button>
+              </details>
+
+              <div class="log-section" style="margin-top:14px;">
+                <div class="log-header">
+                  <h3>생성 로그</h3>
+                  <button type="button" class="btn btn-ghost btn-sm" id="seoClearLogBtn">지우기</button>
+                </div>
+                <div class="log-window" id="seoLog" style="height:220px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cloudflare Pages 생성 패널 (기본 틀) -->
+        <div id="cfPagesPanel" class="panel">
+          <div class="grid-2 seo-gen-grid">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title"><span class="emoji">☁️</span> Cloudflare Pages 기본 설정</div>
+                  <div class="card-sub">사이트 생성 · Pages 배포 (틀만 준비 · 기능은 순차 업데이트)</div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="cfProjectName">프로젝트명</label>
+                <div class="row" style="gap:8px;">
+                  <input type="text" id="cfProjectName" placeholder="my-landing-xxxxxx" style="flex:1;">
+                  <button type="button" class="btn btn-ghost btn-sm" id="cfRandomSlugBtn">랜덤</button>
+                </div>
+                <p class="bulk-hint" id="cfPreviewUrl">https://my-landing-xxxxxx.pages.dev</p>
+              </div>
+
+              <div class="form-group">
+                <label for="cfBrand">업체명</label>
+                <input type="text" id="cfBrand" placeholder="업체명">
+              </div>
+              <div class="form-group">
+                <label for="cfPhone">연락처</label>
+                <input type="text" id="cfPhone" placeholder="010-0000-0000">
+              </div>
+              <div class="form-group">
+                <label for="cfNaver">네이버 인증 코드</label>
+                <input type="text" id="cfNaver" placeholder="코드만 입력 (선택)">
+              </div>
+
+              <details class="seo-advanced">
+                <summary>고급 설정 (계정 · 토큰 · 저장 폴더)</summary>
+                <div class="form-group">
+                  <label for="cfAccountId">Cloudflare Account ID</label>
+                  <input type="text" id="cfAccountId" placeholder="계정 ID" autocomplete="off">
+                </div>
+                <div class="form-group">
+                  <label for="cfApiToken">Cloudflare API Token</label>
+                  <input type="password" id="cfApiToken" placeholder="API Token" autocomplete="off">
+                </div>
+                <div class="form-group">
+                  <label for="cfOutputDir">저장 폴더</label>
+                  <div class="row" style="gap:8px;">
+                    <input type="text" id="cfOutputDir" placeholder="output/cf-pages-sites" style="flex:1;">
+                    <button type="button" class="btn btn-ghost btn-sm" id="cfBrowseOutBtn">찾기</button>
+                  </div>
+                </div>
+              </details>
+
+              <div class="checkbox-row" style="margin-top:14px;">
+                <label><input type="checkbox" id="cfDeploy" checked> 생성 후 Pages 배포</label>
+                <label><input type="checkbox" id="cfCreateProject" checked> 새 Pages 프로젝트 등록</label>
+              </div>
+
+              <div class="run-section" style="margin-top:16px;display:flex;gap:8px;">
+                <button class="btn btn-success" id="cfGenerateBtn" type="button" style="flex:1;">▶ 사이트 생성</button>
+                <button class="btn btn-danger" id="cfStopBtn" type="button" disabled>⏹ 정지</button>
+              </div>
+              <p class="bulk-hint" style="margin-top:10px;">지금은 기본 UI 틀만 있습니다. 사이트 생성·디자인·배포 로직은 이후 업데이트됩니다.</p>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title"><span class="emoji">📝</span> 키워드 / 메모</div>
+                  <div class="card-sub">생성에 쓸 키워드·메모 (임시)</div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="cfKeywords">키워드 (한 줄에 하나)</label>
+                <textarea id="cfKeywords" rows="10" placeholder="키워드1&#10;키워드2&#10;키워드3"></textarea>
+              </div>
+              <div class="form-group">
+                <label for="cfNotes">작업 메모</label>
+                <textarea id="cfNotes" rows="4" placeholder="디자인·생성 방식 등 메모"></textarea>
+              </div>
+              <div class="log-section" style="margin-top:14px;">
+                <div class="log-header">
+                  <h3>생성 로그</h3>
+                  <button type="button" class="btn btn-ghost btn-sm" id="cfClearLogBtn">지우기</button>
+                </div>
+                <div class="log-window" id="cfLog" style="height:220px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 닷홈 호스팅 생성 패널 -->
+        <div id="dothomePanel" class="panel">
+          <div class="grid-2 seo-gen-grid">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title"><span class="emoji">🏠</span> 닷홈 가입 · 정적 SEO</div>
+                  <div class="card-sub">가입 → 정적 SEO 생성 → FTP → 네이버 등록·HTML인증 → 인덱싱</div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="dhEmailLocal">네이버 이메일 아이디 (앞부분)</label>
+                <div class="row" style="gap:8px;align-items:center;">
+                  <input type="text" id="dhEmailLocal" placeholder="myemail" style="flex:1;" autocomplete="email">
+                  <span style="white-space:nowrap;color:var(--text-muted);">@naver.com</span>
+                </div>
+                <p class="bulk-hint">가입 이메일로 사용합니다. 설정 탭 OpenAI API Key로 보안문자를 인식합니다.</p>
+              </div>
+
+              <div class="form-group">
+                <label>공통 비밀번호</label>
+                <input type="text" id="dhFixedPw" value="dlwkdrns12435!" readonly>
+                <p class="bulk-hint">모든 닷홈 계정에 이 비밀번호를 사용합니다.</p>
+              </div>
+
+              <div class="form-group">
+                <label for="dhHostId">최근 생성 아이디 (자동)</label>
+                <input type="text" id="dhHostId" placeholder="가입 시 자동 생성" readonly>
+                <p class="bulk-hint" id="dhPreviewUrl">https://(FTP아이디).dothome.co.kr</p>
+              </div>
+
+              <details class="seo-advanced" open>
+                <summary>정적 SEO 사이트 입력</summary>
+                <div class="form-group">
+                  <label for="dhKeyword">핵심키워드</label>
+                  <input type="text" id="dhKeyword" placeholder="예: 신용카드현금화">
+                </div>
+                <div class="form-group">
+                  <label for="dhExternalUrl">외부 연결 주소 (선택)</label>
+                  <input type="text" id="dhExternalUrl" placeholder="비우면 외부 버튼 없음">
+                  <p class="bulk-hint">입력 시에만 「홈페이지 보기」 버튼이 생깁니다.</p>
+                </div>
+                <p class="bulk-hint">핵심키워드 입력 시 Cursor API로 관련키워드 5개 + 페이지 본문을 매번 새로 작성합니다. (넷리파이 생성 탭 Cursor API Key 사용)</p>
+                <div class="form-group">
+                  <label for="dhPhone">전화번호</label>
+                  <input type="text" id="dhPhone" value="010-6338-7124" placeholder="010-6338-7124">
+                </div>
+                <div class="form-group">
+                  <label for="dhImageDir">이미지 폴더 (PNG/JPG 8장 이상)</label>
+                  <div class="row" style="gap:8px;">
+                    <input type="text" id="dhImageDir" placeholder="1:1 이미지 폴더" style="flex:1;">
+                    <button type="button" class="btn btn-ghost btn-sm" id="dhBrowseImageBtn">찾기</button>
+                  </div>
+                  <p class="bulk-hint">폴더에서 매번 랜덤으로 10장을 골라 사용합니다. AI로 이미지를 만들지 않습니다.</p>
+                </div>
+                <div class="form-group">
+                  <label for="dhGoogleVerifyFile">구글 색인 인증 파일 (HTML)</label>
+                  <div class="row" style="gap:8px;">
+                    <input type="text" id="dhGoogleVerifyFile" placeholder="C:\Users\...\googlef55ada0a814882a8.html" style="flex:1;">
+                    <button type="button" class="btn btn-ghost btn-sm" id="dhBrowseGoogleBtn">찾기</button>
+                  </div>
+                  <p class="bulk-hint">Search Console에서 받은 <code>google….html</code> 파일을 지정하면 사이트 루트에 동일 이름으로 포함됩니다. (나중에 구글 색인 가능)</p>
+                </div>
+                <div class="form-group">
+                  <label for="dhFtpHost">FTP 호스트 (비우면 자동)</label>
+                  <input type="text" id="dhFtpHost" value="" placeholder="자동: {FTP아이디}.dothome.co.kr">
+                </div>
+                <p class="bulk-hint">저장: Documents\Codex\호스팅\YYYY-MM-DD\DD일_FTP아이디_seo_site<br>
+                <strong>생성 후 배포</strong>: FTP 업로드 → 네이버 서치어드바이저 등록 → HTML 인증 메타 주입 → 소유확인 → 인덱싱 (설정 탭 네이버 계정 필요)</p>
+              </details>
+
+              <div class="run-section" style="margin-top:16px;display:flex;flex-direction:column;gap:8px;">
+                <button class="btn btn-ghost btn-block" id="dhHeadlessToggleBtn" type="button" title="헤드리스 모드 전환">🖥 창 모드</button>
+                <div style="display:flex;gap:8px;">
+                  <button class="btn btn-success" id="dhGenerateBtn" type="button" style="flex:1;">▶ 닷홈 회원가입</button>
+                  <button class="btn btn-danger" id="dhStopBtn" type="button" disabled>⏹ 정지</button>
+                </div>
+              </div>
+              <p class="bulk-hint" style="margin-top:10px;">이메일 앞부분과 <strong>설정 탭 네이버 계정 아이디</strong>가 같아야 메일 인증코드를 자동으로 가져옵니다. 흐름: 가입→로그인→무료호스팅(CMS 없음)→메일인증→약관→reCAPTCHA→신청 → 계정 카드에서 사이트 생성/배포</p>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title"><span class="emoji">📋</span> 생성된 계정</div>
+                  <div class="card-sub" id="dhAccountsHint">0개 · 사이트 생성 / 생성 후 배포</div>
+                </div>
+              </div>
+              <div id="dhAccountsList" class="item-list">
+                <p class="empty-hint">아직 생성된 계정이 없습니다.</p>
+              </div>
+              <div class="log-section" style="margin-top:14px;">
+                <div class="log-header">
+                  <h3>닷홈 로그</h3>
+                  <button type="button" class="btn btn-ghost btn-sm" id="dhClearLogBtn">지우기</button>
+                </div>
+                <div class="log-window" id="dhLog" style="height:260px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 생성 사이트 통합 패널 (넷리파이 · Cloudflare · 닷홈) -->
+        <div id="sitesPanel" class="panel">
+          <div class="stats-row" id="sitesStatsRow">
+            <div class="stat-card total">
+              <div class="value" id="siteStatTotal">0</div>
+              <div class="label">전체</div>
+            </div>
+            <div class="stat-card success">
+              <div class="value" id="siteStatNetlify">0</div>
+              <div class="label">Netlify</div>
+            </div>
+            <div class="stat-card indexed">
+              <div class="value" id="siteStatCloudflare">0</div>
+              <div class="label">Cloudflare</div>
+            </div>
+            <div class="stat-card manual">
+              <div class="value" id="siteStatDothome">0</div>
+              <div class="label">닷홈</div>
+            </div>
+            <div class="stat-card indexed">
+              <div class="value" id="siteStatIndexed">0</div>
+              <div class="label">인덱싱됨</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="results-toolbar sites-toolbar">
+              <div class="sites-filters" id="sitesFilters">
+                <button type="button" class="chip active" data-sites-filter="all">전체</button>
+                <button type="button" class="chip" data-sites-filter="netlify">Netlify</button>
+                <button type="button" class="chip" data-sites-filter="cloudflare">Cloudflare</button>
+                <button type="button" class="chip" data-sites-filter="dothome">닷홈</button>
+              </div>
+              <div class="form-group" style="margin:0;min-width:180px;flex:1;">
+                <label for="sitesSearch">검색</label>
+                <input type="text" id="sitesSearch" placeholder="이름, URL, FTP, 키워드…">
+              </div>
+              <button class="btn btn-primary btn-sm" id="sitesCheckIndexBtn" type="button">🔍 인덱싱 확인</button>
+              <button class="btn btn-ghost btn-sm" id="sitesCopyUrlsBtn" type="button">URL 복사</button>
+              <button class="btn btn-ghost btn-sm" id="sitesSyncBtn" type="button">새로고침</button>
+              <button class="btn btn-danger btn-sm" id="sitesClearBtn" type="button">전체 삭제</button>
+            </div>
+            <p class="bulk-hint" id="sitesIndexHint">네이버 <code>site:URL</code> 검색으로 인덱싱을 확인합니다. (로그인 불필요 · 제안 링크 자동 따라가기 포함)</p>
+            <div id="sitesIndexProgress" class="index-progress" hidden></div>
+            <div id="sitesList"></div>
+          </div>
+        </div>
+
+        <!-- 결과 패널 -->
+        <div id="resultsPanel" class="panel">
+          <div class="stats-row" id="statsRow">
+            <div class="stat-card total">
+              <div class="value" id="statTotal">0</div>
+              <div class="label">전체</div>
+            </div>
+            <div class="stat-card success">
+              <div class="value" id="statSuccess">0</div>
+              <div class="label">등록 성공</div>
+            </div>
+            <div class="stat-card manual">
+              <div class="value" id="statManual">0</div>
+              <div class="label">수동 처리</div>
+            </div>
+            <div class="stat-card error">
+              <div class="value" id="statError">0</div>
+              <div class="label">오류</div>
+            </div>
+            <div class="stat-card indexed">
+              <div class="value" id="statIndexed">0</div>
+              <div class="label">인덱싱됨</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="results-toolbar">
+              <div class="form-group">
+                <label for="resultsSearch">검색</label>
+                <input type="text" id="resultsSearch" placeholder="URL, 서비스명, 계정 ID...">
+              </div>
+              <button class="btn btn-ghost btn-sm" id="copySelectedUrlsBtn" type="button" title="체크한 배포 URL 복사">선택 복사</button>
+              <button class="btn btn-ghost btn-sm" id="copyAllResultUrlsBtn" type="button" title="목록의 모든 배포 URL 복사">전체 복사</button>
+              <button class="btn btn-primary btn-sm" id="checkIndexBtn" type="button">🔍 인덱싱 확인</button>
+              <button class="btn btn-danger btn-sm" id="clearAllResultsBtn" type="button">전체 삭제</button>
+            </div>
+            <p class="bulk-hint" id="indexCheckHint">배포 URL을 네이버 <code>site:URL</code> 검색으로 확인합니다. <strong>네이버 로그인·계정 불필요</strong> (공개 검색만 사용).</p>
+            <div id="indexProgress" class="index-progress" hidden></div>
+            <div id="resultsList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="manualNaverIdModal" class="app-modal" hidden>
+    <div class="app-modal-backdrop" data-manual-naver-close></div>
+    <div class="app-modal-card" role="dialog" aria-labelledby="manualNaverIdTitle">
+      <h3 id="manualNaverIdTitle">네이버 아이디 수동입력</h3>
+      <p class="app-modal-sub" id="manualNaverIdSiteHint"></p>
+      <div class="form-group">
+        <label for="manualNaverIdInput">네이버 아이디</label>
+        <input type="text" id="manualNaverIdInput" placeholder="예: naver_id" autocomplete="username">
+      </div>
+      <div class="app-modal-actions">
+        <button type="button" class="btn btn-ghost" data-manual-naver-close>취소</button>
+        <button type="button" class="btn btn-primary" id="manualNaverIdSaveBtn">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+

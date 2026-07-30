@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-publish/
+release/
+output/
+_asar_extract/
+_recover/
+_check_badge/
+*.zip
+.env
+config.json
+.DS_Store
+*.log
+.cursor/

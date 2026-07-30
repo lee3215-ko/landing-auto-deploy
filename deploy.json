@@ -1,0 +1,36 @@
+{
+  "github_owner": "lee3215-ko",
+  "github_repo": "landing-auto-deploy",
+  "release_asset": "LandingAutoDeploy.zip",
+  "default_bump": "patch",
+  "app_display_name": "Landing Auto Deploy",
+  "zip_inner_folder": "LandingAutoDeploy",
+  "version": {
+    "file": "package.json",
+    "variable": "version",
+    "format": "package.json"
+  },
+  "html_version": {
+    "file": "renderer/index.html",
+    "pattern": "version-tag"
+  },
+  "build": {
+    "script": "build.bat",
+    "dist_dir": "release/LandingAutoDeploy"
+  },
+  "git_add": [
+    ".gitignore",
+    "README.md",
+    "package.json",
+    "package-lock.json",
+    "main.cjs",
+    "preload.cjs",
+    "lib",
+    "renderer",
+    "scripts",
+    "build.bat",
+    "deploy.bat",
+    "deploy.json",
+    "version.json"
+  ]
+}
