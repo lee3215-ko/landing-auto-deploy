@@ -1,11 +1,12 @@
 {
     "version":  "3.8.2",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.2/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/495100167",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.2/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/495100167",
+    "asset_id":  495100167,
     "notes":  "자동업데이트 수정: Electron 네트워크 다운로드 + tar 압축해제 + 상세 로그",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/495100167",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.2/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
