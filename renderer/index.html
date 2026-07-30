@@ -47,7 +47,7 @@
         </button>
       </nav>
       <div class="sidebar-footer">
-        <span class="version-tag">v3.8.2</span>
+        <span class="version-tag">v3.8.3</span>
       </div>
     </aside>
 
@@ -373,11 +373,17 @@
               <div class="form-group">
                 <label for="seoSiteSlug">Netlify 사이트명</label>
                 <div class="row" style="gap:8px;">
-                  <input type="text" id="seoSiteSlug" placeholder="키워드슬러그-xxxx" style="flex:1;">
+                  <input type="text" id="seoSiteSlug" placeholder="keyword-ab123" style="flex:1;">
                   <button type="button" class="btn btn-ghost btn-sm" id="seoRandomSlugBtn">랜덤</button>
                 </div>
-                <p class="bulk-hint" id="seoPreviewUrl">https://site-xxxxxx.netlify.app</p>
-                <p class="bulk-hint">「랜덤 선택」시 선택한 키워드 슬러그로 사이트명이 잡힙니다. (예: card-kkang-a3f2)</p>
+                <p class="bulk-hint" id="seoPreviewUrl">https://site-ab123.netlify.app</p>
+                <p class="bulk-hint">형식: 키워드슬러그-영문2자+숫자3자리 (예: mobile-cash-xk847). 중복되지 않게 생성합니다.</p>
+              </div>
+
+              <div class="form-group">
+                <label for="seoDeployCount">자동 배포 개수</label>
+                <input type="number" id="seoDeployCount" min="1" max="50" value="1">
+                <p class="bulk-hint">지정한 횟수만큼 연속 생성합니다. 매번 현재 키워드 태그에서 키워드·사이트명을 랜덤 재선택합니다.</p>
               </div>
 
               <div class="form-group">
@@ -603,32 +609,55 @@
               </div>
 
               <div class="form-group">
-                <label>공통 비밀번호</label>
-                <input type="text" id="dhFixedPw" value="dlwkdrns12435!" readonly>
-                <p class="bulk-hint">모든 닷홈 계정에 이 비밀번호를 사용합니다.</p>
+                <label for="dhKeyword">핵심키워드</label>
+                <input type="text" id="dhKeyword" placeholder="예: 신용카드현금화">
+                <p class="bulk-hint">Cursor API로 관련키워드 5개 + 페이지 본문을 매번 새로 작성합니다.</p>
               </div>
 
               <div class="form-group">
-                <label for="dhHostId">최근 생성 아이디 (자동)</label>
-                <input type="text" id="dhHostId" placeholder="가입 시 자동 생성" readonly>
-                <p class="bulk-hint" id="dhPreviewUrl">https://(FTP아이디).dothome.co.kr</p>
+                <label for="dhPhone">전화번호</label>
+                <input type="text" id="dhPhone" value="010-6338-7124" placeholder="010-6338-7124">
+              </div>
+
+              <div class="form-group">
+                <label for="dhSignupCount">회원가입 / 풀파이프라인 개수</label>
+                <input type="number" id="dhSignupCount" min="1" max="30" value="1">
+                <p class="bulk-hint">지정한 횟수만큼 반복합니다. (가입만 / 가입→생성→배포)</p>
+              </div>
+
+              <div class="form-group">
+                <label>VPN IP 변경 단축키</label>
+                <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;">
+                  <input type="number" id="vpnEverySites" min="1" max="50" value="1" style="width:72px;" title="사이트 N개마다">
+                  <span style="color:var(--text-muted);font-size:13px;">개마다</span>
+                  <select id="vpnHotkeyMod" style="width:100px;">
+                    <option value="alt" selected>Alt</option>
+                    <option value="ctrl">Ctrl</option>
+                    <option value="shift">Shift</option>
+                  </select>
+                  <span>+</span>
+                  <input type="text" id="vpnHotkeyKey" value="p" maxlength="1" style="width:48px;text-align:center;text-transform:uppercase;" placeholder="P">
+                  <button type="button" class="btn btn-ghost btn-sm" id="vpnHotkeyTestBtn">테스트</button>
+                </div>
+                <p class="bulk-hint">사이트 N개 생성·배포될 때마다 VPN 단축키를 자동 전송합니다. 「테스트」로 실제 동작을 확인하세요.</p>
               </div>
 
               <details class="seo-advanced" open>
                 <summary>정적 SEO 사이트 입력</summary>
                 <div class="form-group">
-                  <label for="dhKeyword">핵심키워드</label>
-                  <input type="text" id="dhKeyword" placeholder="예: 신용카드현금화">
+                  <label>공통 비밀번호</label>
+                  <input type="text" id="dhFixedPw" value="dlwkdrns12435!" readonly>
+                  <p class="bulk-hint">모든 닷홈 계정에 이 비밀번호를 사용합니다.</p>
+                </div>
+                <div class="form-group">
+                  <label for="dhHostId">최근 생성 아이디 (자동)</label>
+                  <input type="text" id="dhHostId" placeholder="가입 시 자동 생성" readonly>
+                  <p class="bulk-hint" id="dhPreviewUrl">https://(FTP아이디).dothome.co.kr</p>
                 </div>
                 <div class="form-group">
                   <label for="dhExternalUrl">외부 연결 주소 (선택)</label>
                   <input type="text" id="dhExternalUrl" placeholder="비우면 외부 버튼 없음">
                   <p class="bulk-hint">입력 시에만 「홈페이지 보기」 버튼이 생깁니다.</p>
-                </div>
-                <p class="bulk-hint">핵심키워드 입력 시 Cursor API로 관련키워드 5개 + 페이지 본문을 매번 새로 작성합니다. (넷리파이 생성 탭 Cursor API Key 사용)</p>
-                <div class="form-group">
-                  <label for="dhPhone">전화번호</label>
-                  <input type="text" id="dhPhone" value="010-6338-7124" placeholder="010-6338-7124">
                 </div>
                 <div class="form-group">
                   <label for="dhImageDir">이미지 폴더 (PNG/JPG 8장 이상)</label>
@@ -660,6 +689,8 @@
                   <button class="btn btn-success" id="dhGenerateBtn" type="button" style="flex:1;">▶ 닷홈 회원가입</button>
                   <button class="btn btn-danger" id="dhStopBtn" type="button" disabled>⏹ 정지</button>
                 </div>
+                <button class="btn btn-primary btn-block" id="dhFullPipelineBtn" type="button">▶ 회원가입 → 생성 → 배포 (한번에)</button>
+                <p class="bulk-hint">위 버튼: 가입만. 아래 버튼: 가입 후 정적 SEO 생성·FTP·네이버 등록까지 개수만큼 연속 진행.</p>
               </div>
               <p class="bulk-hint" style="margin-top:10px;">이메일 앞부분과 <strong>설정 탭 네이버 계정 아이디</strong>가 같아야 메일 인증코드를 자동으로 가져옵니다. 흐름: 가입→로그인→무료호스팅(CMS 없음)→메일인증→약관→reCAPTCHA→신청 → 계정 카드에서 사이트 생성/배포</p>
             </div>

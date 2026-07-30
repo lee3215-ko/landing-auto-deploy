@@ -57,6 +57,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   naverSessionRefreshSites: () => ipcRenderer.invoke('naver-session-refresh-sites'),
   onNaverSessionUpdate: (callback) => ipcRenderer.on('naver-session-update', (_, data) => callback(data)),
   focusMainWindow: () => ipcRenderer.invoke('focus-main-window'),
+  sendHotkey: (hotkey) => ipcRenderer.invoke('send-hotkey', hotkey || {}),
   netlifyCreditsLogin: (options) => ipcRenderer.invoke('netlify-credits-login', options || {}),
   netlifyCreditsRefresh: (options) => ipcRenderer.invoke('netlify-credits-refresh', options || {}),
   netlifyCreditsStatus: () => ipcRenderer.invoke('netlify-credits-status'),

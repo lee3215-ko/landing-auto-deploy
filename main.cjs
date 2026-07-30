@@ -1,6 +1,9 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+const execFileAsync = promisify(execFile);
 
 // GPU 플래그는 app ready 전에만 설정. (portable 재실행과 별개로, 드라이버 크래시 완화)
 app.disableHardwareAcceleration();
@@ -219,6 +222,37 @@ function focusMainWindow() {
 ipcMain.handle('focus-main-window', async () => {
   focusMainWindow();
   return { ok: true };
+});
+
+/** VPN 등 OS 전역 단축키 테스트 전송 */
+ipcMain.handle('send-hotkey', async (_event, hotkey = {}) => {
+  const key = String(hotkey.key || '').trim().toLowerCase().slice(0, 1);
+  if (!key || !/^[a-z0-9]$/i.test(key)) {
+    return { ok: false, error: '유효한 키(a-z, 0-9)를 입력하세요.' };
+  }
+  if (!hotkey.alt && !hotkey.ctrl && !hotkey.shift) {
+    return { ok: false, error: 'Alt/Ctrl/Shift 중 하나 이상 필요합니다.' };
+  }
+  // SendKeys: ^ Ctrl, % Alt, + Shift
+  let seq = '';
+  if (hotkey.ctrl) seq += '^';
+  if (hotkey.alt) seq += '%';
+  if (hotkey.shift) seq += '+';
+  seq += key;
+  const ps = `
+Add-Type -AssemblyName System.Windows.Forms
+Start-Sleep -Milliseconds 400
+[System.Windows.Forms.SendKeys]::SendWait('${seq.replace(/'/g, "''")}')
+`;
+  try {
+    await execFileAsync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps], {
+      windowsHide: true,
+      timeout: 10000,
+    });
+    return { ok: true, seq };
+  } catch (e) {
+    return { ok: false, error: e.message || String(e) };
+  }
 });
 
 app.on('second-instance', () => {
@@ -639,6 +673,21 @@ ipcMain.handle('submit-naver-collect', async (event, options = {}) => {
   const { resetCrawlStop, CrawlStopped } = await import('./lib/crawl-cancel.js');
   resetCrawlStop();
   try {
+    let session = null;
+    try {
+      const { ensureNaverSession } = await import('./lib/naver-session.js');
+      if (crawlAccount) {
+        session = await ensureNaverSession({
+          naverAccount: crawlAccount,
+          openaiApiKey: config.openaiApiKey || '',
+          headless: !!config.headless,
+          outputFolder: path.join(OUTPUT_ROOT, 'naver-session'),
+          onLog: (msg) => event.sender.send('crawl-url-log', `[세션] ${msg}`),
+        });
+      }
+    } catch (e) {
+      event.sender.send('crawl-url-log', `⚠ 공유 세션 실패: ${e.message}`);
+    }
     const out = await submitNaverBulkCollection({
       homeUrl,
       urls: urls || [],
@@ -652,6 +701,10 @@ ipcMain.handle('submit-naver-collect', async (event, options = {}) => {
       doRobots: !!doRobots,
       doSitemap: !!doSitemap,
       doWebpage: !!doWebpage,
+      browser: session?.browser || null,
+      page: session?.page || null,
+      keepBrowserOpen: !!session,
+      skipLogin: !!session,
       sendLog: (line) => event.sender.send('crawl-url-log', line),
       onItemStart: (data) => event.sender.send('naver-collect-progress', { phase: 'start', ...data }),
       onItemDone: (data) => event.sender.send('naver-collect-progress', { phase: 'done', ...data }),

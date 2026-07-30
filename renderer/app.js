@@ -18,6 +18,7 @@ let crawlJobState = 'idle';
 let crawlLastJob = null;
 let urlCrawlRunning = false;
 let seoBusy = false;
+let seoStopRequested = false;
 let seoKeywords = []; // [{kw, slug, cat, folder, custom}]
 let seoFolders = [];
 let seoCounts = {};
@@ -85,7 +86,7 @@ function renderNetlifyTokens() {
   el.innerHTML = visible.map(({ t, i, obj }) => {
     const expanded = t.expanded !== false;
     const usedTag = t.used ? '<span class="tag tag-used">다씀</span>' : '';
-    const countTag = `<span class="tag tag-count">${t.usedCount || 0}/20</span>`;
+    const countTag = `<span class="tag tag-count">${t.usedCount || 0}개</span>`;
     const label = obj.id ? obj.id : (obj.token ? `토큰 ${i + 1}` : `빈 토큰 ${i + 1}`);
     return `
     <div class="item ${expanded ? 'expanded' : ''}" data-idx="${i}">
@@ -104,7 +105,7 @@ function renderNetlifyTokens() {
         <div class="row" style="margin-top:8px;align-items:center;">
           <div class="form-group" style="margin-bottom:0;">
             <label>사용 개수</label>
-            <input type="number" data-idx="${i}" data-field="usedCount" value="${t.usedCount || 0}" min="0" max="20" style="width:80px;">
+            <input type="number" data-idx="${i}" data-field="usedCount" value="${t.usedCount || 0}" min="0" style="width:80px;">
           </div>
           <label class="inline-check" style="margin-bottom:6px;">
             <input type="checkbox" data-idx="${i}" data-field="used" ${t.used ? 'checked' : ''}> 크레딧 다씀
@@ -775,11 +776,12 @@ function switchTab(name) {
   $('pageSubtitle').textContent = meta.subtitle;
   const onSeo = name === 'seo-gen';
   const onSites = name === 'sites';
-  // Netlify 로그인 버튼: 생성/사이트 탭에서만
-  if ($('seoNetlifyLoginBtn')) $('seoNetlifyLoginBtn').hidden = !(onSeo || onSites);
-  if ($('seoNetlifyCreditRefreshBtn')) $('seoNetlifyCreditRefreshBtn').hidden = !(onSeo || onSites);
-  // 크레딧: 넷리파이 생성 + 생성 사이트
-  updateNetlifyCreditBadgeVisibility(onSeo || onSites);
+  const onConfig = name === 'config';
+  // Netlify 로그인 버튼: 설정/생성/사이트 탭
+  if ($('seoNetlifyLoginBtn')) $('seoNetlifyLoginBtn').hidden = !(onSeo || onSites || onConfig);
+  if ($('seoNetlifyCreditRefreshBtn')) $('seoNetlifyCreditRefreshBtn').hidden = !(onSeo || onSites || onConfig);
+  // 크레딧: 설정 + 넷리파이 생성 + 생성 사이트
+  updateNetlifyCreditBadgeVisibility(onSeo || onSites || onConfig);
   updateNaverSessionBadge();
   updateNaverLoginButton();
   if (name === 'results') loadSavedResults();
@@ -800,7 +802,7 @@ function updateNetlifyCreditBadgeVisibility(forceShow) {
   if (!badge) return;
   const showTab = forceShow != null
     ? !!forceShow
-    : (currentTabName === 'seo-gen' || currentTabName === 'sites');
+    : (currentTabName === 'seo-gen' || currentTabName === 'sites' || currentTabName === 'config');
   const hasData = !!(netlifyCreditState && (netlifyCreditState.teamSlug || netlifyCreditState.credits != null || netlifyCreditState.status));
   badge.hidden = !(showTab && hasData);
 }
@@ -2494,7 +2496,9 @@ function setupEvents() {
   $('dhBrowseImageBtn')?.addEventListener('click', browseDhImageDir);
   $('dhBrowseGoogleBtn')?.addEventListener('click', browseDhGoogleFile);
   $('dhGenerateBtn')?.addEventListener('click', startDhGenerate);
+  $('dhFullPipelineBtn')?.addEventListener('click', startDhFullPipeline);
   $('dhStopBtn')?.addEventListener('click', stopDhGenerate);
+  $('vpnHotkeyTestBtn')?.addEventListener('click', testVpnHotkey);
   $('dhClearLogBtn')?.addEventListener('click', () => { if ($('dhLog')) $('dhLog').textContent = ''; });
   $('dhAccountsList')?.addEventListener('click', (e) => {
     if (dhBusy) return;
@@ -2664,7 +2668,7 @@ function seoLog(line) {
 function updateSeoPreviewUrl() {
   const slug = sanitizeSeoSlug($('seoSiteSlug')?.value || '');
   const el = $('seoPreviewUrl');
-  if (el) el.textContent = `https://${slug || 'site-xxxxxx'}.netlify.app`;
+  if (el) el.textContent = `https://${slug || 'keyword-ab123'}.netlify.app`;
 }
 
 function sanitizeSeoSlug(raw) {
@@ -2677,14 +2681,35 @@ function sanitizeSeoSlug(raw) {
     .replace(/^-|-$/g, '') || '';
 }
 
-function randomSeoSuffix(len = 4) {
-  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let suffix = '';
-  for (let i = 0; i < len; i++) suffix += alphabet[Math.floor(Math.random() * alphabet.length)];
-  return suffix;
+function randomSeoLetters(len = 2) {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz';
+  let out = '';
+  for (let i = 0; i < len; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return out;
 }
 
-/** 선택된(또는 인자로 받은) 키워드 슬러그에서 Netlify 사이트명 prefix 추출 */
+function randomSeoDigits(len = 3) {
+  let out = '';
+  for (let i = 0; i < len; i++) out += String(Math.floor(Math.random() * 10));
+  return out;
+}
+
+/** 이미 쓴 Netlify 사이트명 (생성 사이트 + 배치 중) */
+const seoBatchUsedSlugs = new Set();
+
+function collectUsedSeoSlugs() {
+  const used = new Set(seoBatchUsedSlugs);
+  for (const s of createdSites || []) {
+    const url = String(s.url || s.domain || '');
+    const m = url.match(/https?:\/\/([a-z0-9-]+)\.netlify\.app/i);
+    if (m?.[1]) used.add(m[1].toLowerCase());
+    const name = sanitizeSeoSlug(s.name || s.siteSlug || s.site_slug || '');
+    if (name) used.add(name);
+  }
+  return used;
+}
+
+/** 선택된(또는 인자로 받은) 키워드 슬러그에서 Netlify 사이트명 prefix 추출 (짧게) */
 function pickSeoSlugPrefix(preferredItems) {
   const pool = (preferredItems && preferredItems.length)
     ? preferredItems
@@ -2693,7 +2718,6 @@ function pickSeoSlugPrefix(preferredItems) {
   const item = pool[Math.floor(Math.random() * pool.length)];
   let base = sanitizeSeoSlug(item.slug || '');
   if (!base) {
-    // 한글 키워드만 있을 때: 폴더/카테고리 힌트
     const folder = String(item.folder || item.cat || '').toLowerCase();
     const folderMap = {
       kkang: 'kkang', cash: 'cash', mobile: 'mobile', gift: 'gift',
@@ -2701,15 +2725,24 @@ function pickSeoSlugPrefix(preferredItems) {
     };
     base = folderMap[folder] || 'site';
   }
-  // Netlify 63자 제한 여유: prefix 최대 28자
-  if (base.length > 28) base = base.slice(0, 28).replace(/-$/, '');
+  // 짧게: 최대 14자 (예: mobile-cash-out → mobile-cash-ou)
+  if (base.length > 14) base = base.slice(0, 14).replace(/-$/, '');
   return base || 'site';
 }
 
+/**
+ * 사이트명: {키워드슬러그}-{영문2자}{숫자3자}
+ * 예: mobile-cash-xk847
+ */
 function randomSeoSlug(logIt = true, preferredItems) {
-  const prefix = pickSeoSlugPrefix(preferredItems) || 'credit';
-  const suffixLen = prefix === 'credit' || prefix === 'site' ? 6 : 4;
-  const slug = `${prefix}-${randomSeoSuffix(suffixLen)}`;
+  const prefix = pickSeoSlugPrefix(preferredItems) || 'site';
+  const used = collectUsedSeoSlugs();
+  let slug = '';
+  for (let attempt = 0; attempt < 60; attempt++) {
+    slug = `${prefix}-${randomSeoLetters(2)}${randomSeoDigits(3)}`;
+    if (!used.has(slug)) break;
+  }
+  seoBatchUsedSlugs.add(slug);
   const el = $('seoSiteSlug');
   if (el) {
     el.readOnly = false;
@@ -2717,7 +2750,7 @@ function randomSeoSlug(logIt = true, preferredItems) {
     el.value = slug;
   }
   updateSeoPreviewUrl();
-  if (logIt) seoLog(`사이트명 랜덤: ${slug}${prefix !== 'credit' ? ' (키워드 기반)' : ''}`);
+  if (logIt) seoLog(`사이트명 랜덤: ${slug}`);
   return slug;
 }
 
@@ -2943,98 +2976,133 @@ async function deleteSelectedSeoKeywords() {
 
 async function startSeoGenerate() {
   if (seoBusy) return;
-  const slug = sanitizeSeoSlug($('seoSiteSlug')?.value || '');
-  if (!slug) return alert('Netlify 사이트명을 입력하세요.');
-  const naver = ($('seoNaver')?.value || '').trim();
-  if (!seoSelected.size) return alert('키워드를 1개 이상 선택하세요.');
+  const deployCount = Math.max(1, Math.min(50, parseInt($('seoDeployCount')?.value || '1', 10) || 1));
   const deploy = !!$('seoDeploy')?.checked;
+  const naver = ($('seoNaver')?.value || '').trim();
   if (!naver && !deploy) {
     return alert('네이버 인증을 자동으로 넣으려면 「생성 후 Netlify 배포」를 켜거나, 인증 코드를 직접 입력하세요.');
   }
   if (!naver && !(config.naverAccounts || []).some((a) => a?.id && a?.pw)) {
     return alert('네이버 인증 자동 추출을 쓰려면 설정 탭에 네이버 계정을 등록하세요.\n(또는 인증 코드를 직접 입력)');
   }
+  // 현재 태그(폴더)에 키워드가 있어야 랜덤 재선택 가능
+  if (!visibleSeoKeywords().length) {
+    return alert('현재 선택된 키워드 태그에 키워드가 없습니다.');
+  }
 
   setSeoBusy(true);
+  seoStopRequested = false;
+  seoBatchUsedSlugs.clear();
+  for (const s of collectUsedSeoSlugs()) seoBatchUsedSlugs.add(s);
   if ($('seoLog')) $('seoLog').textContent = '';
   await window.electronAPI.saveConfig(collectConfig());
 
-  const job = {
-    site_slug: slug,
-    brand: ($('seoBrand')?.value || '').trim() || '카드깡전문',
-    phone: ($('seoPhone')?.value || '').trim() || '010-6338-7124',
-    naver_code: naver,
-    google_code: ($('seoGoogle')?.value || '').trim(),
-    topic_count: parseInt($('seoTopicCount')?.value || '16', 10) || 16,
-    use_ai: !!$('seoUseAi')?.checked,
-    cursor_api_key: ($('seoCursorKey')?.value || '').trim(),
-    netlify_token: ($('seoNetlifyToken')?.value || '').trim(),
-    netlify_account_id: ($('seoNetlifyId')?.value || '').trim(),
-    deploy,
-    create_site: !!$('seoCreateSite')?.checked,
-    output_dir: ($('seoOutputDir')?.value || '').trim(),
-    kkangBuilderPath: ($('seoBuilderPath')?.value || '').trim(),
-    keywords: [...seoSelected],
-  };
+  let okCount = 0;
+  let failCount = 0;
+  let lastDoneMsg = '';
+  let lastOkDomain = '';
 
-  let doneMsg = '';
-  let okDone = false;
   try {
-    const result = await window.electronAPI.kkangGenerate(job);
-    if (result?.cancelled) {
-      seoLog('⏹ 생성이 중지되었습니다.');
-    } else if (result?.ok) {
-      okDone = true;
-      seoLog(`✔ 완료: ${result.pages || '?'}페이지 · ${result.domain || ''}`);
-      const naverDone = !!(
-        result.naverAuto?.metaContent
-        || ['success', 'already', 'manual'].includes(String(result.naverAuto?.status || '').toLowerCase())
-      );
-      if (naverDone) {
-        const acct = result.naverAuto?.naverAccountId || result.naverAccountId || '';
-        seoLog(`✔ 네이버 등록 완료${acct ? ` · 계정 ${acct}` : ''}${result.title ? ` · ${result.title}` : ''}`);
-      } else if (result.naverAutoError) {
-        seoLog(`⚠ 네이버 인증 자동 삽입 실패: ${result.naverAutoError}`);
-      } else if (!naver && result.deployed) {
-        seoLog('ℹ 네이버 인증 자동 단계가 실행되지 않았습니다.');
+    for (let i = 0; i < deployCount; i++) {
+      if (seoStopRequested) {
+        seoLog(`⏹ 배치 중단 (${i}/${deployCount})`);
+        break;
       }
-      if ($('seoNaver') && (naver || naverDone)) $('seoNaver').value = '';
-      if (result.results) {
-        savedResults = result.results;
+
+      seoLog(`═══ 배포 ${i + 1}/${deployCount} ═══`);
+      // 현재 태그 내에서 키워드·사이트명 랜덤 재선택
+      seoRandomSelect();
+      const slug = sanitizeSeoSlug($('seoSiteSlug')?.value || '') || randomSeoSlug(true);
+      if (!slug) {
+        seoLog('✖ 사이트명 생성 실패');
+        failCount += 1;
+        continue;
       }
-      if (result.createdSites) createdSites = result.createdSites;
-      else await loadCreatedSites(true);
-      renderCreatedSites();
-      const extra = result.naverAutoError
-        ? `\n\n⚠ 네이버 인증 자동 삽입 실패:\n${result.naverAutoError}`
-        : (naverDone ? `\n\n네이버 등록 완료${result.naverAccountId ? ` (${result.naverAccountId})` : ''}` : '');
-      doneMsg = `완료\n${result.domain || ''}${extra}`;
-    } else {
-      seoLog(`✖ ${result?.error || '생성 실패'}`);
-      doneMsg = result?.error || '생성 실패';
+      if (!seoSelected.size) {
+        seoLog('✖ 키워드 선택 실패');
+        failCount += 1;
+        continue;
+      }
+
+      const job = {
+        site_slug: slug,
+        brand: ($('seoBrand')?.value || '').trim() || '카드깡전문',
+        phone: ($('seoPhone')?.value || '').trim() || '010-6338-7124',
+        naver_code: ($('seoNaver')?.value || '').trim(),
+        google_code: ($('seoGoogle')?.value || '').trim(),
+        topic_count: parseInt($('seoTopicCount')?.value || '16', 10) || 16,
+        use_ai: !!$('seoUseAi')?.checked,
+        cursor_api_key: ($('seoCursorKey')?.value || '').trim(),
+        netlify_token: ($('seoNetlifyToken')?.value || '').trim(),
+        netlify_account_id: ($('seoNetlifyId')?.value || '').trim(),
+        deploy,
+        create_site: !!$('seoCreateSite')?.checked,
+        output_dir: ($('seoOutputDir')?.value || '').trim(),
+        kkangBuilderPath: ($('seoBuilderPath')?.value || '').trim(),
+        keywords: [...seoSelected],
+      };
+
+      try {
+        const result = await window.electronAPI.kkangGenerate(job);
+        if (seoStopRequested || result?.cancelled) {
+          seoLog('⏹ 생성이 중지되었습니다.');
+          break;
+        }
+        if (result?.ok) {
+          okCount += 1;
+          seoBatchUsedSlugs.add(slug);
+          lastOkDomain = result.domain || `https://${slug}.netlify.app`;
+          seoLog(`✔ 완료 (${okCount}/${deployCount}): ${result.pages || '?'}페이지 · ${result.domain || ''}`);
+          const naverDone = !!(
+            result.naverAuto?.metaContent
+            || ['success', 'already', 'manual'].includes(String(result.naverAuto?.status || '').toLowerCase())
+          );
+          if (naverDone) {
+            const acct = result.naverAuto?.naverAccountId || result.naverAccountId || '';
+            seoLog(`✔ 네이버 등록 완료${acct ? ` · 계정 ${acct}` : ''}${result.title ? ` · ${result.title}` : ''}`);
+          } else if (result.naverAutoError) {
+            seoLog(`⚠ 네이버 인증 자동 삽입 실패: ${result.naverAutoError}`);
+          }
+          if ($('seoNaver') && (job.naver_code || naverDone)) $('seoNaver').value = '';
+          if (result.results) savedResults = result.results;
+          if (result.createdSites) createdSites = result.createdSites;
+          else await loadCreatedSites(true);
+          renderCreatedSites();
+        } else {
+          failCount += 1;
+          seoLog(`✖ ${result?.error || '생성 실패'}`);
+        }
+      } catch (e) {
+        failCount += 1;
+        seoLog(`✖ ${e.message}`);
+      }
     }
-  } catch (e) {
-    seoLog(`✖ ${e.message}`);
-    doneMsg = e.message;
+
+    if (okCount > 0) {
+      lastDoneMsg = deployCount > 1
+        ? `배치 완료\n성공 ${okCount}개 · 실패 ${failCount}개\n마지막: ${lastOkDomain}`
+        : `완료\n${lastOkDomain}`;
+    } else if (!seoStopRequested) {
+      lastDoneMsg = failCount ? `생성 실패 (${failCount}건)` : '생성 실패';
+    }
   } finally {
     setSeoBusy(false);
     unlockSeoInputs();
     try { await window.electronAPI.focusMainWindow?.(); } catch { /* ignore */ }
   }
 
-  // alert 전에 busy 해제·포커스 복구 (생성 후 입력 불가 버그 방지)
-  if (doneMsg) {
+  if (lastDoneMsg) {
     await new Promise((r) => setTimeout(r, 50));
-    alert(doneMsg);
+    alert(lastDoneMsg);
   }
-  if (okDone) {
-    // 다음 생성용 사이트명: 선택 키워드 기반으로 갱신
+  if (okCount > 0) {
+    // 다음 생성용 미리보기 사이트명
     randomSeoSlug(false);
   }
   unlockSeoInputs();
   try {
     await window.electronAPI.focusMainWindow?.();
-    if (okDone) {
+    if (okCount > 0) {
       $('seoSiteSlug')?.focus();
       $('seoSiteSlug')?.select?.();
     }
@@ -3043,6 +3111,7 @@ async function startSeoGenerate() {
 
 async function stopSeoGenerate() {
   if (!seoBusy) return;
+  seoStopRequested = true;
   seoLog('⏹ 정지 요청…');
   if ($('seoStopBtn')) $('seoStopBtn').disabled = true;
   await window.electronAPI.kkangStop();
@@ -3137,6 +3206,7 @@ async function stopCfGenerate() {
 
 /* ── 닷홈 호스팅 회원가입 ── */
 let dhBusy = false;
+let dhStopRequested = false;
 
 function dhLog(line) {
   const w = $('dhLog');
@@ -3243,6 +3313,7 @@ async function browseDhGoogleFile() {
 function setDhBusy(busy) {
   dhBusy = busy;
   if ($('dhGenerateBtn')) $('dhGenerateBtn').disabled = busy;
+  if ($('dhFullPipelineBtn')) $('dhFullPipelineBtn').disabled = busy;
   if ($('dhStopBtn')) $('dhStopBtn').disabled = !busy;
   renderDhAccounts();
 }
@@ -3345,49 +3416,123 @@ async function startDhGenerate() {
     if (!confirm('YesCaptcha 키가 없습니다. reCAPTCHA는 수동으로 풀어야 합니다. 계속할까요?')) return;
   }
 
+  const count = Math.max(1, Math.min(30, parseInt($('dhSignupCount')?.value || '1', 10) || 1));
   setDhBusy(true);
+  dhStopRequested = false;
   if ($('dhLog')) $('dhLog').textContent = '';
-  dhLog('🏠 닷홈 회원가입 시작...');
+  dhLog(`🏠 닷홈 회원가입 시작… (${count}회)`);
   dhLog(`이메일: ${emailLocal}@naver.com`);
 
+  let okCount = 0;
   try {
-    await window.electronAPI.saveConfig(collectConfig());
-    const out = await window.electronAPI.dothomeSignup({
-      emailLocal,
-      headless: !!$('headlessMode')?.checked,
-    });
+    for (let i = 0; i < count; i++) {
+      if (dhStopRequested) {
+        dhLog(`⏹ 중단 (${i}/${count})`);
+        break;
+      }
+      dhLog(`═══ 가입 ${i + 1}/${count} ═══`);
+      await window.electronAPI.saveConfig(collectConfig());
+      const out = await window.electronAPI.dothomeSignup({
+        emailLocal,
+        headless: !!$('headlessMode')?.checked,
+      });
+      const fresh = await window.electronAPI.loadConfig();
+      if (fresh) config = fresh;
 
-    // 최신 config 반영 (usedIds / accounts)
-    const fresh = await window.electronAPI.loadConfig();
-    if (fresh) config = fresh;
+      if (out?.account) {
+        if ($('dhHostId')) $('dhHostId').value = out.account.id || '';
+        updateDhPreviewUrl();
+        renderDhAccounts();
+        dhLog(`계정: ${out.account.id} / FTP ${out.account.ftpId || '-'}`);
+        dhLog(`URL: ${out.account.url || ''}`);
+        if (out.createdSites) createdSites = out.createdSites;
+        else await loadCreatedSites(true);
+        renderCreatedSites();
+      }
 
-    if (out?.account) {
-      if ($('dhHostId')) $('dhHostId').value = out.account.id || '';
-      updateDhPreviewUrl();
+      if (out?.ok) {
+        okCount += 1;
+        dhLog(`✔ 가입 ${i + 1} 완료`);
+      } else {
+        dhLog(`✖ ${out?.error || '가입 실패'}`);
+        if (count === 1) alert(out?.error || '가입 실패');
+      }
+    }
+    if (count > 1) alert(`회원가입 배치\n성공 ${okCount}/${count}`);
+  } catch (e) {
+    dhLog(`✖ ${e.message}`);
+    alert(e.message);
+  } finally {
+    setDhBusy(false);
+  }
+}
+
+/** 회원가입 → SEO 생성 → FTP·네이버 배포 연속 */
+async function startDhFullPipeline() {
+  if (dhBusy) return;
+  const emailLocal = ($('dhEmailLocal')?.value || '').trim().replace(/@.*$/, '');
+  if (!emailLocal) return alert('네이버 이메일 아이디(앞부분)를 입력하세요.');
+  const inputs = dhSeoInputsOrAlert();
+  if (!inputs) return;
+  if (!($('openaiApiKey')?.value || '').trim()) {
+    return alert('설정 탭에 OpenAI API Key를 입력하세요.');
+  }
+  if (!(config.naverAccounts || []).some((a) => a?.id && a?.pw)) {
+    return alert('설정 탭에 네이버 계정을 등록하세요. (배포 시 색인용)');
+  }
+
+  const count = Math.max(1, Math.min(30, parseInt($('dhSignupCount')?.value || '1', 10) || 1));
+  setDhBusy(true);
+  dhStopRequested = false;
+  if ($('dhLog')) $('dhLog').textContent = '';
+  dhLog(`🚀 가입→생성→배포 시작 (${count}회)`);
+
+  let okCount = 0;
+  try {
+    for (let i = 0; i < count; i++) {
+      if (dhStopRequested) {
+        dhLog(`⏹ 중단 (${i}/${count})`);
+        break;
+      }
+      dhLog(`═══ 풀파이프라인 ${i + 1}/${count} ═══`);
+      await window.electronAPI.saveConfig(collectConfig());
+      const signup = await window.electronAPI.dothomeSignup({
+        emailLocal,
+        headless: !!$('headlessMode')?.checked,
+      });
+      let fresh = await window.electronAPI.loadConfig();
+      if (fresh) config = fresh;
       renderDhAccounts();
-      dhLog(`계정: ${out.account.id} / ${out.account.pw}`);
-      dhLog(`URL: ${out.account.url}`);
-      if (out.createdSites) createdSites = out.createdSites;
+
+      const ftpId = signup?.account?.ftpId;
+      if (!signup?.ok || !ftpId) {
+        dhLog(`✖ 가입 실패: ${signup?.error || 'FTP 없음'}`);
+        continue;
+      }
+      dhLog(`✔ 가입 완료 · FTP ${ftpId}`);
+      if ($('dhHostId')) $('dhHostId').value = signup.account.id || '';
+
+      const out = await window.electronAPI.dothomeDeploy({
+        ftpId,
+        generate: true,
+        ...inputs,
+      });
+      fresh = await window.electronAPI.loadConfig();
+      if (fresh) config = fresh;
+      renderDhAccounts();
+      if (out?.createdSites) createdSites = out.createdSites;
       else await loadCreatedSites(true);
       renderCreatedSites();
-    }
 
-    if (out?.error && !out.ok) {
-      dhLog(`✖ ${out.error}`);
-      alert(out.error);
-    } else     if (out?.ok) {
-      if (out.stage === 'free_hosting_submitted') {
-        dhLog('✔ 무료호스팅 신청까지 완료');
-      } else if (out.stage === 'email_auth_sent') {
-        dhLog('✔ 인증코드 발송까지 완료');
+      if (out?.ok) {
+        okCount += 1;
+        dhLog(`✔ 배포 완료: ${out.siteUrl || ftpId}`);
+        await maybeSendVpnHotkey(okCount);
       } else {
-        dhLog('✔ 흐름 완료 — 화면에서 최종 확인하세요.');
+        dhLog(`✖ 배포 실패: ${out?.error || ''}`);
       }
-      if (out.account?.ftpId) dhLog(`FTP: ${out.account.ftpId}`);
-      if (out.account?.authCode) dhLog(`인증코드: ${out.account.authCode}`);
-    } else if (!out?.ok) {
-      dhLog(`✖ ${out?.error || '가입 실패'}`);
     }
+    alert(`풀파이프라인 완료\n성공 ${okCount}/${count}`);
   } catch (e) {
     dhLog(`✖ ${e.message}`);
     alert(e.message);
@@ -3398,8 +3543,49 @@ async function startDhGenerate() {
 
 async function stopDhGenerate() {
   if (!dhBusy) return;
+  dhStopRequested = true;
   dhLog('⏹ 정지 요청…');
   await window.electronAPI.dothomeSignupStop();
+}
+
+function readVpnHotkeyFromUi() {
+  const key = String($('vpnHotkeyKey')?.value || '').trim().toLowerCase().slice(0, 1);
+  const mod = String($('vpnHotkeyMod')?.value || 'alt').toLowerCase();
+  return {
+    alt: mod === 'alt',
+    ctrl: mod === 'ctrl',
+    shift: mod === 'shift',
+    key: key || '',
+  };
+}
+
+function vpnEverySitesCount() {
+  return Math.max(1, Math.min(50, parseInt($('vpnEverySites')?.value || '1', 10) || 1));
+}
+
+async function maybeSendVpnHotkey(okCount) {
+  const every = vpnEverySitesCount();
+  if (!okCount || okCount % every !== 0) return;
+  const hk = readVpnHotkeyFromUi();
+  if (!hk.key) {
+    dhLog('⚠ VPN 단축키 키가 비어 있어 건너뜀');
+    return;
+  }
+  const label = [hk.ctrl && 'Ctrl', hk.alt && 'Alt', hk.shift && 'Shift', hk.key.toUpperCase()].filter(Boolean).join('+');
+  dhLog(`VPN 단축키 전송 (${okCount}개마다) · ${label}`);
+  const out = await window.electronAPI.sendHotkey?.(hk);
+  if (out && !out.ok) dhLog(`⚠ VPN 단축키 실패: ${out.error || ''}`);
+  else dhLog('✔ VPN 단축키 전송 완료');
+}
+
+async function testVpnHotkey() {
+  const hk = readVpnHotkeyFromUi();
+  if (!hk.key) return alert('VPN 단축키 키를 입력하세요.');
+  const label = [hk.ctrl && 'Ctrl', hk.alt && 'Alt', hk.shift && 'Shift', hk.key.toUpperCase()].filter(Boolean).join('+');
+  dhLog(`VPN 단축키 테스트: ${label}`);
+  const out = await window.electronAPI.sendHotkey?.(hk);
+  if (out && !out.ok) alert(out.error || '단축키 전송 실패');
+  else alert(`단축키를 보냈습니다 (${label}).\nVPN IP가 바뀌었는지 확인하세요.`);
 }
 
 window.electronAPI.onLogLine(logLine);
