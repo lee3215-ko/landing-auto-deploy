@@ -1,11 +1,12 @@
 ﻿{
     "version":  "3.8.1",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.1/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/495087358",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.1/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/495087358",
+    "asset_id":  495087358,
     "notes":  "네이버 로그인 버튼(수동) + 등록 사이트 수 표시",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/495087358",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.1/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
