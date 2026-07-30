@@ -1,12 +1,13 @@
 {
-    "version":  "3.8.3",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.3/LandingAutoDeploy.zip",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.3/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
-    "notes":  "네이버 세션 재사용/about:blank 수정, 닷홈 배치·풀파이프라인, VPN 단축키, 토큰 20개 제한 해제, 설정 탭 크레딧",
-    "download_urls":  [
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.3/LandingAutoDeploy.zip",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
-                      ]
+  "version": "3.8.3",
+  "url": "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/495229176",
+  "download_url": "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.3/LandingAutoDeploy.zip",
+  "api_download_url": "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/495229176",
+  "asset_id": 495229176,
+  "notes": "네이버 세션 재사용/about:blank 수정, 닷홈 배치·풀파이프라인, VPN 단축키, 토큰 20개 제한 해제, 설정 탭 크레딧",
+  "download_urls": [
+    "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/495229176",
+    "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.3/LandingAutoDeploy.zip",
+    "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
+  ]
 }
