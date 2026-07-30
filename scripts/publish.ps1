@@ -93,7 +93,9 @@ function Write-VersionJson($cfg, [string]$Version, [string]$ReleaseNotes, $Asset
         notes             = $ReleaseNotes
         download_urls     = @($urls)
     } | ConvertTo-Json -Depth 5
-    Set-Content -Path (Join-Path $Root "version.json") -Value $payload -Encoding UTF8
+    # Windows PowerShell Set-Content -Encoding UTF8 는 BOM을 붙여 JSON.parse가 깨짐
+    $path = Join-Path $Root "version.json"
+    [System.IO.File]::WriteAllText($path, $payload + "`n", [System.Text.UTF8Encoding]::new($false))
 }
 
 function Get-ReleaseAssetId($cfg, [string]$Tag) {
