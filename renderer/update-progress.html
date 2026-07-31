@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>업데이트 중</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Malgun Gothic", sans-serif;
+      background: #0f1419;
+      color: #e8eef5;
+      user-select: none;
+      -webkit-app-region: drag;
+    }
+    .wrap {
+      padding: 22px 24px 20px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .sub {
+      margin: 0 0 16px;
+      font-size: 12px;
+      color: #8b9bb0;
+      line-height: 1.4;
+    }
+    #status {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: #c5d4e6;
+      min-height: 1.4em;
+    }
+    .bar {
+      height: 12px;
+      border-radius: 999px;
+      background: #1c2733;
+      overflow: hidden;
+      border: 1px solid #2a3a4d;
+    }
+    #fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #2f80ed, #56ccf2);
+      transition: width 0.15s ease;
+    }
+    #pct {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #8b9bb0;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Landing Auto Deploy 업데이트</h1>
+    <p class="sub">완료되면 앱이 종료되고 새 버전이 자동 실행됩니다.</p>
+    <p id="status">준비 중…</p>
+    <div class="bar"><div id="fill"></div></div>
+    <div id="pct">0%</div>
+  </div>
+  <script>
+    window.setUpdateProgress = function (done, total, text) {
+      const status = document.getElementById('status');
+      const fill = document.getElementById('fill');
+      const pctEl = document.getElementById('pct');
+      if (text) status.textContent = text;
+      let pct = 0;
+      if (total > 0) pct = Math.min(100, Math.round((done * 100) / total));
+      else if (typeof done === 'number' && done >= 0 && done <= 100 && !total) pct = done;
+      fill.style.width = pct + '%';
+      pctEl.textContent = (total > 0 || text?.includes('%')) ? (pct + '%') : '';
+      if (total <= 0 && text && !/\d+%/.test(text)) pctEl.textContent = '';
+    };
+  </script>
+</body>
+</html>

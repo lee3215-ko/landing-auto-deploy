@@ -269,13 +269,13 @@ app.on('second-instance', () => {
 app.whenReady().then(() => {
   appReady = true;
   createWindow();
-  // 패키지 실행 시 시작 후 자동 업데이트 확인 (네이버 신고 앱과 동일 패턴)
+  // 패키지 실행 시 시작 후 자동 업데이트 (신고 앱과 동일: 다이얼로그 → 진행률 창 → 재실행)
   if (app.isPackaged) {
     setTimeout(() => {
       import('./lib/app-updater.js')
         .then(({ runStartupUpdateCheck }) => runStartupUpdateCheck(mainWindow))
         .catch((e) => console.error('[updater] load failed', e));
-    }, 2500);
+    }, 2800);
   }
   // 네이버 세션: 프로필 경로만 준비 (자동 로그인 안 함 — 우측 상단 버튼으로 시작)
   setTimeout(() => { initNaverSessionListeners().catch(() => {}); }, 800);
