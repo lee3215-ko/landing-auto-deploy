@@ -1,11 +1,12 @@
 {
     "version":  "3.8.7",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.7/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/496307188",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.7/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/496307188",
+    "asset_id":  496307188,
     "notes":  "Python 없는 PC에서도 동작하도록 내장 kkang-cli.exe 포함",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/496307188",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.7/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
