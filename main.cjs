@@ -279,6 +279,7 @@ app.whenReady().then(() => {
   }
   // 네이버 세션: 프로필 경로만 준비 (자동 로그인 안 함 — 우측 상단 버튼으로 시작)
   setTimeout(() => { initNaverSessionListeners().catch(() => {}); }, 800);
+  setTimeout(() => { initDothomeMailSessionListeners().catch(() => {}); }, 900);
 });
 
 function broadcastNaverSession(data) {
@@ -289,12 +290,31 @@ function broadcastNaverSession(data) {
   } catch { /* ignore */ }
 }
 
+function broadcastDothomeMailSession(data) {
+  try {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.send('dothome-mail-session-update', data);
+    }
+  } catch { /* ignore */ }
+}
+
 async function initNaverSessionListeners() {
   const { onNaverSessionStatus, getNaverSessionStatus, setNaverSessionProfileDir } = await import('./lib/naver-session.js');
   const profileDir = path.join(app.getPath('userData'), 'chrome-naver-session');
   setNaverSessionProfileDir(profileDir);
   onNaverSessionStatus((snap) => broadcastNaverSession(snap));
   broadcastNaverSession(getNaverSessionStatus());
+}
+
+async function initDothomeMailSessionListeners() {
+  const {
+    onDothomeMailSessionStatus,
+    getDothomeMailSessionStatus,
+    setDothomeMailProfileDir,
+  } = await import('./lib/dothome-naver-mail-session.js');
+  setDothomeMailProfileDir(path.join(app.getPath('userData'), 'chrome-dothome-mail'));
+  onDothomeMailSessionStatus((snap) => broadcastDothomeMailSession(snap));
+  broadcastDothomeMailSession(getDothomeMailSessionStatus());
 }
 
 ipcMain.handle('get-app-version', () => app.getVersion());
@@ -1437,6 +1457,75 @@ ipcMain.handle('dothome-signup-stop', async () => {
   const { requestDothomeSignupCancel } = await import('./lib/dothome-signup.js');
   requestDothomeSignupCancel();
   return { ok: true };
+});
+
+function resolveDothomeNaverAccount(config, emailLocal = '') {
+  const local = String(emailLocal || config.dothome?.emailLocal || '').trim().replace(/@.*$/, '');
+  const accounts = Array.isArray(config.naverAccounts) ? config.naverAccounts : [];
+  let naverAccount = accounts.find((a) => a?.id && a?.pw && a.id === local) || null;
+  if (!naverAccount && config.urlCrawlNaver?.id && config.urlCrawlNaver?.pw) {
+    if (!local || config.urlCrawlNaver.id === local) {
+      naverAccount = { id: config.urlCrawlNaver.id, pw: config.urlCrawlNaver.pw };
+    }
+  }
+  if (!naverAccount) {
+    naverAccount = accounts.find((a) => a?.id && a?.pw) || null;
+  }
+  return { naverAccount, emailLocal: local };
+}
+
+ipcMain.handle('dothome-mail-session-status', async () => {
+  const { getDothomeMailSessionStatus } = await import('./lib/dothome-naver-mail-session.js');
+  return getDothomeMailSessionStatus();
+});
+
+ipcMain.handle('dothome-mail-session-login', async (event, options = {}) => {
+  const config = loadConfig();
+  const sendLog = (line) => event.sender.send('dothome-log', line);
+  const { naverAccount, emailLocal } = resolveDothomeNaverAccount(
+    config,
+    options.emailLocal || '',
+  );
+  if (!naverAccount?.id || !naverAccount?.pw) {
+    return { ok: false, error: '설정 탭에 네이버 계정(아이디·비밀번호)을 등록하세요. 이메일 앞부분과 동일해야 합니다.' };
+  }
+  if (!config.openaiApiKey) {
+    return { ok: false, error: '설정 탭에 OpenAI API Key가 필요합니다. (로그인 캡챠)' };
+  }
+
+  const {
+    startDothomeNaverMailLogin,
+    setDothomeMailProfileDir,
+    getDothomeMailSessionStatus,
+  } = await import('./lib/dothome-naver-mail-session.js');
+  setDothomeMailProfileDir(path.join(app.getPath('userData'), 'chrome-dothome-mail'));
+
+  try {
+    sendLog(`[DOTHOME-MAIL] 로그인 요청: ${naverAccount.id}${emailLocal && emailLocal !== naverAccount.id ? ` (가입메일 ${emailLocal})` : ''}`);
+    const st = await startDothomeNaverMailLogin({
+      naverId: naverAccount.id,
+      naverPw: naverAccount.pw,
+      openaiApiKey: config.openaiApiKey || '',
+      headless: false,
+      forceRelogin: !!options.forceRelogin,
+      scratchDir: path.join(OUTPUT_ROOT, 'dothome-mail-captcha'),
+      sendLog,
+    });
+    broadcastDothomeMailSession(st);
+    return { ok: true, ...st };
+  } catch (e) {
+    sendLog(`[DOTHOME-MAIL][ERROR] ${e.message}`);
+    const st = getDothomeMailSessionStatus();
+    broadcastDothomeMailSession(st);
+    return { ok: false, error: e.message, ...st };
+  }
+});
+
+ipcMain.handle('dothome-mail-session-close', async () => {
+  const { closeDothomeNaverMailSession } = await import('./lib/dothome-naver-mail-session.js');
+  const st = await closeDothomeNaverMailSession();
+  broadcastDothomeMailSession(st);
+  return { ok: true, ...st };
 });
 
 function findDothomeAccount(config, options = {}) {

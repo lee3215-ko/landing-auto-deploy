@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.11",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/496414080",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.11/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/496414080",
-    "asset_id":  496414080,
-    "notes":  "인덱싱 확인 오판정 수정: 제안 링크(작은따옴표) 따라가기 + 메타 URL 오인 제거 → 검색결과 없음이면 미인덱싱",
+    "version":  "3.8.12",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.12/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.12/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "닷홈: 네이버 메일 사전 로그인 버튼 + 로그인된 메일 창 재사용(매회 재로그인/캡챠 방지). 로컬 실행 중인 dist-publish는 덮어쓰지 않음.",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/496414080",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.11/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.12/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }

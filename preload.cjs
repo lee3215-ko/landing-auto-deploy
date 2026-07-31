@@ -72,4 +72,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   dothomeSeoGenerate: (options) => ipcRenderer.invoke('dothome-seo-generate', options || {}),
   dothomeDeploy: (options) => ipcRenderer.invoke('dothome-deploy', options || {}),
   onDothomeLog: (callback) => ipcRenderer.on('dothome-log', (_, line) => callback(line)),
+  dothomeMailSessionStatus: () => ipcRenderer.invoke('dothome-mail-session-status'),
+  dothomeMailSessionLogin: (options) => ipcRenderer.invoke('dothome-mail-session-login', options || {}),
+  dothomeMailSessionClose: () => ipcRenderer.invoke('dothome-mail-session-close'),
+  onDothomeMailSessionUpdate: (callback) => ipcRenderer.on('dothome-mail-session-update', (_, data) => callback(data)),
 });

@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-publish/
+dist-publish-build/
 release/
 output/
 engine/

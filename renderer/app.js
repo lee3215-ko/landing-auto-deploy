@@ -2581,6 +2581,9 @@ function setupEvents() {
   $('dhHostId')?.addEventListener('input', updateDhPreviewUrl);
   $('dhBrowseImageBtn')?.addEventListener('click', browseDhImageDir);
   $('dhBrowseGoogleBtn')?.addEventListener('click', browseDhGoogleFile);
+  $('dhMailLoginBtn')?.addEventListener('click', () => startDhMailLogin(false));
+  $('dhMailReloginBtn')?.addEventListener('click', () => startDhMailLogin(true));
+  $('dhMailCloseBtn')?.addEventListener('click', closeDhMailSession);
   $('dhGenerateBtn')?.addEventListener('click', startDhGenerate);
   $('dhFullPipelineBtn')?.addEventListener('click', startDhFullPipeline);
   $('dhStopBtn')?.addEventListener('click', stopDhGenerate);
@@ -3403,7 +3406,97 @@ function setDhBusy(busy) {
   if ($('dhGenerateBtn')) $('dhGenerateBtn').disabled = busy;
   if ($('dhFullPipelineBtn')) $('dhFullPipelineBtn').disabled = busy;
   if ($('dhStopBtn')) $('dhStopBtn').disabled = !busy;
+  if ($('dhMailLoginBtn')) $('dhMailLoginBtn').disabled = busy || dhMailLoginBusy;
+  if ($('dhMailReloginBtn')) $('dhMailReloginBtn').disabled = busy || dhMailLoginBusy;
   renderDhAccounts();
+}
+
+let dhMailSessionState = { status: 'idle', accountId: '', loggedIn: false, error: '' };
+let dhMailLoginBusy = false;
+
+function updateDhMailSessionBadge(data) {
+  if (data) dhMailSessionState = { ...dhMailSessionState, ...data };
+  const badge = $('dhMailSessionBadge');
+  const hint = $('dhMailSessionHint');
+  if (!badge) return;
+  const st = dhMailSessionState.status || 'idle';
+  const loggedIn = !!dhMailSessionState.loggedIn;
+  const id = dhMailSessionState.accountId || '';
+
+  badge.className = 'status-pill';
+  if (st === 'starting' || dhMailLoginBusy) {
+    badge.classList.add('indexed-pending');
+    badge.textContent = '메일 로그인 중…';
+  } else if (loggedIn) {
+    badge.classList.add('indexed-yes');
+    badge.textContent = `메일 로그인됨 · ${id}`;
+  } else if (st === 'error') {
+    badge.classList.add('indexed-no');
+    badge.textContent = '메일 로그인 실패';
+  } else {
+    badge.classList.add('indexed-pending');
+    badge.textContent = '메일 미로그인';
+  }
+
+  if (hint) {
+    hint.textContent = loggedIn
+      ? `메일 창 유지 중 (${id}). 창을 닫지 마세요. 가입·풀파이프라인 시 이 창에서만 인증코드를 가져옵니다.`
+      : '가입·풀파이프라인 전에 한 번 로그인하세요. 성공한 메일 창은 닫지 말고 유지하면, 이후 인증코드는 그 창에서만 조회합니다 (매회 재로그인·캡챠 없음).';
+  }
+}
+
+async function startDhMailLogin(forceRelogin = false) {
+  if (dhBusy || dhMailLoginBusy) return;
+  const emailLocal = ($('dhEmailLocal')?.value || '').trim().replace(/@.*$/, '');
+  if (!emailLocal) return alert('네이버 이메일 아이디(앞부분)를 먼저 입력하세요.');
+  if (!($('openaiApiKey')?.value || '').trim()) {
+    return alert('설정 탭에 OpenAI API Key를 입력하세요. (로그인 캡챠용)');
+  }
+  await window.electronAPI.saveConfig(collectConfig());
+  dhMailLoginBusy = true;
+  if ($('dhMailLoginBtn')) $('dhMailLoginBtn').disabled = true;
+  if ($('dhMailReloginBtn')) $('dhMailReloginBtn').disabled = true;
+  updateDhMailSessionBadge({ status: 'starting' });
+  dhLog(forceRelogin ? '📧 네이버 메일 다시 로그인…' : '📧 네이버 메일 로그인…');
+  try {
+    const res = await window.electronAPI.dothomeMailSessionLogin({
+      emailLocal,
+      forceRelogin: !!forceRelogin,
+    });
+    updateDhMailSessionBadge(res || {});
+    if (res?.ok && res.loggedIn) {
+      dhLog(`✔ 네이버 메일 로그인 완료: ${res.accountId || emailLocal} (창 유지)`);
+    } else {
+      dhLog(`✖ 메일 로그인 실패: ${res?.error || 'unknown'}`);
+      alert(res?.error || '네이버 메일 로그인 실패');
+    }
+  } catch (e) {
+    dhLog(`✖ ${e.message}`);
+    alert(e.message);
+  } finally {
+    dhMailLoginBusy = false;
+    if ($('dhMailLoginBtn')) $('dhMailLoginBtn').disabled = !!dhBusy;
+    if ($('dhMailReloginBtn')) $('dhMailReloginBtn').disabled = !!dhBusy;
+    updateDhMailSessionBadge();
+  }
+}
+
+async function closeDhMailSession() {
+  if (dhBusy) return alert('가입/배포 진행 중에는 메일 창을 닫을 수 없습니다.');
+  if (!confirm('네이버 메일 창을 닫을까요?\n다음에 가입하려면 다시 로그인해야 합니다.')) return;
+  try {
+    const res = await window.electronAPI.dothomeMailSessionClose();
+    updateDhMailSessionBadge(res || { status: 'idle', loggedIn: false, accountId: '' });
+    dhLog('네이버 메일 창 닫음');
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+function ensureDhMailLoggedInOrAlert() {
+  if (dhMailSessionState.loggedIn) return true;
+  alert('먼저 「네이버 메일 로그인」을 완료하세요.\n로그인된 메일 창을 유지한 뒤 가입/풀파이프라인을 실행합니다.');
+  return false;
 }
 
 async function startDhSeoGenerate(ftpId) {
@@ -3493,6 +3586,7 @@ async function startDhGenerate() {
   if (dhBusy) return;
   const emailLocal = ($('dhEmailLocal')?.value || '').trim().replace(/@.*$/, '');
   if (!emailLocal) return alert('네이버 이메일 아이디(앞부분)를 입력하세요.');
+  if (!ensureDhMailLoggedInOrAlert()) return;
   if (!($('openaiApiKey')?.value || '').trim()) {
     return alert('설정 탭에 OpenAI API Key를 입력하세요. (보안문자 인식용)');
   }
@@ -3560,6 +3654,7 @@ async function startDhFullPipeline() {
   if (dhBusy) return;
   const emailLocal = ($('dhEmailLocal')?.value || '').trim().replace(/@.*$/, '');
   if (!emailLocal) return alert('네이버 이메일 아이디(앞부분)를 입력하세요.');
+  if (!ensureDhMailLoggedInOrAlert()) return;
   const inputs = dhSeoInputsOrAlert();
   if (!inputs) return;
   if (!($('openaiApiKey')?.value || '').trim()) {
@@ -3704,6 +3799,12 @@ window.electronAPI.getAppVersion?.().then((v) => {
   if (el && v) el.textContent = `v${v}`;
 }).catch(() => {});
 window.electronAPI.onDothomeLog(dhLog);
+window.electronAPI.onDothomeMailSessionUpdate?.((data) => {
+  updateDhMailSessionBadge(data || {});
+});
+window.electronAPI.dothomeMailSessionStatus?.().then((s) => {
+  if (s) updateDhMailSessionBadge(s);
+}).catch(() => {});
 window.electronAPI.onTokenGenProgress((data) => {
   if (data.status === 'processing') {
     activeGenAccountIdx = data.index;
