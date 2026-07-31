@@ -1,11 +1,12 @@
 {
     "version":  "3.8.9",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.9/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/496394128",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.9/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/496394128",
+    "asset_id":  496394128,
     "notes":  "자동 업데이트 진행률 창 추가 (네이버 신고 프로그램과 동일 흐름)",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/496394128",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.9/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
