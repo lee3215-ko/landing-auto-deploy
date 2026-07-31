@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.9",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/496394128",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.9/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/496394128",
-    "asset_id":  496394128,
-    "notes":  "자동 업데이트 진행률 창 추가 (네이버 신고 프로그램과 동일 흐름)",
+    "version":  "3.8.10",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.10/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.10/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "자동 업데이트 실제 적용 수정: Electron 종료 시 설치 스크립트 생존 + 관련 프로세스 종료 후 robocopy + 실패 시 알림",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/496394128",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.9/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.10/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
