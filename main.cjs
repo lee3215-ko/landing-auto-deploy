@@ -418,6 +418,18 @@ ipcMain.handle('select-file', async (_, filters) => {
   });
   return res.filePaths[0] || '';
 });
+ipcMain.handle('select-files', async (_, options = {}) => {
+  const filters = options.filters || [
+    { name: 'ZIP 파일', extensions: ['zip'] },
+    { name: '모든 파일', extensions: ['*'] },
+  ];
+  const res = await dialog.showOpenDialog({
+    properties: ['openFile', 'multiSelections'],
+    filters,
+    title: options.title || '파일 선택',
+  });
+  return res.canceled ? [] : (res.filePaths || []);
+});
 ipcMain.handle('read-text-file', async (_, filePath) => {
   try {
     return fs.readFileSync(filePath, 'utf8');

@@ -152,12 +152,15 @@
               </div>
 
               <div class="form-group">
-                <label>배포 ZIP 폴더</label>
-                <div class="row">
+                <label>배포 소스 (ZIP / 폴더)</label>
+                <div class="row" style="flex-wrap:wrap;gap:8px;">
                   <button type="button" class="btn btn-ghost btn-sm" id="selectFolderBtn">📁 폴더 선택</button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="selectZipsBtn">📦 ZIP 다중 선택</button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="clearDeploySourcesBtn" title="선택 해제">해제</button>
                   <span id="deployFolderName" style="font-size:12px;color:var(--text-dim);align-self:center;"></span>
                 </div>
                 <div id="deployFolderInfo" class="folder-info" style="display:none;"></div>
+                <p class="bulk-hint">폴더: 안의 ZIP·사이트 폴더 자동 수집 · ZIP: 여러 개 직접 선택 (Ctrl/Shift)</p>
                 <p class="bulk-hint" id="sourceModeHint" hidden>ZIP/폴더 소스 배포 모드 — 서비스·SEO 입력 없이 실행 가능합니다. 결과명은 index.html &lt;title&gt;을 사용합니다.</p>
               </div>
 

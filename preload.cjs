@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   listFolderFiles: (folder) => ipcRenderer.invoke('list-folder-files', folder),
   getFileStat: (filePath) => ipcRenderer.invoke('get-file-stat', filePath),
   selectFile: (filters) => ipcRenderer.invoke('select-file', filters),
+  selectFiles: (options) => ipcRenderer.invoke('select-files', options || {}),
   readTextFile: (filePath) => ipcRenderer.invoke('read-text-file', filePath),
   startRun: (config) => ipcRenderer.invoke('start-run', config),
   pauseRun: () => ipcRenderer.invoke('pause-run'),

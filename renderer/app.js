@@ -256,21 +256,37 @@ function updateSourceModeHint() {
 }
 
 async function restoreDeployFolder(folder, sources) {
-  if (!folder) {
+  deployFolderPath = folder || '';
+  deploySources = Array.isArray(sources) ? [...sources] : [];
+  if (!folder && !deploySources.length) {
     updateSourceModeHint();
     return;
   }
-  deployFolderPath = folder;
-  deploySources = Array.isArray(sources) ? [...sources] : [];
-  $('deployFolderName').textContent = folder.split(/[\\/]/).pop();
+  const label = deploySources.some((s) => s.type === 'zip') && !folder
+    ? `ZIP ${deploySources.filter((s) => s.type === 'zip').length}개`
+    : (folder ? folder.split(/[\\/]/).pop() : `소스 ${deploySources.length}개`);
+  updateDeploySourcesUI(label);
+  if (!deploySources.length && folder) {
+    const info = $('deployFolderInfo');
+    if (info) info.textContent = '저장된 폴더 경로 (소스 목록 없음 — 폴더를 다시 선택하세요)';
+  }
+}
+
+function updateDeploySourcesUI(label) {
+  $('deployFolderName').textContent = label || '';
   const info = $('deployFolderInfo');
   info.style.display = 'block';
   if (deploySources.length) {
-    const zipCount = deploySources.filter(s => s.type === 'zip').length;
-    const folderCount = deploySources.filter(s => s.type === 'folder').length;
-    info.textContent = `총 ${deploySources.length}개 배포 소스 (zip ${zipCount}, 폴더 ${folderCount}). index.html 타이틀로 결과에 표시됩니다.`;
+    const zipCount = deploySources.filter((s) => s.type === 'zip').length;
+    const folderCount = deploySources.filter((s) => s.type === 'folder').length;
+    const names = deploySources.slice(0, 6).map((s) => s.name).join(', ');
+    const more = deploySources.length > 6 ? ` 외 ${deploySources.length - 6}개` : '';
+    info.textContent =
+      `총 ${deploySources.length}개 배포 소스 (zip ${zipCount}, 폴더 ${folderCount})` +
+      (names ? ` — ${names}${more}` : '') +
+      '. index.html 타이틀로 결과에 표시됩니다.';
   } else {
-    info.textContent = '저장된 폴더 경로 (소스 목록 없음 — 폴더를 다시 선택하세요)';
+    info.textContent = 'zip/폴더 소스 없음 — 자동 생성 HTML로 배포합니다.';
   }
   updateSourceModeHint();
 }
@@ -284,7 +300,7 @@ async function selectDeployFolder() {
   if (!folder) return;
   deployFolderPath = folder;
   const files = await window.electronAPI.listFolderFiles(folder);
-  const zipFiles = (files || []).filter(f => f.toLowerCase().endsWith('.zip'));
+  const zipFiles = (files || []).filter((f) => f.toLowerCase().endsWith('.zip'));
 
   deploySources = [];
   for (const f of zipFiles) {
@@ -303,15 +319,57 @@ async function selectDeployFolder() {
     } catch { /* ignore */ }
   }
 
-  $('deployFolderName').textContent = folder.split(/[\\/]/).pop();
+  updateDeploySourcesUI(folder.split(/[\\/]/).pop());
+}
+
+async function selectDeployZips() {
+  if (!window.electronAPI?.selectFiles) {
+    alert('ZIP 선택 기능을 사용할 수 없습니다. 앱을 최신 버전으로 업데이트하세요.');
+    return;
+  }
+  const paths = await window.electronAPI.selectFiles({
+    title: '배포할 ZIP 파일 선택 (여러 개 가능)',
+    filters: [
+      { name: 'ZIP 파일', extensions: ['zip'] },
+      { name: '모든 파일', extensions: ['*'] },
+    ],
+  });
+  if (!paths?.length) return;
+
+  const seen = new Set(deploySources.map((s) => String(s.path || '').toLowerCase()));
+  let added = 0;
+  for (const filePath of paths) {
+    const p = String(filePath || '').trim();
+    if (!p || !p.toLowerCase().endsWith('.zip')) continue;
+    const key = p.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const name = p.split(/[\\/]/).pop() || p;
+    deploySources.push({ type: 'zip', path: p, name });
+    added += 1;
+  }
+  if (!added) {
+    alert('새로 추가할 ZIP이 없습니다. (이미 선택된 파일일 수 있습니다)');
+    return;
+  }
+
+  // 표시용 라벨: 첫 ZIP의 부모 폴더 또는 "ZIP 직접 선택"
+  const first = deploySources.find((s) => s.type === 'zip');
+  if (first?.path) {
+    const parts = first.path.split(/[\\/]/);
+    deployFolderPath = parts.slice(0, -1).join('\\') || deployFolderPath;
+  }
+  updateDeploySourcesUI(`ZIP ${deploySources.filter((s) => s.type === 'zip').length}개 선택`);
+}
+
+function clearDeploySources() {
+  deploySources = [];
+  deployFolderPath = '';
+  $('deployFolderName').textContent = '';
   const info = $('deployFolderInfo');
-  info.style.display = 'block';
-  if (deploySources.length) {
-    const zipCount = deploySources.filter(s => s.type === 'zip').length;
-    const folderCount = deploySources.filter(s => s.type === 'folder').length;
-    info.textContent = `총 ${deploySources.length}개 배포 소스 (zip ${zipCount}, 폴더 ${folderCount}). index.html 타이틀로 결과에 표시됩니다.`;
-  } else {
-    info.textContent = 'zip/폴더 소스 없음 — 자동 생성 HTML로 배포합니다.';
+  if (info) {
+    info.style.display = 'none';
+    info.textContent = '';
   }
   updateSourceModeHint();
 }
@@ -2385,6 +2443,8 @@ function setupEvents() {
   $('addAccountBtn').addEventListener('click', addNaverAccount);
   $('addServiceBtn').addEventListener('click', addService);
   $('selectFolderBtn').addEventListener('click', selectDeployFolder);
+  $('selectZipsBtn')?.addEventListener('click', selectDeployZips);
+  $('clearDeploySourcesBtn')?.addEventListener('click', clearDeploySources);
   $('startBtn').addEventListener('click', startRun);
   $('pauseRunBtn').addEventListener('click', pauseRun);
   $('resumeRunBtn').addEventListener('click', resumeRun);
