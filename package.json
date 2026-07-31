@@ -1,6 +1,6 @@
 {
   "name": "landing-auto-deploy",
-  "version": "3.8.6",
+  "version": "3.8.7",
   "description": "Netlify bulk deploy + Naver Search Advisor",
   "main": "main.cjs",
   "type": "module",
@@ -8,9 +8,10 @@
     "start": "electron .",
     "dev": "electron . --dev",
     "sync:engine": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-kkang-engine.ps1",
-    "dist": "npm run sync:engine && npx electron-builder --win --dir",
-    "dist:portable": "npm run sync:engine && npx electron-builder --win portable",
-    "dist:dir": "npm run sync:engine && npx electron-builder --win --dir"
+    "build:cli": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-kkang-cli.ps1",
+    "dist": "npm run sync:engine && npm run build:cli && npx electron-builder --win --dir",
+    "dist:portable": "npm run sync:engine && npm run build:cli && npx electron-builder --win portable",
+    "dist:dir": "npm run sync:engine && npm run build:cli && npx electron-builder --win --dir"
   },
   "keywords": [],
   "author": "",

@@ -1,12 +1,12 @@
 {
-    "version":  "3.8.6",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.6/LandingAutoDeploy.zip",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.6/LandingAutoDeploy.zip",
+    "version":  "3.8.7",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.7/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.7/LandingAutoDeploy.zip",
     "api_download_url":  null,
     "asset_id":  null,
-    "notes":  "생성사이트 URL 복사 수정, 기본 키워드 팩 포함, 엔진 휴대성/빠른 AI/구조 다양화",
+    "notes":  "Python 없는 PC에서도 동작하도록 내장 kkang-cli.exe 포함",
     "download_urls":  [
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.6/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.7/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
