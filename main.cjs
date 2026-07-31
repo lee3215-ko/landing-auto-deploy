@@ -290,6 +290,8 @@ async function initNaverSessionListeners() {
   broadcastNaverSession(getNaverSessionStatus());
 }
 
+ipcMain.handle('get-app-version', () => app.getVersion());
+
 ipcMain.handle('naver-session-status', async () => {
   const { getNaverSessionStatus } = await import('./lib/naver-session.js');
   return getNaverSessionStatus();
@@ -323,14 +325,20 @@ ipcMain.handle('naver-session-start', async (event, options = {}) => {
 });
 
 ipcMain.handle('naver-session-refresh-sites', async () => {
-  const { countAdvisorRegisteredSites, getNaverSessionStatus, getNaverSessionPage } = await import('./lib/naver-session.js');
-  const p = await getNaverSessionPage();
-  if (!p) return { ok: false, error: '네이버 로그인이 필요합니다.', ...getNaverSessionStatus() };
+  const {
+    countAdvisorRegisteredSites,
+    getNaverSessionStatus,
+    getNaverSessionPage,
+  } = await import('./lib/naver-session.js');
+  let p = await getNaverSessionPage();
+  if (!p) {
+    return { ok: false, error: '네이버 로그인이 필요합니다. 먼저 「네이버 로그인」을 완료하세요.', ...getNaverSessionStatus() };
+  }
   try {
     const n = await countAdvisorRegisteredSites(p);
     return { ok: true, siteCount: n, ...getNaverSessionStatus() };
   } catch (e) {
-    return { ok: false, error: e.message, ...getNaverSessionStatus() };
+    return { ok: false, error: e.message || '조회 실패', ...getNaverSessionStatus() };
   }
 });
 
@@ -851,6 +859,11 @@ ipcMain.handle('kkang-remove-keywords', async (event, { keywords } = {}) => {
 
 ipcMain.handle('kkang-generate', async (event, job = {}) => {
   const config = loadConfig();
+  // 네이버 세션 프로필 경로 고정 (배포 중 ensureNaverSession이 같은 창을 쓰도록)
+  {
+    const { setNaverSessionProfileDir } = await import('./lib/naver-session.js');
+    setNaverSessionProfileDir(path.join(app.getPath('userData'), 'chrome-naver-session'));
+  }
   // Persist builder path / cursor key / netlify 자격증명
   if (job.kkangBuilderPath != null) config.kkangBuilderPath = String(job.kkangBuilderPath || '').trim();
   if (job.cursor_api_key != null) config.cursorApiKey = String(job.cursor_api_key || '').trim();

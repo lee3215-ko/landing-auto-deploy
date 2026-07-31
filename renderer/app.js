@@ -872,12 +872,14 @@ function updateNaverSessionBadge(data) {
   updateNaverLoginButton();
 }
 
-async function startNaverLogin() {
+async function startNaverLogin(ev) {
   const btn = $('naverLoginBtn');
   if (btn) btn.disabled = true;
   updateNaverSessionBadge({ status: 'starting' });
   try {
-    const forceRelogin = naverSessionState.status === 'ready';
+    // 이미 로그인된 Chrome이 있으면 재로그인하지 않고 세션만 붙잡음
+    // (Shift+클릭 시에만 강제 재로그인)
+    const forceRelogin = !!(ev && ev.shiftKey);
     const res = await window.electronAPI.naverSessionStart?.({ forceRelogin });
     if (res && !res.ok) {
       updateNaverSessionBadge({
@@ -891,6 +893,7 @@ async function startNaverLogin() {
     } else if (res) {
       updateNaverSessionBadge(res);
       if (res.siteCount != null) logLine(`[네이버] 로그인 완료 · 등록 ${res.siteCount}개`);
+      else if (res.loggedIn || res.status === 'ready') logLine(`[네이버] 세션 연결됨 · ${res.accountId || ''}`);
     }
   } catch (e) {
     updateNaverSessionBadge({ status: 'error', error: e.message || String(e), accountId: '', loggedIn: false });
@@ -2454,7 +2457,7 @@ function setupEvents() {
   // 넷리파이 생성
   $('seoNetlifyLoginBtn')?.addEventListener('click', startNetlifyCreditsLogin);
   $('seoNetlifyLoginBtn2')?.addEventListener('click', startNetlifyCreditsLogin);
-  $('naverLoginBtn')?.addEventListener('click', startNaverLogin);
+  $('naverLoginBtn')?.addEventListener('click', (e) => startNaverLogin(e));
   $('naverSiteCountRefreshBtn')?.addEventListener('click', refreshNaverSiteCount);
   $('seoNetlifyCreditRefreshBtn')?.addEventListener('click', refreshNetlifyCreditsUi);
   $('seoRandomSlugBtn')?.addEventListener('click', () => randomSeoSlug(true));
@@ -3610,6 +3613,10 @@ window.electronAPI.onNaverSessionUpdate?.((data) => {
 });
 window.electronAPI.naverSessionStatus?.().then((s) => {
   if (s) updateNaverSessionBadge(s);
+}).catch(() => {});
+window.electronAPI.getAppVersion?.().then((v) => {
+  const el = $('appVersionTag');
+  if (el && v) el.textContent = `v${v}`;
 }).catch(() => {});
 window.electronAPI.onDothomeLog(dhLog);
 window.electronAPI.onTokenGenProgress((data) => {
