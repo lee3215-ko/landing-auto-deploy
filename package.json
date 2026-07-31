@@ -1,15 +1,16 @@
 {
   "name": "landing-auto-deploy",
-  "version": "3.8.5",
+  "version": "3.8.6",
   "description": "Netlify bulk deploy + Naver Search Advisor",
   "main": "main.cjs",
   "type": "module",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "dist": "npx electron-builder --win --dir",
-    "dist:portable": "npx electron-builder --win portable",
-    "dist:dir": "npx electron-builder --win --dir"
+    "sync:engine": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-kkang-engine.ps1",
+    "dist": "npm run sync:engine && npx electron-builder --win --dir",
+    "dist:portable": "npm run sync:engine && npx electron-builder --win portable",
+    "dist:dir": "npm run sync:engine && npx electron-builder --win --dir"
   },
   "keywords": [],
   "author": "",
@@ -43,6 +44,13 @@
       "**/node_modules/sharp/**",
       "**/node_modules/@img/**",
       "**/node_modules/@cursor/sdk-win32-x64/**"
+    ],
+    "extraResources": [
+      {
+        "from": "engine/kkang-site-builder",
+        "to": "kkang-site-builder",
+        "filter": ["**/*"]
+      }
     ],
     "win": {
       "target": [

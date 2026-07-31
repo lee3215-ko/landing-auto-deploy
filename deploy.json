@@ -28,6 +28,7 @@
     "lib",
     "renderer",
     "scripts",
+    "bundled-keywords",
     "build.bat",
     "deploy.bat",
     "deploy.json",

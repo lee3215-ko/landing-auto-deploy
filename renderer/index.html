@@ -433,17 +433,19 @@
                   <p class="bulk-hint">입력하면 자동 저장됩니다. 비우면 설정 탭 토큰을 사용합니다.</p>
                 </div>
                 <div class="form-group">
-                  <label for="seoBuilderPath">KKang 엔진 경로</label>
+                  <label for="seoBuilderPath">KKang 엔진 경로 (선택)</label>
                   <div class="row" style="gap:8px;">
-                    <input type="text" id="seoBuilderPath" placeholder="C:\Users\...\kkang-site-builder" style="flex:1;">
+                    <input type="text" id="seoBuilderPath" placeholder="비우면 앱 내장 엔진 자동 사용 (다른 PC도 동일)" style="flex:1;">
                     <button type="button" class="btn btn-ghost btn-sm" id="seoBrowseBuilderBtn">찾기</button>
                   </div>
                   <p class="bulk-hint" id="seoEngineHint">엔진 연결 상태 확인 중…</p>
+                  <p class="bulk-hint">다른 PC: 경로를 비우고, Python 3 설치 + 배포본(내장 엔진) 또는 개발 시 <code>npm run sync:engine</code> 후 사용하세요.</p>
                 </div>
               </details>
 
               <div class="checkbox-row" style="margin-top:14px;">
-                <label><input type="checkbox" id="seoUseAi" checked> Cursor AI 사용</label>
+                <label title="끄면 로컬 템플릿만 사용해 매우 빠름"><input type="checkbox" id="seoUseAi" checked> Cursor AI 사용</label>
+                <label title="키워드 콘텐츠를 한 번에 생성해 시간을 줄입니다"><input type="checkbox" id="seoFastAi" checked> 빠른 AI (배치)</label>
                 <label><input type="checkbox" id="seoDeploy" checked> 생성 후 Netlify 배포</label>
                 <label><input type="checkbox" id="seoCreateSite" checked> 새 Netlify 사이트 등록</label>
               </div>

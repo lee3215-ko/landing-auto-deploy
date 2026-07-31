@@ -1,0 +1,3692 @@
+{
+  "version": 1,
+  "source": "promoted-local",
+  "count": 737,
+  "keywords": [
+    {
+      "kw": "국민카드 카드깡",
+      "slug": "kookmin-card-kadeuggang",
+      "cat": "card"
+    },
+    {
+      "kw": "현대카드 카드깡",
+      "slug": "hyundai-card-kadeuggang",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 잔여 현금화",
+      "slug": "credit-card-residual-cash-out",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 소지자 현금화",
+      "slug": "credit-card-holder-cash-out",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 현금화",
+      "slug": "micro-payment-cash-out",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 한도 현금화",
+      "slug": "micro-payment-limit-cash-out",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 한도 대출",
+      "slug": "credit-card-limit-loan",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 잔여 한도 대출",
+      "slug": "credit-card-residual-limit-loan",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 대출 업체",
+      "slug": "credit-card-loan-company",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 현금화 업체",
+      "slug": "credit-card-cash-out-company",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료",
+      "slug": "information-usage-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 카드깡",
+      "slug": "samsung-card-kadeuggang",
+      "cat": "card"
+    },
+    {
+      "kw": "신한카드 카드깡",
+      "slug": "shinhan-card-kadeuggang",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 카드깡",
+      "slug": "lotte-card-kadeuggang",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 카드깡",
+      "slug": "bc-card-kadeuggang",
+      "cat": "card"
+    },
+    {
+      "kw": "하나카드 카드깡",
+      "slug": "hana-card-kadeuggang",
+      "cat": "card"
+    },
+    {
+      "kw": "우리카드 카드깡",
+      "slug": "woori-card-kadeuggang",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 카드깡",
+      "slug": "nh-card-kadeuggang",
+      "cat": "card"
+    },
+    {
+      "kw": "기업은행카드 카드깡",
+      "slug": "ibk-card-kadeuggang",
+      "cat": "card"
+    },
+    {
+      "kw": "씨티카드 카드깡",
+      "slug": "citi-card-kadeuggang",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 한도 현금화",
+      "slug": "credit-card-limit-cash-out",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 소액결제 대출",
+      "slug": "credit-card-micro-payment-loan",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 대출",
+      "slug": "mobile-micro-payment-loan",
+      "cat": "card"
+    },
+    {
+      "kw": "모바일 소액결제 현금화",
+      "slug": "mobile-micro-payment-cash-out",
+      "cat": "card"
+    },
+    {
+      "kw": "구글 정보이용료 현금화",
+      "slug": "google-info-fee-cash-out",
+      "cat": "card"
+    },
+    {
+      "kw": "아이폰 정보이용료 현금화",
+      "slug": "iphone-info-fee-cash-out",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠이용료 현금화",
+      "slug": "content-usage-fee-cash-out",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 무설정 대출",
+      "slug": "credit-card-no-setup-loan",
+      "cat": "card"
+    },
+    {
+      "kw": "카드 소지자 대출",
+      "slug": "card-holder-loan",
+      "cat": "card"
+    },
+    {
+      "kw": "카드사별 현금화 방법",
+      "slug": "cash-out-method-by-card",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 현금화 수수료",
+      "slug": "credit-card-cash-out-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 즉시 입금",
+      "slug": "kadeuggang-instant-deposit",
+      "cat": "card"
+    },
+    {
+      "kw": "24시 카드현금화",
+      "slug": "24h-card-cash-out",
+      "cat": "card"
+    },
+    {
+      "kw": "주말 카드현금화",
+      "slug": "weekend-card-cash-out",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 업체",
+      "slug": "corporate-card-cash-out-company",
+      "cat": "card"
+    },
+    {
+      "kw": "개인카드 소액 대출",
+      "slug": "personal-card-small-loan",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 한도 소진",
+      "slug": "credit-card-limit-exhaustion",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 한도 조회",
+      "slug": "kadeuggang-limit-inquiry",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 현금화 루트",
+      "slug": "credit-card-cash-out-route",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 대납 업체",
+      "slug": "credit-card-payment-agency",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 안전 업체",
+      "slug": "kadeuggang-safe-company",
+      "cat": "card"
+    },
+    {
+      "kw": "카드현금화 후기",
+      "slug": "card-cash-out-review",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 현금화 사이트",
+      "slug": "credit-card-cash-out-site",
+      "cat": "card"
+    },
+    {
+      "kw": "모바일 카드깡",
+      "slug": "mobile-kadeuggang",
+      "cat": "card"
+    },
+    {
+      "kw": "온라인 카드깡",
+      "slug": "online-kadeuggang",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 계산기",
+      "slug": "kadeuggang-calculator",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 대출 금리 비교",
+      "slug": "credit-card-loan-rate-comparison",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 개인사업자 현금화",
+      "slug": "kb-card-individual-business-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 결제현금화",
+      "slug": "kb-card-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 급전 현금화",
+      "slug": "kb-card-emergency-cash-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 무직자 현금화",
+      "slug": "kb-card-unemployed-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 법인 현금화",
+      "slug": "kb-card-corporate-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 사업자 현금화",
+      "slug": "kb-card-business-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 사용자 현금화",
+      "slug": "kb-card-user-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 소지자 현금화",
+      "slug": "kb-card-holder-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 잔여한도현금화",
+      "slug": "kb-card-remaining-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 직장인 현금화",
+      "slug": "kb-card-worker-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 포인트현금화",
+      "slug": "kb-card-point-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 한도전환",
+      "slug": "kb-card-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 한도현금화",
+      "slug": "kb-card-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 할부현금화",
+      "slug": "kb-card-installment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금전환",
+      "slug": "kb-card-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화",
+      "slug": "kb-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 결제현금화",
+      "slug": "ibk-card-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 잔여한도현금화",
+      "slug": "ibk-card-remaining-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 포인트현금화",
+      "slug": "ibk-card-point-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 한도 현금화",
+      "slug": "ibk-card-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 한도전환",
+      "slug": "ibk-card-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 한도현금화",
+      "slug": "ibk-card-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 할부현금화",
+      "slug": "ibk-card-installment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 현금전환",
+      "slug": "ibk-card-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 현금화",
+      "slug": "ibk-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "기프트카드 결제현금화",
+      "slug": "gift-card-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "기프트카드 잔여한도현금화",
+      "slug": "gift-card-remaining-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "기프트카드 포인트현금화",
+      "slug": "gift-card-point-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "기프트카드 한도전환",
+      "slug": "gift-card-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "기프트카드 한도현금화",
+      "slug": "gift-card-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "기프트카드 할부현금화",
+      "slug": "gift-card-installment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "기프트카드 현금전환",
+      "slug": "gift-card-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "기프트카드 현금화",
+      "slug": "gift-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 결제현금화",
+      "slug": "nh-card-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 잔여한도현금화",
+      "slug": "nh-card-remaining-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 포인트현금화",
+      "slug": "nh-card-point-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 한도전환",
+      "slug": "nh-card-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 한도현금화",
+      "slug": "nh-card-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 할부현금화",
+      "slug": "nh-card-installment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 현금전환",
+      "slug": "nh-card-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 현금화",
+      "slug": "nh-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "다날카드 결제현금화",
+      "slug": "danal-card-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "다날카드 잔여한도현금화",
+      "slug": "danal-card-remaining-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "다날카드 포인트현금화",
+      "slug": "danal-card-point-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "다날카드 한도전환",
+      "slug": "danal-card-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "다날카드 한도현금화",
+      "slug": "danal-card-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "다날카드 할부현금화",
+      "slug": "danal-card-installment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "다날카드 현금전환",
+      "slug": "danal-card-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "다날카드 현금화",
+      "slug": "danal-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 결제현금화",
+      "slug": "lotte-card-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 소지자 현금화",
+      "slug": "lotte-card-holder-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 잔여한도현금화",
+      "slug": "lotte-card-remaining-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 포인트현금화",
+      "slug": "lotte-card-point-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 한도전환",
+      "slug": "lotte-card-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 한도현금화",
+      "slug": "lotte-card-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 할부현금화",
+      "slug": "lotte-card-installment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 현금전환",
+      "slug": "lotte-card-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 현금화",
+      "slug": "lotte-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모바일 카드 현금화",
+      "slug": "mobile-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌리언스카드 결제현금화",
+      "slug": "mobilians-card-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌리언스카드 잔여한도현금화",
+      "slug": "mobilians-card-remaining-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌리언스카드 포인트현금화",
+      "slug": "mobilians-card-point-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌리언스카드 한도 현금화",
+      "slug": "mobilians-card-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌리언스카드 한도전환",
+      "slug": "mobilians-card-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌리언스카드 한도현금화",
+      "slug": "mobilians-card-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌리언스카드 할부현금화",
+      "slug": "mobilians-card-installment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌리언스카드 현금전환",
+      "slug": "mobilians-card-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌리언스카드 현금화",
+      "slug": "mobilians-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌카드 결제현금화",
+      "slug": "mobil-card-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌카드 잔여한도현금화",
+      "slug": "mobil-card-remaining-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌카드 포인트현금화",
+      "slug": "mobil-card-point-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌카드 한도전환",
+      "slug": "mobil-card-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌카드 한도현금화",
+      "slug": "mobil-card-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌카드 할부현금화",
+      "slug": "mobil-card-installment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌카드 현금전환",
+      "slug": "mobil-card-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌카드 현금화",
+      "slug": "mobil-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 개인사업자 현금화",
+      "slug": "corporate-card-individual-business-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 결제현금화",
+      "slug": "corporate-card-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 급전 현금화",
+      "slug": "corporate-card-emergency-cash-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 무직자 현금화",
+      "slug": "corporate-card-unemployed-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 법인 현금화",
+      "slug": "corporate-card-corporate-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 사업자 현금화",
+      "slug": "corporate-card-business-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 사용자 현금화",
+      "slug": "corporate-card-user-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 소지자 현금화",
+      "slug": "corporate-card-holder-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 잔여한도현금화",
+      "slug": "corporate-card-remaining-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 직장인 현금화",
+      "slug": "corporate-card-worker-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 포인트현금화",
+      "slug": "corporate-card-point-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 한도 현금화",
+      "slug": "corporate-card-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 한도전환",
+      "slug": "corporate-card-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 한도현금화",
+      "slug": "corporate-card-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 할부 현금화",
+      "slug": "corporate-card-installment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 할부현금화",
+      "slug": "corporate-card-installment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금전환",
+      "slug": "corporate-card-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화",
+      "slug": "corporate-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 결제현금화",
+      "slug": "bc-card-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 잔여한도현금화",
+      "slug": "bc-card-remaining-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 포인트현금화",
+      "slug": "bc-card-point-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 한도전환",
+      "slug": "bc-card-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 한도현금화",
+      "slug": "bc-card-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 할부현금화",
+      "slug": "bc-card-installment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 수수료현금화",
+      "slug": "kb-card-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 잔액현금화",
+      "slug": "kb-card-remaining-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 24시간",
+      "slug": "kb-card-cashing-24h",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 당일",
+      "slug": "kb-card-cashing-same-day",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 모바일",
+      "slug": "kb-card-cashing-mobile",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 무서류",
+      "slug": "kb-card-cashing-no-document",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 문의",
+      "slug": "kb-card-cashing-inquiry",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 방법",
+      "slug": "kb-card-cashing-method",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 비대면",
+      "slug": "kb-card-cashing-non-face-to-face",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 빠른",
+      "slug": "kb-card-cashing-fast",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 사이트",
+      "slug": "kb-card-cashing-site",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 상담",
+      "slug": "kb-card-cashing-consult",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 수수료",
+      "slug": "kb-card-cashing-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 안전업체",
+      "slug": "kb-card-cashing-safe-company",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 안전한",
+      "slug": "kb-card-cashing-safe",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 어플",
+      "slug": "kb-card-cashing-app",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 업체",
+      "slug": "kb-card-cashing-company",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 정식등록",
+      "slug": "kb-card-cashing-official",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 즉시",
+      "slug": "kb-card-cashing-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 추천",
+      "slug": "kb-card-cashing-recommend",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 합법적인",
+      "slug": "kb-card-cashing-legal",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 현금화 후기",
+      "slug": "kb-card-cashing-review",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 수수료현금화",
+      "slug": "ibk-card-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 잔액현금화",
+      "slug": "ibk-card-remaining-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "기프트카드 수수료현금화",
+      "slug": "gift-card-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "기프트카드 잔액현금화",
+      "slug": "gift-card-remaining-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 수수료현금화",
+      "slug": "nh-card-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 잔액현금화",
+      "slug": "nh-card-remaining-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "다날카드 수수료현금화",
+      "slug": "danal-card-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "다날카드 잔액현금화",
+      "slug": "danal-card-remaining-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 수수료현금화",
+      "slug": "lotte-card-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 잔액현금화",
+      "slug": "lotte-card-remaining-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "마일리지카드 결제현금화",
+      "slug": "mileage-card-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "마일리지카드 수수료현금화",
+      "slug": "mileage-card-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "마일리지카드 잔액현금화",
+      "slug": "mileage-card-remaining-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "마일리지카드 잔여한도현금화",
+      "slug": "mileage-card-remaining-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "마일리지카드 포인트현금화",
+      "slug": "mileage-card-point-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "마일리지카드 한도전환",
+      "slug": "mileage-card-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "마일리지카드 한도현금화",
+      "slug": "mileage-card-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "마일리지카드 할부현금화",
+      "slug": "mileage-card-installment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "마일리지카드 현금전환",
+      "slug": "mileage-card-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "마일리지카드 현금화",
+      "slug": "mileage-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모바일 상품권 카드 현금화",
+      "slug": "mobile-gift-certificate-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌리언스카드 수수료현금화",
+      "slug": "mobilians-card-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌리언스카드 잔액현금화",
+      "slug": "mobilians-card-remaining-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌카드 수수료현금화",
+      "slug": "mobil-card-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "모빌카드 잔액현금화",
+      "slug": "mobil-card-remaining-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 수수료현금화",
+      "slug": "corporate-card-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 잔액현금화",
+      "slug": "corporate-card-remaining-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 한도 대출",
+      "slug": "corporate-card-limit-loan",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 24시간",
+      "slug": "corporate-card-cashing-24h",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 당일",
+      "slug": "corporate-card-cashing-same-day",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 모바일",
+      "slug": "corporate-card-cashing-mobile",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 무서류",
+      "slug": "corporate-card-cashing-no-document",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 문의",
+      "slug": "corporate-card-cashing-inquiry",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 방법",
+      "slug": "corporate-card-cashing-method",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 비대면",
+      "slug": "corporate-card-cashing-non-face-to-face",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 빠른",
+      "slug": "corporate-card-cashing-fast",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 사이트",
+      "slug": "corporate-card-cashing-site",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 상담",
+      "slug": "corporate-card-cashing-consult",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 수수료",
+      "slug": "corporate-card-cashing-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 안전업체",
+      "slug": "corporate-card-cashing-safe-company",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 안전한",
+      "slug": "corporate-card-cashing-safe",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 어플",
+      "slug": "corporate-card-cashing-app",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 정식등록",
+      "slug": "corporate-card-cashing-official",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 즉시",
+      "slug": "corporate-card-cashing-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 추천",
+      "slug": "corporate-card-cashing-recommend",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 합법적인",
+      "slug": "corporate-card-cashing-legal",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 현금화 후기",
+      "slug": "corporate-card-cashing-review",
+      "cat": "card"
+    },
+    {
+      "kw": "복지카드 결제현금화",
+      "slug": "welfare-card-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "복지카드 수수료현금화",
+      "slug": "welfare-card-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "복지카드 잔액현금화",
+      "slug": "welfare-card-remaining-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "복지카드 잔여한도현금화",
+      "slug": "welfare-card-remaining-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "복지카드 포인트현금화",
+      "slug": "welfare-card-point-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "복지카드 한도전환",
+      "slug": "welfare-card-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "복지카드 한도현금화",
+      "slug": "welfare-card-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "복지카드 할부현금화",
+      "slug": "welfare-card-installment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "복지카드 현금전환",
+      "slug": "welfare-card-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "복지카드 현금화",
+      "slug": "welfare-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 수수료현금화",
+      "slug": "bc-card-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 잔액현금화",
+      "slug": "bc-card-remaining-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 현금전환",
+      "slug": "bc-card-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 현금화",
+      "slug": "bc-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 결제현금화",
+      "slug": "samsung-card-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 수수료현금화",
+      "slug": "samsung-card-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 잔액현금화",
+      "slug": "samsung-card-remaining-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 잔여한도현금화",
+      "slug": "samsung-card-remaining-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 포인트현금화",
+      "slug": "samsung-card-point-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 한도전환",
+      "slug": "samsung-card-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 한도현금화",
+      "slug": "samsung-card-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 할부현금화",
+      "slug": "samsung-card-installment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 현금전환",
+      "slug": "samsung-card-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 현금화",
+      "slug": "samsung-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 개인사업자 한도현금화",
+      "slug": "credit-card-individual-business-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 개인사업자 현금화",
+      "slug": "credit-card-individual-business-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 결제현금화",
+      "slug": "credit-card-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 급전 한도현금화",
+      "slug": "credit-card-emergency-cash-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 급전 현금화",
+      "slug": "credit-card-emergency-cash-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 대학생 한도현금화",
+      "slug": "credit-card-student-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 대학생 현금화",
+      "slug": "credit-card-student-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 무이자 할부 현금화",
+      "slug": "credit-card-interest-free-installment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 무직자 한도현금화",
+      "slug": "credit-card-unemployed-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 무직자 현금화",
+      "slug": "credit-card-unemployed-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 법인 한도현금화",
+      "slug": "credit-card-corporate-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 법인 현금화",
+      "slug": "credit-card-corporate-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 사업자 한도현금화",
+      "slug": "credit-card-business-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 사업자 현금화",
+      "slug": "credit-card-business-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 사용자 한도현금화",
+      "slug": "credit-card-user-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 사용자 현금화",
+      "slug": "credit-card-user-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 소지자 한도현금화",
+      "slug": "credit-card-holder-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 수수료현금화",
+      "slug": "credit-card-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 잔액현금화",
+      "slug": "credit-card-remaining-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 잔여한도현금화",
+      "slug": "credit-card-remaining-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 주부 한도현금화",
+      "slug": "credit-card-housewife-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 주부 현금화",
+      "slug": "credit-card-housewife-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 직장인 한도현금화",
+      "slug": "credit-card-worker-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 직장인 현금화",
+      "slug": "credit-card-worker-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 포인트현금화",
+      "slug": "credit-card-point-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 프리랜서 한도현금화",
+      "slug": "credit-card-freelancer-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 프리랜서 현금화",
+      "slug": "credit-card-freelancer-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "KT 소액결제 미납 해결",
+      "slug": "kt-small-payment-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "KT 소액결제 수수료",
+      "slug": "kt-small-payment-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "KT 소액결제 정책 해결",
+      "slug": "kt-small-payment-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "KT 소액결제 현금화",
+      "slug": "kt-small-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "KT 컨텐츠 이용료 현금화",
+      "slug": "kt-contents-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "KT 콘텐츠 이용료 미납 해결",
+      "slug": "kt-contents-usage-fee-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "KT 콘텐츠 이용료 수수료",
+      "slug": "kt-contents-usage-fee-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "KT 콘텐츠 이용료 정책 해결",
+      "slug": "kt-contents-usage-fee-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "KT 콘텐츠 이용료 현금화",
+      "slug": "kt-contents-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "KT 휴대폰 결제 미납 해결",
+      "slug": "kt-phone-payment-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "KT 휴대폰 결제 수수료",
+      "slug": "kt-phone-payment-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "KT 휴대폰 결제 정책 해결",
+      "slug": "kt-phone-payment-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "KT 휴대폰 결제 현금화",
+      "slug": "kt-phone-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "LG 소액결제 미납 해결",
+      "slug": "lg-small-payment-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "LG 소액결제 수수료",
+      "slug": "lg-small-payment-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "LG 소액결제 정책 해결",
+      "slug": "lg-small-payment-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "LG 소액결제 현금화",
+      "slug": "lg-small-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "LG 콘텐츠 이용료 미납 해결",
+      "slug": "lg-contents-usage-fee-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "LG 콘텐츠 이용료 수수료",
+      "slug": "lg-contents-usage-fee-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "LG 콘텐츠 이용료 정책 해결",
+      "slug": "lg-contents-usage-fee-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "LG 콘텐츠 이용료 현금화",
+      "slug": "lg-contents-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "LG 휴대폰 결제 미납 해결",
+      "slug": "lg-phone-payment-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "LG 휴대폰 결제 수수료",
+      "slug": "lg-phone-payment-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "LG 휴대폰 결제 정책 해결",
+      "slug": "lg-phone-payment-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "LG 휴대폰 결제 현금화",
+      "slug": "lg-phone-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "LGU+ 소액결제 미납 해결",
+      "slug": "lgu-small-payment-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "LGU+ 소액결제 수수료",
+      "slug": "lgu-small-payment-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "LGU+ 소액결제 정책 해결",
+      "slug": "lgu-small-payment-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "LGU+ 소액결제 현금화",
+      "slug": "lgu-small-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "LGU+ 콘텐츠 이용료 미납 해결",
+      "slug": "lgu-contents-usage-fee-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "LGU+ 콘텐츠 이용료 수수료",
+      "slug": "lgu-contents-usage-fee-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "LGU+ 콘텐츠 이용료 정책 해결",
+      "slug": "lgu-contents-usage-fee-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "LGU+ 콘텐츠 이용료 현금화",
+      "slug": "lgu-contents-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "LGU+ 휴대폰 결제 미납 해결",
+      "slug": "lgu-phone-payment-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "LGU+ 휴대폰 결제 수수료",
+      "slug": "lgu-phone-payment-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "LGU+ 휴대폰 결제 정책 해결",
+      "slug": "lgu-phone-payment-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "LGU+ 휴대폰 결제 현금화",
+      "slug": "lgu-phone-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "SK 소액결제 미납 해결",
+      "slug": "sk-small-payment-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "SK 소액결제 수수료",
+      "slug": "sk-small-payment-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "SK 소액결제 정책 해결",
+      "slug": "sk-small-payment-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "SK 소액결제 현금화",
+      "slug": "sk-small-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "SK 콘텐츠 이용료 미납 해결",
+      "slug": "sk-contents-usage-fee-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "SK 콘텐츠 이용료 수수료",
+      "slug": "sk-contents-usage-fee-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "SK 콘텐츠 이용료 정책 해결",
+      "slug": "sk-contents-usage-fee-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "SK 콘텐츠 이용료 현금화",
+      "slug": "sk-contents-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "SK 휴대폰 결제 미납 해결",
+      "slug": "sk-phone-payment-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "SK 휴대폰 결제 수수료",
+      "slug": "sk-phone-payment-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "SK 휴대폰 결제 정책 해결",
+      "slug": "sk-phone-payment-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "SK 휴대폰 결제 현금화",
+      "slug": "sk-phone-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "SKT 소액결제 미납 해결",
+      "slug": "skt-small-payment-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "SKT 소액결제 수수료",
+      "slug": "skt-small-payment-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "SKT 소액결제 정책 해결",
+      "slug": "skt-small-payment-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "SKT 소액결제 현금화",
+      "slug": "skt-small-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "SKT 콘텐츠 이용료 미납 해결",
+      "slug": "skt-contents-usage-fee-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "SKT 콘텐츠 이용료 수수료",
+      "slug": "skt-contents-usage-fee-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "SKT 콘텐츠 이용료 정책 해결",
+      "slug": "skt-contents-usage-fee-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "SKT 콘텐츠 이용료 현금화",
+      "slug": "skt-contents-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "SKT 휴대폰 결제 미납 해결",
+      "slug": "skt-phone-payment-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "SKT 휴대폰 결제 수수료",
+      "slug": "skt-phone-payment-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "SKT 휴대폰 결제 정책 해결",
+      "slug": "skt-phone-payment-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "SKT 휴대폰 결제 현금화",
+      "slug": "skt-phone-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "갤럭시 정보이용료 방법",
+      "slug": "galaxy-usage-fee-method",
+      "cat": "card"
+    },
+    {
+      "kw": "갤럭시 정보이용료 업체",
+      "slug": "galaxy-usage-fee-company",
+      "cat": "card"
+    },
+    {
+      "kw": "갤럭시 정보이용료 즉시",
+      "slug": "galaxy-usage-fee-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "갤럭시 정보이용료 현금화",
+      "slug": "galaxy-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "갤럭시 컨텐츠 이용료 방법",
+      "slug": "galaxy-contents-usage-fee-method",
+      "cat": "card"
+    },
+    {
+      "kw": "갤럭시 컨텐츠 이용료 업체",
+      "slug": "galaxy-contents-usage-fee-company",
+      "cat": "card"
+    },
+    {
+      "kw": "갤럭시 컨텐츠 이용료 즉시",
+      "slug": "galaxy-contents-usage-fee-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "갤럭시 컨텐츠 이용료 현금화",
+      "slug": "galaxy-contents-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "구글 정보이용료 방법",
+      "slug": "google-usage-fee-method",
+      "cat": "card"
+    },
+    {
+      "kw": "구글 정보이용료 업체",
+      "slug": "google-usage-fee-company",
+      "cat": "card"
+    },
+    {
+      "kw": "구글 정보이용료 즉시",
+      "slug": "google-usage-fee-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "구글 컨텐츠 이용료 방법",
+      "slug": "google-contents-usage-fee-method",
+      "cat": "card"
+    },
+    {
+      "kw": "구글 컨텐츠 이용료 업체",
+      "slug": "google-contents-usage-fee-company",
+      "cat": "card"
+    },
+    {
+      "kw": "구글 컨텐츠 이용료 즉시",
+      "slug": "google-contents-usage-fee-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "구글 컨텐츠 이용료 현금화",
+      "slug": "google-contents-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "구글 플레이스토어 결제 현금화",
+      "slug": "google-store-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "급전 소액결제 현금화",
+      "slug": "emergency-cash-small-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "급전 휴대폰 결제 현금화",
+      "slug": "emergency-cash-phone-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "대학생 소액결제 현금화",
+      "slug": "student-small-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "대학생 휴대폰 결제 현금화",
+      "slug": "student-phone-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "무직자 소액결제 현금화",
+      "slug": "unemployed-small-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "무직자 휴대폰 결제 현금화",
+      "slug": "unemployed-phone-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "비대면 휴대폰 결제 현금화 사이트",
+      "slug": "non-face-to-face-phone-payment-cashing-site",
+      "cat": "card"
+    },
+    {
+      "kw": "사업자 소액결제 현금화",
+      "slug": "business-small-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "사업자 휴대폰 결제 현금화",
+      "slug": "business-phone-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "사용자 소액결제 현금화",
+      "slug": "user-small-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "사용자 휴대폰 결제 현금화",
+      "slug": "user-phone-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 24시간",
+      "slug": "small-payment-24h",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 당일",
+      "slug": "small-payment-same-day",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 무서류",
+      "slug": "small-payment-no-document",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 문의",
+      "slug": "small-payment-inquiry",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 미납",
+      "slug": "small-payment-unpaid",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 미납 정책 해결 방법",
+      "slug": "small-payment-unpaid-policy-solution-method",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 미납 현금화",
+      "slug": "small-payment-unpaid-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 방법",
+      "slug": "small-payment-method",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 비대면",
+      "slug": "small-payment-non-face-to-face",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 빠른",
+      "slug": "small-payment-fast",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 사이트",
+      "slug": "small-payment-site",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 상담",
+      "slug": "small-payment-consult",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 수수료",
+      "slug": "small-payment-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 안전한",
+      "slug": "small-payment-safe",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 업체",
+      "slug": "small-payment-company",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 저렴한곳",
+      "slug": "small-payment-cheap",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 정책",
+      "slug": "small-payment-policy",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 정책 해결",
+      "slug": "small-payment-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 즉시",
+      "slug": "small-payment-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 추천",
+      "slug": "small-payment-recommend",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 한도 상향 및 현금화",
+      "slug": "small-payment-limit-up-and-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 한도전환",
+      "slug": "small-payment-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 한도현금화",
+      "slug": "small-payment-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 합법",
+      "slug": "small-payment-legal",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 해결",
+      "slug": "small-payment-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 현금전환",
+      "slug": "small-payment-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "소액결제 후기",
+      "slug": "small-payment-review",
+      "cat": "card"
+    },
+    {
+      "kw": "소지자 소액결제 현금화",
+      "slug": "holder-small-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "소지자 휴대폰 결제 현금화",
+      "slug": "holder-phone-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "아이폰 정보이용료 방법",
+      "slug": "iphone-usage-fee-method",
+      "cat": "card"
+    },
+    {
+      "kw": "아이폰 정보이용료 업체",
+      "slug": "iphone-usage-fee-company",
+      "cat": "card"
+    },
+    {
+      "kw": "아이폰 정보이용료 즉시",
+      "slug": "iphone-usage-fee-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "아이폰 정보이용료 현금화 24시간",
+      "slug": "iphone-usage-fee-cashing-24h",
+      "cat": "card"
+    },
+    {
+      "kw": "아이폰 컨텐츠 이용료 방법",
+      "slug": "iphone-contents-usage-fee-method",
+      "cat": "card"
+    },
+    {
+      "kw": "아이폰 컨텐츠 이용료 업체",
+      "slug": "iphone-contents-usage-fee-company",
+      "cat": "card"
+    },
+    {
+      "kw": "아이폰 컨텐츠 이용료 즉시",
+      "slug": "iphone-contents-usage-fee-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "아이폰 컨텐츠 이용료 현금화",
+      "slug": "iphone-contents-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "안전한 소액결제 현금화 방법",
+      "slug": "safe-small-payment-cashing-method",
+      "cat": "card"
+    },
+    {
+      "kw": "알뜰폰 소액결제 미납 해결",
+      "slug": "mobile-phone-small-payment-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "알뜰폰 소액결제 수수료",
+      "slug": "mobile-phone-small-payment-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "알뜰폰 소액결제 정책 해결",
+      "slug": "mobile-phone-small-payment-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "알뜰폰 소액결제 현금화",
+      "slug": "mobile-phone-small-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "알뜰폰 콘텐츠 이용료 미납 해결",
+      "slug": "mobile-phone-contents-usage-fee-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "알뜰폰 콘텐츠 이용료 수수료",
+      "slug": "mobile-phone-contents-usage-fee-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "알뜰폰 콘텐츠 이용료 정책 해결",
+      "slug": "mobile-phone-contents-usage-fee-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "알뜰폰 콘텐츠 이용료 현금화",
+      "slug": "mobile-phone-contents-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "알뜰폰 휴대폰 결제 미납 해결",
+      "slug": "mobile-phone-phone-payment-unpaid-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "알뜰폰 휴대폰 결제 수수료",
+      "slug": "mobile-phone-phone-payment-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "알뜰폰 휴대폰 결제 정책 해결",
+      "slug": "mobile-phone-phone-payment-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "알뜰폰 휴대폰 결제 현금화",
+      "slug": "mobile-phone-phone-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "애플 정보이용료 방법",
+      "slug": "apple-usage-fee-method",
+      "cat": "card"
+    },
+    {
+      "kw": "애플 정보이용료 업체",
+      "slug": "apple-usage-fee-company",
+      "cat": "card"
+    },
+    {
+      "kw": "애플 정보이용료 즉시",
+      "slug": "apple-usage-fee-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "애플 정보이용료 현금화",
+      "slug": "apple-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "애플 컨텐츠 이용료 방법",
+      "slug": "apple-contents-usage-fee-method",
+      "cat": "card"
+    },
+    {
+      "kw": "애플 컨텐츠 이용료 업체",
+      "slug": "apple-contents-usage-fee-company",
+      "cat": "card"
+    },
+    {
+      "kw": "애플 컨텐츠 이용료 즉시",
+      "slug": "apple-contents-usage-fee-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "애플 컨텐츠 이용료 현금화",
+      "slug": "apple-contents-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "연체 소액결제 정책 해결",
+      "slug": "overdue-small-payment-policy-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "원스토어 정보이용료 방법",
+      "slug": "onestore-usage-fee-method",
+      "cat": "card"
+    },
+    {
+      "kw": "원스토어 정보이용료 업체",
+      "slug": "onestore-usage-fee-company",
+      "cat": "card"
+    },
+    {
+      "kw": "원스토어 정보이용료 즉시",
+      "slug": "onestore-usage-fee-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "원스토어 정보이용료 현금화",
+      "slug": "onestore-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "원스토어 컨텐츠 이용료 방법",
+      "slug": "onestore-contents-usage-fee-method",
+      "cat": "card"
+    },
+    {
+      "kw": "원스토어 컨텐츠 이용료 업체",
+      "slug": "onestore-contents-usage-fee-company",
+      "cat": "card"
+    },
+    {
+      "kw": "원스토어 컨텐츠 이용료 즉시",
+      "slug": "onestore-contents-usage-fee-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "원스토어 컨텐츠 이용료 현금화",
+      "slug": "onestore-contents-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 24시간",
+      "slug": "info-usage-fee-24h",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 당일",
+      "slug": "info-usage-fee-same-day",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 무서류",
+      "slug": "info-usage-fee-no-document",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 문의",
+      "slug": "info-usage-fee-inquiry",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 미납",
+      "slug": "info-usage-fee-unpaid",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 방법",
+      "slug": "info-usage-fee-method",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 비대면",
+      "slug": "info-usage-fee-non-face-to-face",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 빠른",
+      "slug": "info-usage-fee-fast",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 사이트",
+      "slug": "info-usage-fee-site",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 상담",
+      "slug": "info-usage-fee-consult",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 수수료",
+      "slug": "info-usage-fee-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 수수료 제일 저렴한곳",
+      "slug": "info-usage-fee-fee-lowest-cheap",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 안전한",
+      "slug": "info-usage-fee-safe",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 업체",
+      "slug": "info-usage-fee-company",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 저렴한곳",
+      "slug": "info-usage-fee-cheap",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 정책",
+      "slug": "info-usage-fee-policy",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 즉시",
+      "slug": "info-usage-fee-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 추천",
+      "slug": "info-usage-fee-recommend",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 한도전환",
+      "slug": "info-usage-fee-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 한도현금화",
+      "slug": "info-usage-fee-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 합법",
+      "slug": "info-usage-fee-legal",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 해결",
+      "slug": "info-usage-fee-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 현금전환",
+      "slug": "info-usage-fee-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 현금화",
+      "slug": "info-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "정보이용료 후기",
+      "slug": "info-usage-fee-review",
+      "cat": "card"
+    },
+    {
+      "kw": "주부 소액결제 현금화",
+      "slug": "housewife-small-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "주부 휴대폰 결제 현금화",
+      "slug": "housewife-phone-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "직장인 소액결제 현금화",
+      "slug": "worker-small-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "직장인 휴대폰 결제 현금화",
+      "slug": "worker-phone-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 24시간",
+      "slug": "contents-usage-fee-24h",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 당일",
+      "slug": "contents-usage-fee-same-day",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 무서류",
+      "slug": "contents-usage-fee-no-document",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 문의",
+      "slug": "contents-usage-fee-inquiry",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 미납",
+      "slug": "contents-usage-fee-unpaid",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 방법",
+      "slug": "contents-usage-fee-method",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 비대면",
+      "slug": "contents-usage-fee-non-face-to-face",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 빠른",
+      "slug": "contents-usage-fee-fast",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 사이트",
+      "slug": "contents-usage-fee-site",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 상담",
+      "slug": "contents-usage-fee-consult",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 수수료",
+      "slug": "contents-usage-fee-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 안전한",
+      "slug": "contents-usage-fee-safe",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 업체",
+      "slug": "contents-usage-fee-company",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 저렴한곳",
+      "slug": "contents-usage-fee-cheap",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 정책",
+      "slug": "contents-usage-fee-policy",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 즉시",
+      "slug": "contents-usage-fee-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 추천",
+      "slug": "contents-usage-fee-recommend",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 한도전환",
+      "slug": "contents-usage-fee-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 한도현금화",
+      "slug": "contents-usage-fee-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 합법",
+      "slug": "contents-usage-fee-legal",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 해결",
+      "slug": "contents-usage-fee-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 현금전환",
+      "slug": "contents-usage-fee-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 현금화",
+      "slug": "contents-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "컨텐츠 이용료 후기",
+      "slug": "contents-usage-fee-review",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 24시간",
+      "slug": "contents-usage-fee-24h",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 당일",
+      "slug": "contents-usage-fee-same-day",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 무서류",
+      "slug": "contents-usage-fee-no-document",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 문의",
+      "slug": "contents-usage-fee-inquiry",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 미납",
+      "slug": "contents-usage-fee-unpaid",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 방법",
+      "slug": "contents-usage-fee-method",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 비대면",
+      "slug": "contents-usage-fee-non-face-to-face",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 빠른",
+      "slug": "contents-usage-fee-fast",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 사이트",
+      "slug": "contents-usage-fee-site",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 상담",
+      "slug": "contents-usage-fee-consult",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 수수료",
+      "slug": "contents-usage-fee-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 안전한",
+      "slug": "contents-usage-fee-safe",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 업체",
+      "slug": "contents-usage-fee-company",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 저렴한곳",
+      "slug": "contents-usage-fee-cheap",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 정책",
+      "slug": "contents-usage-fee-policy",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 즉시",
+      "slug": "contents-usage-fee-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 추천",
+      "slug": "contents-usage-fee-recommend",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 한도전환",
+      "slug": "contents-usage-fee-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 한도현금화",
+      "slug": "contents-usage-fee-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 합법",
+      "slug": "contents-usage-fee-legal",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 해결",
+      "slug": "contents-usage-fee-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 현금전환",
+      "slug": "contents-usage-fee-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 현금화",
+      "slug": "contents-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "콘텐츠 이용료 후기",
+      "slug": "contents-usage-fee-review",
+      "cat": "card"
+    },
+    {
+      "kw": "통신사 미납 소액결제 현금화",
+      "slug": "carrier-unpaid-small-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "프리랜서 소액결제 현금화",
+      "slug": "freelancer-small-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "프리랜서 휴대폰 결제 현금화",
+      "slug": "freelancer-phone-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "플레이스토어 정보이용료 방법",
+      "slug": "playstore-usage-fee-method",
+      "cat": "card"
+    },
+    {
+      "kw": "플레이스토어 정보이용료 업체",
+      "slug": "playstore-usage-fee-company",
+      "cat": "card"
+    },
+    {
+      "kw": "플레이스토어 정보이용료 즉시",
+      "slug": "playstore-usage-fee-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "플레이스토어 정보이용료 현금화",
+      "slug": "playstore-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "플레이스토어 컨텐츠 이용료 방법",
+      "slug": "playstore-contents-usage-fee-method",
+      "cat": "card"
+    },
+    {
+      "kw": "플레이스토어 컨텐츠 이용료 업체",
+      "slug": "playstore-contents-usage-fee-company",
+      "cat": "card"
+    },
+    {
+      "kw": "플레이스토어 컨텐츠 이용료 즉시",
+      "slug": "playstore-contents-usage-fee-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "플레이스토어 컨텐츠 이용료 현금화",
+      "slug": "playstore-contents-usage-fee-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 24시간",
+      "slug": "phone-payment-24h",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 당일",
+      "slug": "phone-payment-same-day",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 무서류",
+      "slug": "phone-payment-no-document",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 문의",
+      "slug": "phone-payment-inquiry",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 미납",
+      "slug": "phone-payment-unpaid",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 방법",
+      "slug": "phone-payment-method",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 비대면",
+      "slug": "phone-payment-non-face-to-face",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 빠른",
+      "slug": "phone-payment-fast",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 사이트",
+      "slug": "phone-payment-site",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 상담",
+      "slug": "phone-payment-consult",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 수수료",
+      "slug": "phone-payment-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 안전한",
+      "slug": "phone-payment-safe",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 업체",
+      "slug": "phone-payment-company",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 저렴한곳",
+      "slug": "phone-payment-cheap",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 정책",
+      "slug": "phone-payment-policy",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 즉시",
+      "slug": "phone-payment-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 추천",
+      "slug": "phone-payment-recommend",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 한도전환",
+      "slug": "phone-payment-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 한도현금화",
+      "slug": "phone-payment-limit-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 합법",
+      "slug": "phone-payment-legal",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 해결",
+      "slug": "phone-payment-solution",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 현금전환",
+      "slug": "phone-payment-cash-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 현금화",
+      "slug": "phone-payment-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 결제 후기",
+      "slug": "phone-payment-review",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 24시간",
+      "slug": "phone-small-payment-24h",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 당일",
+      "slug": "phone-small-payment-same-day",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 무서류",
+      "slug": "phone-small-payment-no-document",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 문의",
+      "slug": "phone-small-payment-inquiry",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 미납",
+      "slug": "phone-small-payment-unpaid",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 방법",
+      "slug": "phone-small-payment-method",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 비대면",
+      "slug": "phone-small-payment-non-face-to-face",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 빠른",
+      "slug": "phone-small-payment-fast",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 사이트",
+      "slug": "phone-small-payment-site",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 상담",
+      "slug": "phone-small-payment-consult",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 수수료",
+      "slug": "phone-small-payment-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 안전한",
+      "slug": "phone-small-payment-safe",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 업체",
+      "slug": "phone-small-payment-company",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 저렴한곳",
+      "slug": "phone-small-payment-cheap",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 정책",
+      "slug": "phone-small-payment-policy",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 즉시",
+      "slug": "phone-small-payment-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 추천",
+      "slug": "phone-small-payment-recommend",
+      "cat": "card"
+    },
+    {
+      "kw": "휴대폰 소액결제 한도전환",
+      "slug": "phone-small-payment-limit-conversion",
+      "cat": "card"
+    },
+    {
+      "kw": "개인사업자 카드깡",
+      "slug": "individual-business-card-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "개인사업자 카드깡 방법",
+      "slug": "individual-business-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "개인사업자 카드깡 업체",
+      "slug": "individual-business-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "개인사업자 카드깡 후기",
+      "slug": "individual-business-card-cashing-illegal-review",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 카드깡 되는 곳",
+      "slug": "kb-card-card-cashing-illegal-place",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 카드깡 방법",
+      "slug": "kb-card-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 카드깡 수수료",
+      "slug": "kb-card-card-cashing-illegal-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 카드깡 업체",
+      "slug": "kb-card-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 카드깡 하는 법",
+      "slug": "kb-card-card-cashing-illegal-how-to",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 포인트깡",
+      "slug": "kb-card-point-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 한도깡",
+      "slug": "kb-card-limit-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "국민카드 할부깡",
+      "slug": "kb-card-installment-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "급전 카드깡",
+      "slug": "emergency-cash-card-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "급전 카드깡 방법",
+      "slug": "emergency-cash-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "급전 카드깡 업체",
+      "slug": "emergency-cash-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "급전 카드깡 후기",
+      "slug": "emergency-cash-card-cashing-illegal-review",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 카드깡",
+      "slug": "ibk-card-card-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 카드깡 되는 곳",
+      "slug": "ibk-card-card-cashing-illegal-place",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 카드깡 방법",
+      "slug": "ibk-card-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 카드깡 수수료",
+      "slug": "ibk-card-card-cashing-illegal-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 카드깡 업체",
+      "slug": "ibk-card-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 카드깡 하는 법",
+      "slug": "ibk-card-card-cashing-illegal-how-to",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 포인트깡",
+      "slug": "ibk-card-point-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 한도깡",
+      "slug": "ibk-card-limit-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "기업카드 할부깡",
+      "slug": "ibk-card-installment-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 카드깡 되는 곳",
+      "slug": "nh-card-card-cashing-illegal-place",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 카드깡 방법",
+      "slug": "nh-card-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 카드깡 수수료",
+      "slug": "nh-card-card-cashing-illegal-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 카드깡 업체",
+      "slug": "nh-card-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 카드깡 하는 법",
+      "slug": "nh-card-card-cashing-illegal-how-to",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 포인트깡",
+      "slug": "nh-card-point-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 한도깡",
+      "slug": "nh-card-limit-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "농협카드 할부깡",
+      "slug": "nh-card-installment-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 카드깡 되는 곳",
+      "slug": "lotte-card-card-cashing-illegal-place",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 카드깡 방법",
+      "slug": "lotte-card-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 카드깡 수수료",
+      "slug": "lotte-card-card-cashing-illegal-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 카드깡 업체",
+      "slug": "lotte-card-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 카드깡 하는 법",
+      "slug": "lotte-card-card-cashing-illegal-how-to",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 포인트깡",
+      "slug": "lotte-card-point-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 한도깡",
+      "slug": "lotte-card-limit-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "롯데카드 할부깡",
+      "slug": "lotte-card-installment-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "모바일 카드깡 방법",
+      "slug": "mobile-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "무직자 카드깡",
+      "slug": "unemployed-card-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "무직자 카드깡 방법",
+      "slug": "unemployed-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "무직자 카드깡 업체",
+      "slug": "unemployed-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "무직자 카드깡 후기",
+      "slug": "unemployed-card-cashing-illegal-review",
+      "cat": "card"
+    },
+    {
+      "kw": "법인 카드깡",
+      "slug": "corporate-card-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "법인 카드깡 방법",
+      "slug": "corporate-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "법인 카드깡 업체",
+      "slug": "corporate-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "법인 카드깡 후기",
+      "slug": "corporate-card-cashing-illegal-review",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 카드깡",
+      "slug": "corporate-card-card-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 카드깡 되는 곳",
+      "slug": "corporate-card-card-cashing-illegal-place",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 카드깡 방법",
+      "slug": "corporate-card-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 카드깡 수수료",
+      "slug": "corporate-card-card-cashing-illegal-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 카드깡 업체",
+      "slug": "corporate-card-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 카드깡 하는 법",
+      "slug": "corporate-card-card-cashing-illegal-how-to",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 포인트깡",
+      "slug": "corporate-card-point-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 한도깡",
+      "slug": "corporate-card-limit-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "법인카드 할부깡",
+      "slug": "corporate-card-installment-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "비대면 카드깡 사이트",
+      "slug": "non-face-to-face-card-cashing-illegal-site",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 카드깡 되는 곳",
+      "slug": "bc-card-card-cashing-illegal-place",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 카드깡 방법",
+      "slug": "bc-card-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 카드깡 수수료",
+      "slug": "bc-card-card-cashing-illegal-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 카드깡 업체",
+      "slug": "bc-card-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 카드깡 하는 법",
+      "slug": "bc-card-card-cashing-illegal-how-to",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 포인트깡",
+      "slug": "bc-card-point-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 한도깡",
+      "slug": "bc-card-limit-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "비씨카드 할부깡",
+      "slug": "bc-card-installment-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "사업자 카드깡",
+      "slug": "business-card-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "사업자 카드깡 방법",
+      "slug": "business-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "사업자 카드깡 업체",
+      "slug": "business-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "사업자 카드깡 후기",
+      "slug": "business-card-cashing-illegal-review",
+      "cat": "card"
+    },
+    {
+      "kw": "사용자 카드깡",
+      "slug": "user-card-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "사용자 카드깡 방법",
+      "slug": "user-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "사용자 카드깡 업체",
+      "slug": "user-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "사용자 카드깡 후기",
+      "slug": "user-card-cashing-illegal-review",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 카드깡 되는 곳",
+      "slug": "samsung-card-card-cashing-illegal-place",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 카드깡 방법",
+      "slug": "samsung-card-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 카드깡 수수료",
+      "slug": "samsung-card-card-cashing-illegal-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 카드깡 업체",
+      "slug": "samsung-card-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 카드깡 하는 법",
+      "slug": "samsung-card-card-cashing-illegal-how-to",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 포인트깡",
+      "slug": "samsung-card-point-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 한도깡",
+      "slug": "samsung-card-limit-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "삼성카드 할부깡",
+      "slug": "samsung-card-installment-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "소지자 카드깡",
+      "slug": "holder-card-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "소지자 카드깡 방법",
+      "slug": "holder-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "소지자 카드깡 업체",
+      "slug": "holder-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "소지자 카드깡 후기",
+      "slug": "holder-card-cashing-illegal-review",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡",
+      "slug": "credit-card-card-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 24시간",
+      "slug": "credit-card-card-cashing-illegal-24h",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 당일",
+      "slug": "credit-card-card-cashing-illegal-same-day",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 되는 곳",
+      "slug": "credit-card-card-cashing-illegal-place",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 모바일",
+      "slug": "credit-card-card-cashing-illegal-mobile",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 무서류",
+      "slug": "credit-card-card-cashing-illegal-no-document",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 문의",
+      "slug": "credit-card-card-cashing-illegal-inquiry",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 방법",
+      "slug": "credit-card-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 비대면",
+      "slug": "credit-card-card-cashing-illegal-non-face-to-face",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 빠른",
+      "slug": "credit-card-card-cashing-illegal-fast",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 사이트",
+      "slug": "credit-card-card-cashing-illegal-site",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 상담",
+      "slug": "credit-card-card-cashing-illegal-consult",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 수수료",
+      "slug": "credit-card-card-cashing-illegal-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 안전한",
+      "slug": "credit-card-card-cashing-illegal-safe",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 어플",
+      "slug": "credit-card-card-cashing-illegal-app",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 업체",
+      "slug": "credit-card-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 저렴한",
+      "slug": "credit-card-card-cashing-illegal-cheap",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 정식업체",
+      "slug": "credit-card-card-cashing-illegal-official-company",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 즉시",
+      "slug": "credit-card-card-cashing-illegal-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 추천",
+      "slug": "credit-card-card-cashing-illegal-recommend",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 하는 법",
+      "slug": "credit-card-card-cashing-illegal-how-to",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 카드깡 후기",
+      "slug": "credit-card-card-cashing-illegal-review",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 포인트깡",
+      "slug": "credit-card-point-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 한도깡",
+      "slug": "credit-card-limit-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 할부깡",
+      "slug": "credit-card-installment-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "신용카드 현금화",
+      "slug": "credit-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "신한카드 카드깡 되는 곳",
+      "slug": "shinhan-card-card-cashing-illegal-place",
+      "cat": "card"
+    },
+    {
+      "kw": "신한카드 카드깡 방법",
+      "slug": "shinhan-card-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "신한카드 카드깡 수수료",
+      "slug": "shinhan-card-card-cashing-illegal-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "신한카드 카드깡 업체",
+      "slug": "shinhan-card-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "신한카드 카드깡 하는 법",
+      "slug": "shinhan-card-card-cashing-illegal-how-to",
+      "cat": "card"
+    },
+    {
+      "kw": "신한카드 포인트깡",
+      "slug": "shinhan-card-point-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "신한카드 한도깡",
+      "slug": "shinhan-card-limit-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "신한카드 할부깡",
+      "slug": "shinhan-card-installment-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "신한카드 현금화",
+      "slug": "shinhan-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "우리카드 카드깡 되는 곳",
+      "slug": "woori-card-card-cashing-illegal-place",
+      "cat": "card"
+    },
+    {
+      "kw": "우리카드 카드깡 방법",
+      "slug": "woori-card-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "우리카드 카드깡 수수료",
+      "slug": "woori-card-card-cashing-illegal-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "우리카드 카드깡 업체",
+      "slug": "woori-card-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "우리카드 카드깡 하는 법",
+      "slug": "woori-card-card-cashing-illegal-how-to",
+      "cat": "card"
+    },
+    {
+      "kw": "우리카드 포인트깡",
+      "slug": "woori-card-point-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "우리카드 한도깡",
+      "slug": "woori-card-limit-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "우리카드 할부깡",
+      "slug": "woori-card-installment-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "우리카드 현금화",
+      "slug": "woori-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "주부 카드깡",
+      "slug": "housewife-card-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "주부 카드깡 방법",
+      "slug": "housewife-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "주부 카드깡 업체",
+      "slug": "housewife-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "주부 카드깡 후기",
+      "slug": "housewife-card-cashing-illegal-review",
+      "cat": "card"
+    },
+    {
+      "kw": "직장인 카드깡",
+      "slug": "worker-card-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "직장인 카드깡 방법",
+      "slug": "worker-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "직장인 카드깡 업체",
+      "slug": "worker-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "직장인 카드깡 후기",
+      "slug": "worker-card-cashing-illegal-review",
+      "cat": "card"
+    },
+    {
+      "kw": "체크카드 카드깡",
+      "slug": "check-card-card-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "체크카드 카드깡 되는 곳",
+      "slug": "check-card-card-cashing-illegal-place",
+      "cat": "card"
+    },
+    {
+      "kw": "체크카드 카드깡 방법",
+      "slug": "check-card-card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "체크카드 카드깡 수수료",
+      "slug": "check-card-card-cashing-illegal-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "체크카드 카드깡 업체",
+      "slug": "check-card-card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "체크카드 카드깡 하는 법",
+      "slug": "check-card-card-cashing-illegal-how-to",
+      "cat": "card"
+    },
+    {
+      "kw": "체크카드 포인트깡",
+      "slug": "check-card-point-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "체크카드 한도깡",
+      "slug": "check-card-limit-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "체크카드 할부깡",
+      "slug": "check-card-installment-cashing-illegal",
+      "cat": "card"
+    },
+    {
+      "kw": "체크카드 현금화",
+      "slug": "check-card-cashing",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 24시간",
+      "slug": "card-cashing-illegal-24h",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 당일",
+      "slug": "card-cashing-illegal-same-day",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 당일 즉시 입금",
+      "slug": "card-cashing-illegal-same-day-instant-payment",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 되는 곳",
+      "slug": "card-cashing-illegal-place",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 루트 공유",
+      "slug": "card-cashing-illegal-route-share",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 모바일",
+      "slug": "card-cashing-illegal-mobile",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 무서류",
+      "slug": "card-cashing-illegal-no-document",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 무이자 할부",
+      "slug": "card-cashing-illegal-interest-free-installment",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 문의",
+      "slug": "card-cashing-illegal-inquiry",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 방법",
+      "slug": "card-cashing-illegal-method",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 불법 처벌",
+      "slug": "card-cashing-illegal-illegal-punishment",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 비대면",
+      "slug": "card-cashing-illegal-non-face-to-face",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 빠른",
+      "slug": "card-cashing-illegal-fast",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 사이트",
+      "slug": "card-cashing-illegal-site",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 상담",
+      "slug": "card-cashing-illegal-consult",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 상담 문의",
+      "slug": "card-cashing-illegal-consult-inquiry",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 수수료",
+      "slug": "card-cashing-illegal-fee",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 수수료 저렴한곳",
+      "slug": "card-cashing-illegal-fee-cheap-place",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 안걸리는 법",
+      "slug": "card-cashing-illegal-no-crackdown-method",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 안전업체 추천",
+      "slug": "card-cashing-illegal-safe-company-recommend",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 안전한",
+      "slug": "card-cashing-illegal-safe",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 어플",
+      "slug": "card-cashing-illegal-app",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 업체",
+      "slug": "card-cashing-illegal-company",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 저렴한",
+      "slug": "card-cashing-illegal-cheap",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 전국 가능 업체",
+      "slug": "card-cashing-illegal-nationwide-available-company",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 정식업체",
+      "slug": "card-cashing-illegal-official-company",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 즉시",
+      "slug": "card-cashing-illegal-instant",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 추천",
+      "slug": "card-cashing-illegal-recommend",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 팁",
+      "slug": "card-cashing-illegal-tip",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 하는 방법",
+      "slug": "card-cashing-illegal-how-to-method",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 하는 법",
+      "slug": "card-cashing-illegal-how-to",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 한도 최대",
+      "slug": "card-cashing-illegal-limit-max",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 할부",
+      "slug": "card-cashing-illegal-installment",
+      "cat": "card"
+    },
+    {
+      "kw": "카드깡 후기",
+      "slug": "card-cashing-illegal-review",
+      "cat": "card"
+    },
+    {
+      "kw": "프리랜서 카드깡",
+      "slug": "freelancer-card-cashing-illegal",
+      "cat": "card"
+    }
+  ]
+}

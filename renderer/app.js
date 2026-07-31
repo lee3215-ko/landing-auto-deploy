@@ -362,6 +362,7 @@ function collectConfig() {
     },
     cursorApiKey: ($('seoCursorKey')?.value || config.cursorApiKey || '').trim(),
     kkangBuilderPath: ($('seoBuilderPath')?.value || config.kkangBuilderPath || '').trim(),
+    kkangFastAi: $('seoFastAi') ? !!$('seoFastAi').checked : (config.kkangFastAi !== false),
     kkangOutputDir: ($('seoOutputDir')?.value || config.kkangOutputDir || '').trim(),
     kkangNetlifyToken: ($('seoNetlifyToken')?.value || config.kkangNetlifyToken || '').trim(),
     kkangNetlifyId: ($('seoNetlifyId')?.value || config.kkangNetlifyId || '').trim(),
@@ -569,16 +570,36 @@ function renderResultsTable(results) {
   }
 }
 
-async function copyToClipboard(text, okMsg) {
+async function copyToClipboard(text, okMsg, { sitesTab = false } = {}) {
   if (!text) return alert('복사할 URL이 없습니다.');
   try {
-    await navigator.clipboard.writeText(text);
-    if (okMsg) {
-      setIndexProgress(okMsg, true);
-      setTimeout(() => setIndexProgress('', false), 2500);
+    if (window.electronAPI?.clipboardWrite) {
+      await window.electronAPI.clipboardWrite(text);
+    } else if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(ta);
+      ta.select();
+      if (!document.execCommand('copy')) throw new Error('execCommand copy failed');
+      ta.remove();
     }
-  } catch {
-    alert('복사 실패');
+    if (okMsg) {
+      if (sitesTab) {
+        setSitesIndexProgress(okMsg, true);
+        setTimeout(() => setSitesIndexProgress('', false), 2500);
+      } else {
+        setIndexProgress(okMsg, true);
+        setTimeout(() => setIndexProgress('', false), 2500);
+      }
+    }
+    return true;
+  } catch (e) {
+    alert(`복사 실패: ${e?.message || e}`);
+    return false;
   }
 }
 
@@ -1166,7 +1187,7 @@ function renderCreatedSites() {
     const urlCell = url
       ? `<div class="url-cell">
           <a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(url)}</a>
-          <button class="btn btn-ghost btn-sm url-copy-btn" type="button" data-sites-action="copy" data-url="${escapeHtml(url)}">복사</button>
+          <button class="btn btn-ghost btn-sm url-copy-btn" type="button" data-sites-action="copy" data-url-enc="${encodeURIComponent(url)}">복사</button>
         </div>`
       : '-';
     const canRetryNaver = s.provider === 'netlify' && !!(s.url || '').trim();
@@ -1253,12 +1274,8 @@ async function clearCreatedSites() {
 async function copyCreatedSiteUrls() {
   const urls = getFilteredCreatedSites().map((s) => (s.url || '').trim()).filter(Boolean);
   if (!urls.length) return alert('복사할 URL이 없습니다.');
-  try {
-    await navigator.clipboard.writeText(urls.join('\n'));
-    alert(`${urls.length}개 URL을 복사했습니다.`);
-  } catch {
-    alert('복사 실패');
-  }
+  const ok = await copyToClipboard(urls.join('\n'), `📋 ${urls.length}개 URL 복사됨`, { sitesTab: true });
+  if (ok) alert(`${urls.length}개 URL을 복사했습니다.`);
 }
 
 let sitesIndexCheckRunning = false;
@@ -1735,11 +1752,10 @@ async function startUrlCrawl() {
   }
 }
 
-function copyCrawlUrls() {
+async function copyCrawlUrls() {
   if (!crawledUrls.length) return;
-  navigator.clipboard.writeText(crawledUrls.join('\n')).then(() => {
-    crawlLog('📋 클립보드에 복사됨');
-  }).catch(() => alert('복사 실패'));
+  const ok = await copyToClipboard(crawledUrls.join('\n'));
+  if (ok) crawlLog('📋 클립보드에 복사됨');
 }
 
 function clearCrawlUrls() {
@@ -2299,7 +2315,8 @@ async function load() {
   if ($('metaInjectOnly')) $('metaInjectOnly').checked = !!config.metaInjectOnly;
 
   if ($('seoCursorKey')) $('seoCursorKey').value = config.cursorApiKey || '';
-  if ($('seoBuilderPath')) $('seoBuilderPath').value = config.kkangBuilderPath || 'C:\\Users\\thdco\\Projects\\kkang-site-builder';
+  if ($('seoBuilderPath')) $('seoBuilderPath').value = config.kkangBuilderPath || '';
+  if ($('seoFastAi')) $('seoFastAi').checked = config.kkangFastAi !== false;
   if ($('seoOutputDir')) $('seoOutputDir').value = config.kkangOutputDir || '';
   if ($('seoNetlifyToken')) $('seoNetlifyToken').value = config.kkangNetlifyToken || '';
   if ($('seoNetlifyId')) $('seoNetlifyId').value = config.kkangNetlifyId || '';
@@ -2410,7 +2427,13 @@ function setupEvents() {
     if (!btn) return;
     const action = btn.dataset.sitesAction;
     if (action === 'copy') {
-      await copyToClipboard(btn.dataset.url || '', 'URL 복사됨');
+      let url = '';
+      try {
+        url = btn.dataset.urlEnc ? decodeURIComponent(btn.dataset.urlEnc) : (btn.dataset.url || '');
+      } catch {
+        url = btn.dataset.url || '';
+      }
+      await copyToClipboard(url, '📋 URL 복사됨', { sitesTab: true });
     } else if (action === 'delete') {
       await deleteCreatedSite(btn.dataset.id);
     } else if (action === 'check-index') {
@@ -2902,9 +2925,10 @@ async function pingSeoEngine() {
   const out = await window.electronAPI.kkangPing();
   if (hint) {
     if (out?.ok) {
-      hint.textContent = `연결됨 · AI ${out.ai_available ? '가능' : '키 필요'} · ${out.builderRoot || ''}`;
+      const where = out.bundled ? '내장 엔진' : '사용자 경로';
+      hint.textContent = `연결됨 (${where}) · AI ${out.ai_available ? '가능' : '키 필요'} · ${out.builderRoot || ''}`;
     } else {
-      hint.textContent = `연결 실패: ${out?.error || 'Python/경로 확인'}`;
+      hint.textContent = `연결 실패: ${out?.error || 'Python 설치 또는 엔진 동기화(npm run sync:engine) 필요'}`;
     }
   }
   return out;
@@ -3035,6 +3059,7 @@ async function startSeoGenerate() {
         google_code: ($('seoGoogle')?.value || '').trim(),
         topic_count: parseInt($('seoTopicCount')?.value || '16', 10) || 16,
         use_ai: !!$('seoUseAi')?.checked,
+        fast_ai: !!$('seoFastAi')?.checked,
         cursor_api_key: ($('seoCursorKey')?.value || '').trim(),
         netlify_token: ($('seoNetlifyToken')?.value || '').trim(),
         netlify_account_id: ($('seoNetlifyId')?.value || '').trim(),

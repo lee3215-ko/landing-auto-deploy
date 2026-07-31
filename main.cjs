@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { execFile } = require('child_process');
@@ -28,6 +28,13 @@ const RESULTS_PATH = path.join(DEFAULT_DATA_FOLDER, 'output', 'results.json');
 const GENERATED_TOKENS_PATH = path.join(DEFAULT_DATA_FOLDER, 'output', 'generated-tokens.json');
 const CREATED_SITES_PATH = path.join(DEFAULT_DATA_FOLDER, 'output', 'created-sites.json');
 const OUTPUT_ROOT = path.join(DEFAULT_DATA_FOLDER, 'output');
+
+// KKang 엔진: 배포 기본 키워드는 엔진 data/, 이용자 추가분은 userData 에 저장
+const KKANG_USER_DATA = path.join(app.getPath('userData'), 'kkang-data');
+try {
+  fs.mkdirSync(KKANG_USER_DATA, { recursive: true });
+} catch { /* ignore */ }
+process.env.KKANG_DATA_DIR = KKANG_USER_DATA;
 
 function loadConfig() {
   try {
@@ -291,6 +298,12 @@ async function initNaverSessionListeners() {
 }
 
 ipcMain.handle('get-app-version', () => app.getVersion());
+
+ipcMain.handle('clipboard-write', (_event, text) => {
+  const value = text == null ? '' : String(text);
+  clipboard.writeText(value);
+  return { ok: true, length: value.length };
+});
 
 ipcMain.handle('naver-session-status', async () => {
   const { getNaverSessionStatus } = await import('./lib/naver-session.js');

@@ -54,6 +54,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   kkangRetryNaverIndex: (options) => ipcRenderer.invoke('kkang-retry-naver-index', options || {}),
   naverSessionStatus: () => ipcRenderer.invoke('naver-session-status'),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  clipboardWrite: (text) => ipcRenderer.invoke('clipboard-write', text),
   naverSessionStart: (options) => ipcRenderer.invoke('naver-session-start', options || {}),
   naverSessionRefreshSites: () => ipcRenderer.invoke('naver-session-refresh-sites'),
   onNaverSessionUpdate: (callback) => ipcRenderer.on('naver-session-update', (_, data) => callback(data)),

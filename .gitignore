@@ -3,7 +3,9 @@ dist/
 dist-publish/
 release/
 output/
+engine/
 _asar_extract/
+_asar_check/
 _recover/
 _check_badge/
 *.zip

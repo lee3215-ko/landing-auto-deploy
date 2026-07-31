@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.4",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/495235274",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.4/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/495235274",
-    "asset_id":  495235274,
-    "notes":  "업데이트: 네이버신고와 동일하게 API asset 우선 + 확인 로그/실패 안내 강화",
+    "version":  "3.8.6",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.6/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.6/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "생성사이트 URL 복사 수정, 기본 키워드 팩 포함, 엔진 휴대성/빠른 AI/구조 다양화",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/495235274",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.4/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.6/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
