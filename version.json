@@ -1,11 +1,12 @@
 {
     "version":  "3.8.8",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.8/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/496361536",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.8/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/496361536",
+    "asset_id":  496361536,
     "notes":  "ZIP 다중 선택, 네이버 수집은 사이트맵+하위 페이지 일괄 흐름만 사용",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/496361536",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.8/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
