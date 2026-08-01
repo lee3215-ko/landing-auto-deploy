@@ -5,8 +5,9 @@ param(
 
 $root = Join-Path $PSScriptRoot '..'
 $candidates = @(
-    (Join-Path $root 'dist-publish\win-unpacked\Landing Auto Deploy.exe'),
     (Join-Path $root 'release\LandingAutoDeploy\Landing Auto Deploy.exe'),
+    (Join-Path $root 'dist-publish-build\win-unpacked\Landing Auto Deploy.exe'),
+    (Join-Path $root 'dist-publish\win-unpacked\Landing Auto Deploy.exe'),
     (Join-Path $root 'dist\win-unpacked\Landing Auto Deploy.exe')
 )
 
