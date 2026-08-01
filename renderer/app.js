@@ -956,8 +956,10 @@ async function startNaverLogin(ev) {
   if (btn) btn.disabled = true;
   updateNaverSessionBadge({ status: 'starting' });
   try {
-    // 이미 로그인된 Chrome이 있으면 재로그인하지 않고 세션만 붙잡음
-    // (Shift+클릭 시에만 강제 재로그인)
+    // 설정에 저장된 계정으로 로그인.
+    // 계정을 바꿨으면 자동으로 이전 세션 로그아웃 후 재로그인.
+    // Shift+클릭 = 같은 계정이어도 강제 재로그인.
+    await window.electronAPI.saveConfig?.(collectConfig());
     const forceRelogin = !!(ev && ev.shiftKey);
     const res = await window.electronAPI.naverSessionStart?.({ forceRelogin });
     if (res && !res.ok) {
