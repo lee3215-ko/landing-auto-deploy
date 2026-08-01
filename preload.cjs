@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getFileStat: (filePath) => ipcRenderer.invoke('get-file-stat', filePath),
   selectFile: (filters) => ipcRenderer.invoke('select-file', filters),
   selectFiles: (options) => ipcRenderer.invoke('select-files', options || {}),
+  validateZipIndex: (zipPath) => ipcRenderer.invoke('validate-zip-index', zipPath),
   readTextFile: (filePath) => ipcRenderer.invoke('read-text-file', filePath),
   startRun: (config) => ipcRenderer.invoke('start-run', config),
   pauseRun: () => ipcRenderer.invoke('pause-run'),

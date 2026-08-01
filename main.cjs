@@ -450,6 +450,14 @@ ipcMain.handle('select-files', async (_, options = {}) => {
   });
   return res.canceled ? [] : (res.filePaths || []);
 });
+ipcMain.handle('validate-zip-index', async (_, zipPath) => {
+  try {
+    const { validateZipHasIndex } = await import('./lib/source-utils.js');
+    return await validateZipHasIndex(zipPath);
+  } catch (e) {
+    return { ok: false, error: e.message || 'ZIP 검사 실패' };
+  }
+});
 ipcMain.handle('read-text-file', async (_, filePath) => {
   try {
     return fs.readFileSync(filePath, 'utf8');

@@ -338,18 +338,36 @@ async function selectDeployZips() {
 
   const seen = new Set(deploySources.map((s) => String(s.path || '').toLowerCase()));
   let added = 0;
+  const skipped = [];
   for (const filePath of paths) {
     const p = String(filePath || '').trim();
     if (!p || !p.toLowerCase().endsWith('.zip')) continue;
     const key = p.toLowerCase();
     if (seen.has(key)) continue;
-    seen.add(key);
     const name = p.split(/[\\/]/).pop() || p;
+    if (window.electronAPI?.validateZipIndex) {
+      try {
+        const check = await window.electronAPI.validateZipIndex(p);
+        if (!check?.ok) {
+          skipped.push(`${name}: ${check?.error || 'index.html 없음'}`);
+          continue;
+        }
+      } catch (e) {
+        skipped.push(`${name}: ${e.message || '검사 실패'}`);
+        continue;
+      }
+    }
+    seen.add(key);
     deploySources.push({ type: 'zip', path: p, name });
     added += 1;
   }
+  if (skipped.length) {
+    alert(`index.html이 없는 ZIP ${skipped.length}개 제외:\n\n${skipped.slice(0, 8).join('\n')}${skipped.length > 8 ? `\n…외 ${skipped.length - 8}개` : ''}`);
+  }
   if (!added) {
-    alert('새로 추가할 ZIP이 없습니다. (이미 선택된 파일일 수 있습니다)');
+    alert(skipped.length
+      ? '추가된 ZIP이 없습니다. (index.html 없는 파일만 선택됨)'
+      : '새로 추가할 ZIP이 없습니다. (이미 선택된 파일일 수 있습니다)');
     return;
   }
 
