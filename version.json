@@ -1,11 +1,12 @@
 {
     "version":  "3.8.14",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.14/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/497748267",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.14/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/497748267",
+    "asset_id":  497748267,
     "notes":  "자동 업데이트 수정: 설치 스크립트 미시작 버그 해결 (wscript VBS 분리 실행 + Start-Process/cmd 폴백). 이번 버전은 zip 수동 1회 덮어쓴 뒤부터 자동 업데이트 정상.",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/497748267",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.14/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
