@@ -1,11 +1,12 @@
 {
     "version":  "3.8.13",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.13/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/497745034",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.13/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/497745034",
+    "asset_id":  497745034,
     "notes":  "네이버 로그인: 설정 계정 변경 시 이전 Chrome 세션 로그아웃 후 새 계정으로 재로그인 (강제 재로그인 Shift+클릭)",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/497745034",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.13/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
