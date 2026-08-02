@@ -1,13 +1,12 @@
 {
-  "version": "3.8.15",
-  "url": "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/498052762",
-  "download_url": "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.15/LandingAutoDeploy.zip",
-  "api_download_url": "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/498052762",
-  "asset_id": 498052762,
-  "notes": "배포/등록 안정화: Netlify 429 백오프·재시도 큐, dialog 단일화, 캡챠 쿨다운·재시도, ZIP index.html 사전검증",
-  "download_urls": [
-    "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/498052762",
-    "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.15/LandingAutoDeploy.zip",
-    "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
-  ]
+    "version":  "3.8.16",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.16/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.16/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "성공한 ZIP을 원본 폴더의 성공 폴더로 자동 이동 (실패 시 위치 유지)",
+    "download_urls":  [
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.16/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
+                      ]
 }

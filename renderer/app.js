@@ -2016,6 +2016,25 @@ async function startRun() {
   const result = await window.electronAPI.startRun(cfg);
 
   setRunControls({ active: false });
+
+  // 성공 ZIP이 「성공」폴더로 이동된 경우 — 선택 목록에서 제거
+  const moved = Array.isArray(result?.movedZips) ? result.movedZips : [];
+  if (moved.length) {
+    const movedFrom = new Set(moved.map((m) => String(m.from || '').toLowerCase()));
+    const before = deploySources.length;
+    deploySources = deploySources.filter((s) => !movedFrom.has(String(s.path || '').toLowerCase()));
+    if (deploySources.length !== before) {
+      updateDeploySourcesUI(
+        deploySources.length
+          ? `남은 소스 ${deploySources.length}개 (성공 ${moved.length}개 이동됨)`
+          : '',
+      );
+      const cfgAfter = collectConfig();
+      await window.electronAPI.saveConfig(cfgAfter).catch(() => {});
+    }
+    logLine(`📦 성공 ZIP ${moved.length}개 → 「성공」폴더로 이동됨`);
+  }
+
   if (result.error) {
     logLine(`❌ 오류: ${result.error}`);
   } else if (result.stopped) {
