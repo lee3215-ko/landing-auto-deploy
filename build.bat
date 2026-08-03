@@ -33,4 +33,11 @@ if not exist "release\LandingAutoDeploy\Landing Auto Deploy.exe" (
   exit /b 1
 )
 echo [build] OK -^> release\LandingAutoDeploy
+echo [build] Refresh desktop shortcut (dev PC)
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\create-desktop-shortcut.ps1" -ExePath "%~dp0release\LandingAutoDeploy\Landing Auto Deploy.exe"
+if errorlevel 1 (
+  echo [build] WARN: shortcut update failed
+) else (
+  echo [build] shortcut OK
+)
 exit /b 0

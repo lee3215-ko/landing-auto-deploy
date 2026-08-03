@@ -344,6 +344,7 @@ ipcMain.handle('naver-session-start', async (event, options = {}) => {
   try {
     await ensureNaverSession({
       naverAccount: acct,
+      naverAccounts: config.naverAccounts || [],
       openaiApiKey: config.openaiApiKey || '',
       headless: false,
       forceRelogin: !!options.forceRelogin,
@@ -357,19 +358,57 @@ ipcMain.handle('naver-session-start', async (event, options = {}) => {
   }
 });
 
-ipcMain.handle('naver-session-refresh-sites', async () => {
+ipcMain.handle('naver-session-refresh-sites', async (event) => {
   const {
     countAdvisorRegisteredSites,
     getNaverSessionStatus,
     getNaverSessionPage,
+    ensureNaverSession,
+    NAVER_SITE_SOFT_LIMIT,
   } = await import('./lib/naver-session.js');
-  let p = await getNaverSessionPage();
-  if (!p) {
-    return { ok: false, error: '네이버 로그인이 필요합니다. 먼저 「네이버 로그인」을 완료하세요.', ...getNaverSessionStatus() };
-  }
+  const send = (msg) => {
+    try { event.sender.send('log-line', `[네이버] ${msg}`); } catch { /* ignore */ }
+  };
   try {
-    const n = await countAdvisorRegisteredSites(p);
-    return { ok: true, siteCount: n, ...getNaverSessionStatus() };
+    let p = await getNaverSessionPage();
+    if (!p) {
+      // 세션 핸들이 끊겼으면 설정 계정으로 재연결 시도
+      const config = loadConfig();
+      const acct = (config.naverAccounts || []).find((a) => a?.id && a?.pw);
+      if (!acct) {
+        return {
+          ok: false,
+          error: '네이버 로그인이 필요합니다. 먼저 「네이버 로그인」을 완료하세요.',
+          ...getNaverSessionStatus(),
+        };
+      }
+      send('세션 재연결 중…');
+      await ensureNaverSession({
+        naverAccount: acct,
+        naverAccounts: config.naverAccounts || [],
+        openaiApiKey: config.openaiApiKey || '',
+        headless: false,
+        outputFolder: path.join(OUTPUT_ROOT, 'naver-session'),
+        onLog: (msg) => send(msg),
+      });
+      p = await getNaverSessionPage();
+    }
+    if (!p) {
+      return {
+        ok: false,
+        error: '네이버 창에 연결하지 못했습니다. 「네이버 재로그인」후 다시 시도하세요.',
+        ...getNaverSessionStatus(),
+      };
+    }
+    send('등록 사이트 수 새로고침…');
+    const n = await countAdvisorRegisteredSites(p, { forceReload: true });
+    const snap = getNaverSessionStatus();
+    if (n != null && n >= NAVER_SITE_SOFT_LIMIT) {
+      send(`등록 ${n}개 ≥ ${NAVER_SITE_SOFT_LIMIT} — 다음 생성부터 다음 네이버 아이디로 전환됩니다.`);
+    } else {
+      send(`등록 사이트 ${n ?? '?'}개`);
+    }
+    return { ok: true, ...snap, siteCount: n };
   } catch (e) {
     return { ok: false, error: e.message || '조회 실패', ...getNaverSessionStatus() };
   }
@@ -613,6 +652,7 @@ ipcMain.handle('reinject-index', async (event, { index } = {}) => {
       siteUrl: row.url,
       siteName: row.name,
       naverAccount,
+      naverAccounts: config.naverAccounts || [],
       openaiApiKey: config.openaiApiKey || '',
       outputRoot: OUTPUT_ROOT,
       sendLog: (line) => event.sender.send('reinject-log', line),
@@ -740,11 +780,16 @@ ipcMain.handle('submit-naver-collect', async (event, options = {}) => {
       if (crawlAccount) {
         session = await ensureNaverSession({
           naverAccount: crawlAccount,
+          naverAccounts: config.naverAccounts || [],
           openaiApiKey: config.openaiApiKey || '',
           headless: !!config.headless,
           outputFolder: path.join(OUTPUT_ROOT, 'naver-session'),
           onLog: (msg) => event.sender.send('crawl-url-log', `[세션] ${msg}`),
         });
+        if (crawlAccount && session?.naverAccount?.id) {
+          crawlAccount.id = session.naverAccount.id;
+          crawlAccount.pw = session.naverAccount.pw || crawlAccount.pw;
+        }
       }
     } catch (e) {
       event.sender.send('crawl-url-log', `⚠ 공유 세션 실패: ${e.message}`);
@@ -1017,6 +1062,7 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
             siteSlug: result.site_slug || job.site_slug,
             netlifyToken,
             naverAccount,
+            naverAccounts: config.naverAccounts || [],
             openaiApiKey: config.openaiApiKey || '',
             headless: !!config.headless,
             metaInjectOnly: !!config.metaInjectOnly,
@@ -1220,6 +1266,7 @@ ipcMain.handle('kkang-retry-naver', async (event, options = {}) => {
       siteSlug,
       netlifyToken,
       naverAccount,
+      naverAccounts: config.naverAccounts || [],
       openaiApiKey: config.openaiApiKey || '',
       headless: !!config.headless,
       metaInjectOnly: !!config.metaInjectOnly,
@@ -1344,6 +1391,7 @@ ipcMain.handle('kkang-retry-naver-index', async (event, options = {}) => {
       siteDir,
       siteSlug,
       naverAccount,
+      naverAccounts: config.naverAccounts || [],
       openaiApiKey: config.openaiApiKey || '',
       headless: !!config.headless,
       outputRoot: OUTPUT_ROOT,
@@ -1663,6 +1711,7 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
       ftpHost,
       registerNaver,
       naverAccount,
+      naverAccounts: config.naverAccounts || [],
       openaiApiKey: config.openaiApiKey || '',
       headless: !!config.headless,
       metaInjectOnly: !!config.metaInjectOnly,

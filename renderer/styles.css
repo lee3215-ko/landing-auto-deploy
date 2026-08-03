@@ -1143,7 +1143,8 @@ textarea {
   align-items: start;
 }
 
-.seo-advanced {
+.seo-advanced,
+.settings-collapsible {
   margin-top: 10px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -1151,7 +1152,8 @@ textarea {
   background: rgba(255, 255, 255, 0.02);
 }
 
-.seo-advanced summary {
+.seo-advanced summary,
+.settings-collapsible summary {
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
@@ -1159,13 +1161,21 @@ textarea {
   list-style: none;
 }
 
-.seo-advanced summary::-webkit-details-marker {
+.seo-advanced summary::-webkit-details-marker,
+.settings-collapsible summary::-webkit-details-marker {
   display: none;
 }
 
-.seo-advanced[open] summary {
+.seo-advanced[open] summary,
+.settings-collapsible[open] summary {
   margin-bottom: 12px;
   color: var(--text);
+}
+
+.settings-collapsible-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .seo-folder-tabs {

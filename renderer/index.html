@@ -31,9 +31,6 @@
         <button class="nav-btn" id="nav-dothome" type="button" data-tab="dothome">
           <span class="icon">🏠</span> 닷홈 호스팅 생성
         </button>
-        <button class="nav-btn" id="nav-token-gen" type="button" data-tab="token-gen">
-          <span class="icon">🎫</span> 토큰 자동 생성
-        </button>
         <button class="nav-btn" id="nav-url-crawl" type="button" data-tab="url-crawl">
           <span class="icon">🔗</span> URL 수집
         </button>
@@ -85,7 +82,7 @@
               <div class="card-header">
                 <div>
                   <div class="card-title"><span class="emoji">🔑</span> API / 계정</div>
-                  <div class="card-sub">OpenAI, Netlify, 네이버 계정</div>
+                  <div class="card-sub">OpenAI, YesCaptcha, Cursor, Netlify, 네이버 계정</div>
                 </div>
               </div>
 
@@ -101,29 +98,29 @@
                 <p class="bulk-hint">닷홈 reCAPTCHA 자동 통과용. OpenAI 키(sk-…)가 아니라 YesCaptcha 클라이언트 키를 넣으세요. <a href="https://yescaptcha.com" target="_blank" rel="noreferrer">yescaptcha.com</a></p>
               </div>
 
-              <div class="section-divider">
-                <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;">Netlify Tokens</h3>
-                <div class="bulk-pair-grid">
+              <details class="settings-collapsible" id="cursorApiDetails">
+                <summary>Cursor API Key (열고 닫기)</summary>
+                <div class="settings-collapsible-body">
                   <div class="form-group">
-                    <label for="bulkTokens">토큰 (한 줄에 하나)</label>
-                    <textarea id="bulkTokens" rows="4" placeholder="nfp_xxxxxxxx&#10;nfp_yyyyyyyy&#10;nfp_zzzzzzzz"></textarea>
-                  </div>
-                  <div class="form-group">
-                    <label for="bulkIds">아이디 (한 줄에 하나, 순서대로 짝지음)</label>
-                    <textarea id="bulkIds" rows="4" placeholder="account1&#10;account2&#10;account3"></textarea>
+                    <label for="cursorApiKey">Cursor API Key</label>
+                    <input type="password" id="cursorApiKey" placeholder="key_..." autocomplete="off">
+                    <p class="bulk-hint">넷리파이 생성·닷홈 SEO(AI) 등에서 공동으로 사용합니다.</p>
                   </div>
                 </div>
-                <p class="bulk-hint">1번째 토큰 ↔ 1번째 아이디, 2번째 ↔ 2번째 … 순서로 매칭됩니다. 아이디가 적으면 토큰만 추가됩니다.</p>
-                <button type="button" class="btn btn-primary btn-sm" id="addBulkTokensBtn" style="margin-top:10px;">+ 다중 추가</button>
-                <div id="netlifyTokens" class="item-list" style="margin-top:16px;"></div>
+              </details>
+
+              <div class="section-divider">
+                <div class="divider-header">
+                  <h3>Netlify Tokens</h3>
+                </div>
+                <p class="bulk-hint">토큰을 한 개씩 추가합니다. 아이디는 목록 표시용입니다.</p>
+                <div id="netlifyTokens" class="item-list"></div>
+                <button type="button" class="add-btn" id="addTokenBtn">+ 토큰 추가</button>
               </div>
 
               <div class="section-divider">
                 <div class="divider-header">
                   <h3>네이버 계정</h3>
-                  <label class="inline-check">
-                    <input type="checkbox" id="showEmptyAccounts"> 빈 항목 보기
-                  </label>
                 </div>
                 <div id="naverAccounts" class="item-list"></div>
                 <button type="button" class="add-btn" id="addAccountBtn">+ 계정 추가</button>
@@ -200,77 +197,6 @@
               <button type="button" class="btn btn-ghost btn-sm" id="clearLogBtn">지우기</button>
             </div>
             <div class="log-window" id="logWindow"></div>
-          </div>
-        </div>
-
-        <!-- 토큰 자동 생성 패널 -->
-        <div id="tokenGenPanel" class="panel">
-          <div class="grid-2">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <div class="card-title"><span class="emoji">🎫</span> Netlify 토큰 자동 생성</div>
-                  <div class="card-sub">네이버 메일로 Netlify 회원가입 · 인증 · 토큰 생성</div>
-                </div>
-              </div>
-              <p class="bulk-hint"><strong>Netlify 이메일·비밀번호만 직접 입력</strong>하세요. 중간에 Chrome이나 앱을 꺼도 <strong>다시 실행하면 URL·화면을 인식해 이어서</strong> 진행합니다.</p>
-
-              <div class="form-group" style="margin-top:12px;">
-                <label>실행 모드</label>
-                <div class="checkbox-row" style="margin-top:6px;">
-                  <label><input type="radio" name="tokenGenMode" id="tokenGenModeSignup" value="signup" checked> 회원가입 + 네이버메일 인증 + 토큰</label>
-                  <label><input type="radio" name="tokenGenMode" id="tokenGenModeLogin" value="login"> 기존 Netlify 계정 로그인 + 토큰</label>
-                </div>
-              </div>
-
-              <div class="form-group" style="margin-top:14px;">
-                <label for="tokenGenDesc">토큰 설명 접두어</label>
-                <input type="text" id="tokenGenDesc" value="landing-auto-deploy" placeholder="landing-auto-deploy">
-              </div>
-              <p class="bulk-hint">한 번 실행으로 <strong>목록 순서대로</strong> 계정당 토큰 1개씩 생성합니다. 로그아웃 후 로그인 화면에서 다음 계정을 직접 입력하면 자동으로 이어집니다. <strong>정지</strong> 버튼으로 중단할 수 있습니다.</p>
-
-              <div class="section-divider">
-                <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;">Netlify 가입 계정 (네이버)</h3>
-                <div class="bulk-pair-grid">
-                  <div class="form-group">
-                    <label for="bulkGenNaverIds">네이버 아이디 (한 줄에 하나)</label>
-                    <textarea id="bulkGenNaverIds" rows="6" placeholder="naver_id_1&#10;naver_id_2&#10;naver_id_3"></textarea>
-                  </div>
-                  <div class="form-group">
-                    <label for="bulkGenNaverPws">네이버 비밀번호 (한 줄에 하나, 순서대로 짝지음)</label>
-                    <textarea id="bulkGenNaverPws" rows="6" placeholder="password1&#10;password2&#10;password3"></textarea>
-                  </div>
-                </div>
-                <p class="bulk-hint">1번째 아이디 ↔ 1번째 비밀번호, 2번째 ↔ 2번째 … 순서로 매칭됩니다. 식별명은 <strong>네이버 아이디</strong>로 자동 사용됩니다.</p>
-                <div id="netlifyGenAccounts" class="gen-account-list" style="margin-top:14px;"></div>
-              </div>
-
-              <div class="run-section" style="margin-top:16px;">
-                <button class="btn btn-success btn-block" id="startTokenGenBtn" type="button">▶ 회원가입 · 인증 · 토큰 생성</button>
-                <button class="btn btn-danger btn-block" id="stopTokenGenBtn" type="button" style="margin-top:8px;" disabled>⏹ 정지</button>
-                <button class="btn btn-ghost btn-block" id="recordNetlifyBtn" type="button" style="margin-top:8px;">📼 Netlify 동작 기록 (고급)</button>
-                <button class="btn btn-primary btn-block" id="applyGenTokensBtn" type="button" style="margin-top:8px;" disabled>설정 탭 토큰 목록에 추가</button>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <div class="card-title"><span class="emoji">📋</span> 생성 결과</div>
-                  <div class="card-sub">생성된 토큰 기록 (재시작 후에도 유지)</div>
-                </div>
-              </div>
-              <div id="generatedTokensList" class="item-list">
-                <p class="empty-hint">아직 생성된 토큰이 없습니다.</p>
-              </div>
-              <div class="log-section" style="margin-top:16px;">
-                <div class="log-header">
-                  <h3>생성 로그</h3>
-                  <button type="button" class="btn btn-ghost btn-sm" id="clearTokenGenLogBtn">지우기</button>
-                </div>
-                <div class="log-window" id="tokenGenLog" style="height:220px;"></div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -405,7 +331,7 @@
               </div>
 
               <details class="seo-advanced">
-                <summary>고급 설정 (구글 · 키워드 수 · 저장 폴더 · API · 토큰)</summary>
+                <summary>고급 설정 (구글 · 키워드 수 · 저장 폴더 · 엔진)</summary>
                 <div class="form-group">
                   <label for="seoGoogle">구글 인증 코드</label>
                   <input type="text" id="seoGoogle" placeholder="선택">
@@ -421,20 +347,7 @@
                     <button type="button" class="btn btn-ghost btn-sm" id="seoBrowseOutBtn">찾기</button>
                   </div>
                 </div>
-                <div class="form-group">
-                  <label for="seoCursorKey">Cursor API Key</label>
-                  <input type="password" id="seoCursorKey" placeholder="key_..." autocomplete="off">
-                </div>
-                <div class="form-group">
-                  <label for="seoNetlifyId">Netlify 아이디</label>
-                  <input type="text" id="seoNetlifyId" placeholder="계정 이메일 또는 아이디 (표기용)" autocomplete="username">
-                  <p class="bulk-hint">생성 사이트 목록에 표시됩니다. 앱을 다시 켜도 유지됩니다.</p>
-                </div>
-                <div class="form-group">
-                  <label for="seoNetlifyToken">Netlify 토큰</label>
-                  <input type="password" id="seoNetlifyToken" placeholder="nfp_..." autocomplete="off">
-                  <p class="bulk-hint">입력하면 자동 저장됩니다. 비우면 설정 탭 토큰을 사용합니다.</p>
-                </div>
+                <p class="bulk-hint">Cursor API는 <strong>설정</strong> 탭의 「Cursor API Key」, Netlify 토큰은 「Netlify Tokens」에서 관리합니다.</p>
                 <div class="form-group">
                   <label for="seoBuilderPath">KKang 엔진 경로 (선택)</label>
                   <div class="row" style="gap:8px;">

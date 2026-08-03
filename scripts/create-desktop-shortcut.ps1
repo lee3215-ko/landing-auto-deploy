@@ -3,7 +3,15 @@ param(
     [string]$ExePath
 )
 
-$root = Join-Path $PSScriptRoot '..'
+$root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$pkgPath = Join-Path $root 'package.json'
+$version = 'dev'
+if (Test-Path -LiteralPath $pkgPath) {
+    try {
+        $version = [string]((Get-Content $pkgPath -Raw -Encoding UTF8 | ConvertFrom-Json).version)
+    } catch { }
+}
+
 $candidates = @(
     (Join-Path $root 'release\LandingAutoDeploy\Landing Auto Deploy.exe'),
     (Join-Path $root 'dist-publish-build\win-unpacked\Landing Auto Deploy.exe'),
@@ -24,7 +32,7 @@ if ($ExePath -and (Test-Path -LiteralPath $ExePath)) {
 }
 
 if (-not $ExePath -or -not (Test-Path -LiteralPath $ExePath)) {
-    throw "EXE를 찾을 수 없습니다. 먼저 npm run dist:dir 후 다시 실행하세요."
+    throw "EXE를 찾을 수 없습니다. 먼저 build.bat 실행 후 다시 시도하세요."
 }
 
 $exe = (Resolve-Path -LiteralPath $ExePath).Path
@@ -38,18 +46,28 @@ $desktops = @(
 
 $shell = New-Object -ComObject WScript.Shell
 $created = @()
+$linkName = "Landing Auto Deploy v$version.lnk"
+$desc = "Landing Auto Deploy v$version (개발 PC 빌드)"
 
 foreach ($desk in $desktops) {
-    $lnk = Join-Path $desk 'Landing Auto Deploy.lnk'
+    # 이전 버전 바로가기 정리 (고정명 + 버전명)
+    Get-ChildItem -LiteralPath $desk -Filter 'Landing Auto Deploy*.lnk' -ErrorAction SilentlyContinue |
+        ForEach-Object {
+            if ($_.Name -ne $linkName) {
+                Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+    $lnk = Join-Path $desk $linkName
     $shortcut = $shell.CreateShortcut($lnk)
     $shortcut.TargetPath = $exe
     $shortcut.WorkingDirectory = Split-Path $exe
-    $shortcut.Description = 'Netlify 배포 + 네이버 서치어드바이저 자동 등록'
+    $shortcut.Description = $desc
     $shortcut.IconLocation = "$exe,0"
     $shortcut.Save()
     $created += $lnk
 }
 
-Write-Host "바로가기 생성:"
+Write-Host "바로가기 생성 (v$version):"
 $created | ForEach-Object { Write-Host "  $_" }
 Write-Host "대상: $exe"

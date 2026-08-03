@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.17",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/498502500",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.17/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/498502500",
-    "asset_id":  498502500,
-    "notes":  "자동업데이트 수정: 설치 프로세스 Job 분리(schtasks), 외부 설치/재실행 창, 게이지·단계 표시, 시작 실패 시 앱 유지",
+    "version":  "3.8.22",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.22/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.22/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "SEO multi-doc image cards, settings UI cleanup, Naver meta CDN cache redeploy fix",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/498502500",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.17/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.22/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }

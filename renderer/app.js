@@ -31,7 +31,6 @@ const PAGE_META = {
   'seo-gen': { title: '넷리파이 생성', subtitle: '키워드 SEO 랜딩 생성 · Cursor AI · Netlify 배포 (KKang)' },
   'cf-pages': { title: 'Cloudflare Pages 생성', subtitle: 'Cloudflare Pages 사이트 생성 · 배포 (기본 틀 · 순차 업데이트)' },
   dothome: { title: '닷홈 호스팅 생성', subtitle: '닷홈 회원가입 자동화 · 이후 FTP/사이트 배포' },
-  'token-gen': { title: '토큰 자동 생성', subtitle: '가입(수동) → 화면 인식 후 메일·온보딩·토큰·로그아웃 자동' },
   'url-crawl': { title: 'URL 수집', subtitle: '하위 URL 수집 후 네이버 웹페이지 수집 일괄 신청' },
   sites: { title: '생성 사이트', subtitle: 'Netlify · Cloudflare Pages · 닷홈 생성 목록 (생성일 포함)' },
   results: { title: '배포/등록 결과', subtitle: '저장된 배포 URL 및 네이버 등록 현황' },
@@ -72,14 +71,25 @@ function parseLines(text) {
   return text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
 }
 
+/** Netlify Tokens 목록에서 배포용 토큰·아이디 1개 선택 */
+function pickPrimaryNetlifyCreds() {
+  const tokens = config.netlifyTokens || [];
+  const norm = (t) => (typeof t === 'string' ? { token: t, id: '', used: false } : (t || {}));
+  const list = tokens.map(norm).filter((t) => (t.token || '').trim());
+  const picked = list.find((t) => !t.used) || list[0];
+  if (!picked) return { token: '', id: '' };
+  return { token: String(picked.token || '').trim(), id: String(picked.id || '').trim() };
+}
+
 function renderNetlifyTokens() {
   const el = $('netlifyTokens');
-  const visible = config.netlifyTokens.map((t, i) => ({
+  if (!el) return;
+  const visible = (config.netlifyTokens || []).map((t, i) => ({
     t, i, obj: typeof t === 'string' ? { token: t, id: '' } : (t || { token: '', id: '' }),
-  })).filter(({ obj }) => obj.token);
+  }));
 
   if (!visible.length) {
-    el.innerHTML = '<p class="empty-hint">등록된 토큰이 없습니다. 위에서 토큰과 아이디를 입력 후 다중 추가하세요.</p>';
+    el.innerHTML = '<p class="empty-hint">등록된 토큰이 없습니다. 「+ 토큰 추가」로 한 개씩 등록하세요.</p>';
     return;
   }
 
@@ -118,12 +128,11 @@ function renderNetlifyTokens() {
 
 function renderNaverAccounts() {
   const el = $('naverAccounts');
-  const showEmpty = $('showEmptyAccounts')?.checked;
-  const visible = config.naverAccounts.map((acc, i) => ({ acc, i }))
-    .filter(({ acc }) => showEmpty || acc.id || acc.pw);
+  if (!el) return;
+  const visible = (config.naverAccounts || []).map((acc, i) => ({ acc, i }));
 
   if (!visible.length) {
-    el.innerHTML = '<p class="empty-hint">등록된 계정이 없습니다.</p>';
+    el.innerHTML = '<p class="empty-hint">등록된 계정이 없습니다. 「+ 계정 추가」로 등록하세요.</p>';
     return;
   }
 
@@ -174,37 +183,19 @@ function renderServices() {
   `).join('');
 }
 
-function addBulkTokens() {
-  const tokens = parseLines($('bulkTokens').value);
-  const ids = parseLines($('bulkIds').value);
-  const validTokens = tokens.filter(t => t.startsWith('nfp_'));
-  const skipped = tokens.length - validTokens.length;
-
-  if (!validTokens.length) {
-    alert('유효한 Netlify 토큰(nfp_로 시작)을 한 줄에 하나씩 입력하세요.');
-    return;
-  }
-
-  for (let i = 0; i < validTokens.length; i++) {
-    config.netlifyTokens.push({
-      token: validTokens[i],
-      id: ids[i] || '',
-      used: false,
-      usedCount: 0,
-      expanded: false,
-    });
-  }
-
-  $('bulkTokens').value = '';
-  $('bulkIds').value = '';
+function addNetlifyToken() {
+  if (!Array.isArray(config.netlifyTokens)) config.netlifyTokens = [];
+  config.netlifyTokens.forEach((t) => {
+    if (t && typeof t === 'object') t.expanded = false;
+  });
+  config.netlifyTokens.push({
+    token: '',
+    id: '',
+    used: false,
+    usedCount: 0,
+    expanded: true,
+  });
   renderNetlifyTokens();
-
-  let msg = `✅ ${validTokens.length}개 토큰 추가됨`;
-  if (ids.length && ids.length !== validTokens.length) {
-    msg += ` (아이디 ${ids.length}개 → ${Math.min(ids.length, validTokens.length)}개 매칭)`;
-  }
-  if (skipped) msg += ` · 형식 오류 ${skipped}개 제외`;
-  logLine(msg);
 }
 
 function removeNetlifyToken(i) { config.netlifyTokens.splice(i, 1); renderNetlifyTokens(); }
@@ -393,6 +384,7 @@ function clearDeploySources() {
 }
 
 function collectConfig() {
+  const primaryNetlify = pickPrimaryNetlifyCreds();
   return {
     openaiApiKey: $('openaiApiKey').value.trim(),
     yesCaptchaClientKey: ($('yesCaptchaClientKey')?.value || '').trim(),
@@ -436,12 +428,12 @@ function collectConfig() {
       sitemap: !!$('crawlOptSitemap')?.checked,
       webpage: !!$('crawlOptWebpage')?.checked,
     },
-    cursorApiKey: ($('seoCursorKey')?.value || config.cursorApiKey || '').trim(),
+    cursorApiKey: ($('cursorApiKey')?.value || config.cursorApiKey || '').trim(),
     kkangBuilderPath: ($('seoBuilderPath')?.value || config.kkangBuilderPath || '').trim(),
     kkangFastAi: $('seoFastAi') ? !!$('seoFastAi').checked : (config.kkangFastAi !== false),
     kkangOutputDir: ($('seoOutputDir')?.value || config.kkangOutputDir || '').trim(),
-    kkangNetlifyToken: ($('seoNetlifyToken')?.value || config.kkangNetlifyToken || '').trim(),
-    kkangNetlifyId: ($('seoNetlifyId')?.value || config.kkangNetlifyId || '').trim(),
+    kkangNetlifyToken: primaryNetlify.token,
+    kkangNetlifyId: primaryNetlify.id,
     cloudflare: {
       accountId: ($('cfAccountId')?.value || '').trim(),
       apiToken: ($('cfApiToken')?.value || '').trim(),
@@ -856,7 +848,6 @@ function switchTab(name) {
   $('seoGenPanel')?.classList.toggle('active', name === 'seo-gen');
   $('cfPagesPanel')?.classList.toggle('active', name === 'cf-pages');
   $('dothomePanel')?.classList.toggle('active', name === 'dothome');
-  $('tokenGenPanel').classList.toggle('active', name === 'token-gen');
   $('urlCrawlPanel').classList.toggle('active', name === 'url-crawl');
   $('sitesPanel')?.classList.toggle('active', name === 'sites');
   $('resultsPanel').classList.toggle('active', name === 'results');
@@ -864,7 +855,6 @@ function switchTab(name) {
   $('nav-seo-gen')?.classList.toggle('active', name === 'seo-gen');
   $('nav-cf-pages')?.classList.toggle('active', name === 'cf-pages');
   $('nav-dothome')?.classList.toggle('active', name === 'dothome');
-  $('nav-token-gen').classList.toggle('active', name === 'token-gen');
   $('nav-url-crawl').classList.toggle('active', name === 'url-crawl');
   $('nav-sites')?.classList.toggle('active', name === 'sites');
   $('nav-results').classList.toggle('active', name === 'results');
@@ -1003,13 +993,34 @@ async function startNaverLogin(ev) {
 }
 
 async function refreshNaverSiteCount() {
+  const btn = $('naverSiteCountRefreshBtn');
+  const prev = btn?.textContent || '↻';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '…';
+  }
   try {
-    const res = await window.electronAPI.naverSessionRefreshSites?.();
+    if (typeof window.electronAPI?.naverSessionRefreshSites !== 'function') {
+      alert('새로고침 기능을 사용할 수 없습니다. 앱을 재시작해 주세요.');
+      return;
+    }
+    const res = await window.electronAPI.naverSessionRefreshSites();
     if (res) updateNaverSessionBadge(res);
-    if (res?.ok && res.siteCount != null) logLine(`[네이버] 등록 사이트 ${res.siteCount}개`);
-    else if (res && !res.ok) alert(res.error || '조회 실패');
+    if (res?.ok && res.siteCount != null) {
+      logLine(`[네이버] 등록 사이트 ${res.siteCount}개${res.accountId ? ` · ${res.accountId}` : ''}`);
+    } else if (res && !res.ok) {
+      alert(res.error || '조회 실패');
+    } else {
+      alert('사이트 수를 가져오지 못했습니다. 「네이버 재로그인」후 다시 시도하세요.');
+    }
   } catch (e) {
     alert(e.message || '조회 실패');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = prev;
+    }
+    updateNaverLoginButton();
   }
 }
 
@@ -1550,9 +1561,8 @@ async function retrySiteNaver(id) {
   if (!site) return alert('사이트를 찾을 수 없습니다.');
   if (site.provider !== 'netlify') return alert('Netlify 사이트만 네이버 인증 재시도가 가능합니다.');
 
-  const tokenFromSeo = ($('seoNetlifyToken')?.value || '').trim();
-  const hasToken = tokenFromSeo || (config.netlifyTokens || []).some((t) => t && t.token);
-  if (!hasToken) {
+  const primaryNetlify = pickPrimaryNetlifyCreds();
+  if (!primaryNetlify.token) {
     return alert('Netlify 토큰이 없습니다.\n설정 탭에 토큰을 추가·저장한 뒤 다시 시도하세요.');
   }
   if (!(config.naverAccounts || []).some((a) => a?.id && a?.pw)) {
@@ -1573,8 +1583,8 @@ async function retrySiteNaver(id) {
       siteSlug: site.name,
       siteUrl: site.url,
       siteDir: site.detail?.output || '',
-      netlifyToken: tokenFromSeo,
-      netlifyAccountId: ($('seoNetlifyId')?.value || config.kkangNetlifyId || '').trim(),
+      netlifyToken: primaryNetlify.token,
+      netlifyAccountId: primaryNetlify.id,
     });
     if (out?.createdSites) createdSites = out.createdSites;
     else await loadCreatedSites(false);
@@ -2177,12 +2187,13 @@ function updateTokenGenButtonLabel() {
 
 function renderGeneratedTokens() {
   const el = $('generatedTokensList');
+  if (!el) return;
   if (!generatedTokens.length) {
     el.innerHTML = '<p class="empty-hint">아직 생성된 토큰이 없습니다.</p>';
-    $('applyGenTokensBtn').disabled = true;
+    if ($('applyGenTokensBtn')) $('applyGenTokensBtn').disabled = true;
     return;
   }
-  $('applyGenTokensBtn').disabled = false;
+  if ($('applyGenTokensBtn')) $('applyGenTokensBtn').disabled = false;
   el.innerHTML = generatedTokens.map((t, i) => {
     const displayId = t.naverId || t.id || `토큰 ${i + 1}`;
     const when = t.createdAt ? `<span style="font-size:11px;color:var(--text-dim);margin-left:8px;">${formatDate(t.createdAt)}</span>` : '';
@@ -2201,6 +2212,7 @@ function renderGeneratedTokens() {
 
 function tokenGenLog(line) {
   const w = $('tokenGenLog');
+  if (!w) return;
   w.textContent += line + '\n';
   w.scrollTop = w.scrollHeight;
 }
@@ -2411,12 +2423,10 @@ async function load() {
   syncHeadlessUi(!!config.headless);
   if ($('metaInjectOnly')) $('metaInjectOnly').checked = !!config.metaInjectOnly;
 
-  if ($('seoCursorKey')) $('seoCursorKey').value = config.cursorApiKey || '';
+  if ($('cursorApiKey')) $('cursorApiKey').value = config.cursorApiKey || '';
   if ($('seoBuilderPath')) $('seoBuilderPath').value = config.kkangBuilderPath || '';
   if ($('seoFastAi')) $('seoFastAi').checked = config.kkangFastAi !== false;
   if ($('seoOutputDir')) $('seoOutputDir').value = config.kkangOutputDir || '';
-  if ($('seoNetlifyToken')) $('seoNetlifyToken').value = config.kkangNetlifyToken || '';
-  if ($('seoNetlifyId')) $('seoNetlifyId').value = config.kkangNetlifyId || '';
   randomSeoSlug(false);
   updateSeoPreviewUrl();
   if (config.netlifyCreditsLast) {
@@ -2463,10 +2473,7 @@ async function load() {
   renderNetlifyTokens();
   renderNaverAccounts();
   renderServices();
-  renderNetlifyGenAccounts();
-  renderGeneratedTokens();
   renderCrawlUrls();
-  updateTokenGenButtonLabel();
   await restoreDeployFolder(config.deployFolder, config.deploySources);
   await loadSavedResults();
   await loadCreatedSites(true);
@@ -2478,7 +2485,7 @@ function setupEvents() {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 
-  $('addBulkTokensBtn').addEventListener('click', addBulkTokens);
+  $('addTokenBtn')?.addEventListener('click', addNetlifyToken);
   $('addAccountBtn').addEventListener('click', addNaverAccount);
   $('addServiceBtn').addEventListener('click', addService);
   $('selectFolderBtn').addEventListener('click', selectDeployFolder);
@@ -2557,8 +2564,6 @@ function setupEvents() {
       closeManualNaverIdModal();
     }
   });
-  $('startTokenGenBtn').addEventListener('click', startTokenGen);
-  $('stopTokenGenBtn').addEventListener('click', stopTokenGen);
   $('startCrawlBtn')?.addEventListener('click', startUrlCrawl);
   $('submitNaverCollectBtn')?.addEventListener('click', submitNaverCollect);
   $('stopCrawlBtn')?.addEventListener('click', stopCrawlJob);
@@ -2586,17 +2591,6 @@ function setupEvents() {
   $('seoSiteSlug')?.addEventListener('input', updateSeoPreviewUrl);
   $('seoBrowseOutBtn')?.addEventListener('click', browseSeoOutputDir);
   $('seoBrowseBuilderBtn')?.addEventListener('click', browseSeoBuilderPath);
-  // Netlify 토큰·아이디 자동 저장
-  const persistSeoNetlifyCreds = async () => {
-    try {
-      config = { ...config, ...collectConfig() };
-      await window.electronAPI.saveConfig(config);
-    } catch { /* ignore */ }
-  };
-  $('seoNetlifyToken')?.addEventListener('change', persistSeoNetlifyCreds);
-  $('seoNetlifyToken')?.addEventListener('blur', persistSeoNetlifyCreds);
-  $('seoNetlifyId')?.addEventListener('change', persistSeoNetlifyCreds);
-  $('seoNetlifyId')?.addEventListener('blur', persistSeoNetlifyCreds);
   $('seoSelectAllBtn')?.addEventListener('click', () => seoSelectVisible(true));
   $('seoClearKwBtn')?.addEventListener('click', () => seoSelectVisible(false));
   $('seoRandomKwBtn')?.addEventListener('click', seoRandomSelect);
@@ -2643,26 +2637,15 @@ function setupEvents() {
 
   $('copySelectedUrlsBtn')?.addEventListener('click', copySelectedResultUrls);
   $('copyAllResultUrlsBtn')?.addEventListener('click', copyAllResultUrls);
-  $('recordNetlifyBtn')?.addEventListener('click', startRecordNetlify);
-  $('applyGenTokensBtn').addEventListener('click', applyGenTokens);
-  $('clearTokenGenLogBtn').addEventListener('click', () => { $('tokenGenLog').textContent = ''; });
-  $('tokenGenModeSignup')?.addEventListener('change', updateTokenGenButtonLabel);
-  $('tokenGenModeLogin')?.addEventListener('change', updateTokenGenButtonLabel);
-  $('showEmptyAccounts').addEventListener('change', renderNaverAccounts);
-
-  for (const id of ['bulkGenNaverIds', 'bulkGenNaverPws']) {
-    $(id)?.addEventListener('input', () => {
-      config.netlifyGenAccounts = parseGenAccountsFromBulk();
-      renderNetlifyGenAccounts();
-    });
-  }
-
-  $('generatedTokensList').addEventListener('click', (e) => {
-    const t = e.target.closest('[data-action]');
-    if (!t || t.dataset.action !== 'remove-gen-token') return;
-    const idx = parseInt(t.dataset.idx, 10);
-    if (!Number.isNaN(idx)) removeGeneratedToken(idx);
-  });
+  // Cursor API Key (설정 탭)
+  const persistCursorApiKey = async () => {
+    try {
+      config = { ...config, ...collectConfig() };
+      await window.electronAPI.saveConfig(config);
+    } catch { /* ignore */ }
+  };
+  $('cursorApiKey')?.addEventListener('change', persistCursorApiKey);
+  $('cursorApiKey')?.addEventListener('blur', persistCursorApiKey);
 
   $('netlifyTokens').addEventListener('click', (e) => {
     const t = e.target.closest('[data-action]');
@@ -3153,6 +3136,7 @@ async function startSeoGenerate() {
         continue;
       }
 
+      const netlifyCreds = pickPrimaryNetlifyCreds();
       const job = {
         site_slug: slug,
         brand: ($('seoBrand')?.value || '').trim() || '카드깡전문',
@@ -3162,9 +3146,9 @@ async function startSeoGenerate() {
         topic_count: parseInt($('seoTopicCount')?.value || '16', 10) || 16,
         use_ai: !!$('seoUseAi')?.checked,
         fast_ai: !!$('seoFastAi')?.checked,
-        cursor_api_key: ($('seoCursorKey')?.value || '').trim(),
-        netlify_token: ($('seoNetlifyToken')?.value || '').trim(),
-        netlify_account_id: ($('seoNetlifyId')?.value || '').trim(),
+        cursor_api_key: ($('cursorApiKey')?.value || config.cursorApiKey || '').trim(),
+        netlify_token: netlifyCreds.token,
+        netlify_account_id: netlifyCreds.id,
         deploy,
         create_site: !!$('seoCreateSite')?.checked,
         output_dir: ($('seoOutputDir')?.value || '').trim(),
@@ -3360,7 +3344,7 @@ function dhSiteUrlForAccount(a) {
 function dhSeoInputsOrAlert() {
   const keyword = ($('dhKeyword')?.value || '').trim();
   const imageDir = ($('dhImageDir')?.value || '').trim();
-  const cursorApiKey = ($('seoCursorKey')?.value || config.cursorApiKey || '').trim();
+  const cursorApiKey = ($('cursorApiKey')?.value || config.cursorApiKey || '').trim();
   if (!keyword) {
     alert('핵심키워드를 입력하세요.');
     return null;
@@ -3370,7 +3354,7 @@ function dhSeoInputsOrAlert() {
     return null;
   }
   if (!cursorApiKey) {
-    alert('Cursor API Key가 필요합니다.\n넷리파이 생성 탭에 Cursor API Key를 입력한 뒤 설정을 저장하세요.');
+    alert('Cursor API Key가 필요합니다.\n설정 탭 → Cursor API Key에 입력하세요.');
     return null;
   }
   return {
