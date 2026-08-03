@@ -49,23 +49,26 @@ $created = @()
 $linkName = "Landing Auto Deploy v$version.lnk"
 $desc = "Landing Auto Deploy v$version (개발 PC 빌드)"
 
+$aliasName = 'Landing Auto Deploy.lnk'
 foreach ($desk in $desktops) {
-    # 이전 버전 바로가기 정리 (고정명 + 버전명)
+    # 이전 버전 바로가기 정리 (고정명·버전명만 남김)
     Get-ChildItem -LiteralPath $desk -Filter 'Landing Auto Deploy*.lnk' -ErrorAction SilentlyContinue |
         ForEach-Object {
-            if ($_.Name -ne $linkName) {
+            if ($_.Name -ne $linkName -and $_.Name -ne $aliasName) {
                 Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue
             }
         }
 
-    $lnk = Join-Path $desk $linkName
-    $shortcut = $shell.CreateShortcut($lnk)
-    $shortcut.TargetPath = $exe
-    $shortcut.WorkingDirectory = Split-Path $exe
-    $shortcut.Description = $desc
-    $shortcut.IconLocation = "$exe,0"
-    $shortcut.Save()
-    $created += $lnk
+    foreach ($name in @($linkName, $aliasName)) {
+        $lnk = Join-Path $desk $name
+        $shortcut = $shell.CreateShortcut($lnk)
+        $shortcut.TargetPath = $exe
+        $shortcut.WorkingDirectory = Split-Path $exe
+        $shortcut.Description = $desc
+        $shortcut.IconLocation = "$exe,0"
+        $shortcut.Save()
+        $created += $lnk
+    }
 }
 
 Write-Host "바로가기 생성 (v$version):"

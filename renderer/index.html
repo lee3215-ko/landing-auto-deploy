@@ -95,7 +95,7 @@
               <div class="form-group">
                 <label for="yesCaptchaClientKey">YesCaptcha Client Key</label>
                 <input type="password" id="yesCaptchaClientKey" placeholder="eec1… (sk- 로 시작하면 안 됨)" autocomplete="off">
-                <p class="bulk-hint">닷홈 reCAPTCHA 자동 통과용. OpenAI 키(sk-…)가 아니라 YesCaptcha 클라이언트 키를 넣으세요. <a href="https://yescaptcha.com" target="_blank" rel="noreferrer">yescaptcha.com</a></p>
+                <p class="bulk-hint">닷홈 reCAPTCHA + 네이버 이미지 캡챠(ImageToText)용. OpenAI 키(sk-…)가 아니라 YesCaptcha 클라이언트 키를 넣으세요. <a href="https://yescaptcha.com" target="_blank" rel="noreferrer">yescaptcha.com</a></p>
               </div>
 
               <details class="settings-collapsible" id="cursorApiDetails">
@@ -189,6 +189,17 @@
             <button class="btn btn-warning" id="pauseRunBtn" type="button" disabled>⏸ 일시정지</button>
             <button class="btn btn-primary" id="resumeRunBtn" type="button" disabled>▶ 재개</button>
             <button class="btn btn-danger" id="stopRunBtn" type="button" disabled>⏹ 정지</button>
+          </div>
+
+          <div id="runProgress" class="run-progress" hidden>
+            <div class="run-progress-top">
+              <span class="run-progress-label" id="runProgressLabel">대기 중</span>
+              <span class="run-progress-pct" id="runProgressPct">0%</span>
+            </div>
+            <div class="run-progress-track" aria-hidden="true">
+              <div class="run-progress-fill" id="runProgressFill" style="width:0%"></div>
+            </div>
+            <div class="run-progress-meta" id="runProgressMeta"></div>
           </div>
 
           <div class="log-section">
@@ -337,8 +348,8 @@
                   <input type="text" id="seoGoogle" placeholder="선택">
                 </div>
                 <div class="form-group">
-                  <label for="seoTopicCount">랜덤 선택 개수</label>
-                  <input type="number" id="seoTopicCount" min="1" max="80" value="16">
+                  <label for="seoTopicCount">랜덤 선택 개수 (적을수록 빠름)</label>
+                  <input type="number" id="seoTopicCount" min="1" max="80" value="12">
                 </div>
                 <div class="form-group">
                   <label for="seoOutputDir">저장 폴더</label>
@@ -360,8 +371,8 @@
               </details>
 
               <div class="checkbox-row" style="margin-top:14px;">
-                <label title="끄면 로컬 템플릿만 사용해 매우 빠름"><input type="checkbox" id="seoUseAi" checked> Cursor AI 사용</label>
-                <label title="키워드 콘텐츠를 한 번에 생성해 시간을 줄입니다"><input type="checkbox" id="seoFastAi" checked> 빠른 AI (배치)</label>
+                <label title="끄면 로컬 템플릿만 사용해 가장 빠름"><input type="checkbox" id="seoUseAi" checked> Cursor AI 사용</label>
+                <label title="메타·홈섹션·캡션 AI 생략 + 콘텐츠 배치·이미지 병렬 — 권장"><input type="checkbox" id="seoFastAi" checked> 빠른 생성 (권장)</label>
                 <label><input type="checkbox" id="seoDeploy" checked> 생성 후 Netlify 배포</label>
                 <label><input type="checkbox" id="seoCreateSite" checked> 새 Netlify 사이트 등록</label>
               </div>

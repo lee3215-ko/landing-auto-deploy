@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.22",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/499684884",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.22/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/499684884",
-    "asset_id":  499684884,
-    "notes":  "SEO multi-doc image cards, settings UI cleanup, Naver meta CDN cache redeploy fix",
+    "version":  "3.8.31",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.31/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.31/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "Netlify Tokens 계정 자동 로그인, 팀 빌링 URL 자동 감지(minji 하드코딩 제거), 캡챠 인식 강화, 설정 진행 게이지, 배포결과 실시간 반영, results.json BOM 안전 로드",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/499684884",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.22/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.31/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }

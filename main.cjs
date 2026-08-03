@@ -13,8 +13,8 @@ app.commandLine.appendSwitch('disable-gpu-compositing');
 // 단일 인스턴스 — 더블클릭/바로가기 중복으로 두 번 뜨는 현상 방지
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
-  // 이미 실행 중이면 즉시 종료 (이후 코드 실행 방지)
-  app.exit(0);
+  // 이미 실행 중 → 1호에 second-instance 이벤트 전달 후 즉시 종료
+  app.quit();
   process.exit(0);
 }
 
@@ -38,7 +38,9 @@ process.env.KKANG_DATA_DIR = KKANG_USER_DATA;
 
 function loadConfig() {
   try {
-    return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    let text = fs.readFileSync(CONFIG_PATH, 'utf8');
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+    return JSON.parse(text);
   } catch {
     return {
       openaiApiKey: '',
@@ -116,25 +118,31 @@ function saveConfig(config) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf8');
 }
 
-function loadResults() {
+function readJsonFile(filePath, fallback) {
   try {
-    return JSON.parse(fs.readFileSync(RESULTS_PATH, 'utf8'));
+    let text = fs.readFileSync(filePath, 'utf8');
+    // PowerShell Set-Content UTF8 등이 붙인 BOM 제거
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+    return JSON.parse(text);
   } catch {
-    return [];
+    return fallback;
   }
+}
+
+function loadResults() {
+  const data = readJsonFile(RESULTS_PATH, []);
+  return Array.isArray(data) ? data : [];
 }
 
 function saveResults(results) {
   fs.mkdirSync(path.dirname(RESULTS_PATH), { recursive: true });
-  fs.writeFileSync(RESULTS_PATH, JSON.stringify(results, null, 2), 'utf8');
+  // BOM 없는 UTF-8로 저장 (Electron JSON.parse 호환)
+  fs.writeFileSync(RESULTS_PATH, JSON.stringify(results, null, 2), { encoding: 'utf8' });
 }
 
 function loadGeneratedTokens() {
-  try {
-    return JSON.parse(fs.readFileSync(GENERATED_TOKENS_PATH, 'utf8'));
-  } catch {
-    return [];
-  }
+  const data = readJsonFile(GENERATED_TOKENS_PATH, []);
+  return Array.isArray(data) ? data : [];
 }
 
 function saveGeneratedTokens(tokens) {
@@ -262,13 +270,33 @@ Start-Sleep -Milliseconds 400
   }
 });
 
-app.on('second-instance', () => {
-  focusMainWindow();
+app.on('second-instance', (_event, _argv) => {
+  // 바로가기 재클릭 시 숨겨진/최소화 창을 반드시 앞으로
+  const bring = () => {
+    try {
+      focusMainWindow();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.setAlwaysOnTop(true);
+        mainWindow.setAlwaysOnTop(false);
+        mainWindow.moveTop();
+      }
+    } catch (e) {
+      console.error('[main] second-instance focus failed', e);
+    }
+  };
+  if (appReady) bring();
+  else app.whenReady().then(bring);
 });
 
 app.whenReady().then(() => {
   appReady = true;
   createWindow();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.once('ready-to-show', () => {
+      mainWindow.show();
+      mainWindow.focus();
+    });
+  }
   // 패키지 실행 시 시작 후 자동 업데이트 (신고 앱과 동일: 다이얼로그 → 진행률 창 → 재실행)
   if (app.isPackaged) {
     setTimeout(() => {
@@ -511,13 +539,68 @@ ipcMain.handle('start-run', async (event, config) => {
   resetRunControl();
   const { runFullPipeline } = await import('./lib/runner.js');
   try {
-    const result = await runFullPipeline({ ...config, outputRoot: OUTPUT_ROOT }, (line) => {
-      event.sender.send('log-line', line);
+    event.sender.send('job-progress', {
+      job: 'run', phase: 'start', current: 0, total: 0, label: '전체 실행 시작…', active: true,
     });
+    const result = await runFullPipeline(
+      { ...config, outputRoot: OUTPUT_ROOT },
+      (line) => { event.sender.send('log-line', line); },
+      {
+        onProgress: (p) => event.sender.send('job-progress', { job: 'run', active: true, ...p }),
+        onResult: async (row, merged) => {
+          // 설정 전체 실행 → 배포결과(canonical) + 생성 사이트에 즉시 반영
+          if (Array.isArray(merged)) {
+            saveResults(merged);
+            event.sender.send('results-updated', merged);
+          }
+          if (row?.url) {
+            try {
+              const slug = String(row.url).match(/https?:\/\/([^.]+)\.netlify\.app/i)?.[1]
+                || String(row.name || '').trim();
+              if (slug) {
+                const st = String(row.status || '').toLowerCase();
+                const siteEntry = {
+                  provider: 'netlify',
+                  name: slug,
+                  url: String(row.url).replace(/\/?$/, '/').replace(/\/$/, '') || row.url,
+                  createdAt: row.createdAt || row.registeredAt || new Date().toISOString(),
+                  status: (st === 'success' || st === 'already') ? 'deployed' : (st || 'created'),
+                  detail: {
+                    title: row.name || '',
+                    naverStatus: row.status || '',
+                    naverAccountId: row.naverAccountId || '',
+                    netlifyAccountId: row.netlifyAccountId || '',
+                    naverAuto: st === 'success' || st === 'already',
+                    from: 'settings-pipeline',
+                    message: row.error || '',
+                  },
+                };
+                const createdSites = await upsertCreatedSite(siteEntry);
+                event.sender.send('sites-updated', {
+                  site: siteEntry,
+                  createdSites,
+                  phase: 'settings-run',
+                });
+              }
+            } catch (e) {
+              event.sender.send('log-line', `[WARN] 생성 사이트 실시간 등록 실패: ${e.message}`);
+            }
+          }
+        },
+      },
+    );
     event.sender.send('log-line', `\n[LOG FILE] ${result.logFile || '없음'}`);
+    event.sender.send('job-progress', {
+      job: 'run',
+      phase: result?.stopped ? 'stopped' : 'done',
+      active: false,
+      label: result?.stopped ? '정지됨' : '완료',
+      percent: 100,
+    });
     return result;
   } catch (e) {
     event.sender.send('log-line', `[ERROR] ${e.message}`);
+    event.sender.send('job-progress', { job: 'run', phase: 'error', active: false, label: e.message });
     return { error: e.message };
   }
 });
@@ -832,14 +915,47 @@ ipcMain.handle('submit-naver-collect', async (event, options = {}) => {
 });
 
 ipcMain.handle('netlify-credits-login', async (event, options = {}) => {
-  const { startNetlifyCreditsMonitor, DEFAULT_TEAM_SLUG } = await import('./lib/netlify-credits.js');
+  const {
+    startNetlifyCreditsMonitor,
+    DEFAULT_TEAM_SLUG,
+    DEFAULT_NETLIFY_LOGIN_PASSWORD,
+    resolveNetlifyLoginEmail,
+  } = await import('./lib/netlify-credits.js');
   const config = loadConfig();
-  const teamSlug = String(options.teamSlug || config.netlifyCreditsTeam || DEFAULT_TEAM_SLUG || '').trim();
+  // 로그인 시 이전 계정 팀(minji-cho9475 등) 무시 → 로그인 후 자동 감지
+  const teamSlug = '';
+  // 설정 탭 Netlify Tokens 아이디가 최우선 (UI에서 방금 저장한 config 기준)
+  const email = resolveNetlifyLoginEmail(
+    config.netlifyTokens || [],
+    options.email || options.netlifyId || '',
+  );
+  if (!email) {
+    const msg = '설정 → Netlify Tokens에 로그인할 아이디(@naver.com)를 입력·저장한 뒤 다시 시도하세요.';
+    event.sender.send('kkang-log', `[ERROR] ${msg}`);
+    return { ok: false, error: msg };
+  }
+  const password = String(
+    options.password || config.netlifyLoginPassword || DEFAULT_NETLIFY_LOGIN_PASSWORD || '',
+  ).trim();
   const sendLog = (line) => event.sender.send('kkang-log', line);
+  sendLog(`Netlify 로그인 계정(설정 Tokens): ${email}`);
+  sendLog('이전 저장 팀 URL은 사용하지 않습니다. 로그인 계정 팀을 자동 감지합니다.');
   try {
+    // 이전 계정 팀 캐시 제거
+    try {
+      const cfgClear = loadConfig();
+      if (cfgClear.netlifyCreditsTeam) {
+        cfgClear.netlifyCreditsTeam = '';
+        saveConfig(cfgClear);
+      }
+    } catch { /* ignore */ }
+
     const out = await startNetlifyCreditsMonitor({
       dataRoot: DEFAULT_DATA_FOLDER,
       teamSlug,
+      email,
+      password,
+      rediscoverTeam: true,
       onLog: sendLog,
       onUpdate: (data) => {
         try {
@@ -866,11 +982,12 @@ ipcMain.handle('netlify-credits-login', async (event, options = {}) => {
 });
 
 ipcMain.handle('netlify-credits-refresh', async (event, options = {}) => {
-  const { refreshNetlifyCredits, DEFAULT_TEAM_SLUG } = await import('./lib/netlify-credits.js');
+  const { refreshNetlifyCredits } = await import('./lib/netlify-credits.js');
   const config = loadConfig();
   try {
     const out = await refreshNetlifyCredits({
-      teamSlug: String(options.teamSlug || config.netlifyCreditsTeam || DEFAULT_TEAM_SLUG || '').trim(),
+      // 저장된 팀이 있으면 사용, 없으면 로그인 세션에서 자동 감지
+      teamSlug: String(options.teamSlug || config.netlifyCreditsTeam || '').trim(),
     });
     if (out) {
       try {
@@ -1003,6 +1120,13 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
   const { generateKkangSite, registerNaverMetaForKkangSite } = await import('./lib/kkang-site-builder.js');
   const sendLog = (line) => event.sender.send('kkang-log', line);
   try {
+    event.sender.send('job-progress', {
+      job: 'kkang',
+      phase: 'generate',
+      active: true,
+      label: `사이트 생성 중… ${job.site_slug || ''}`.trim(),
+      percent: 10,
+    });
     const result = await generateKkangSite({
       config,
       job: {
@@ -1018,6 +1142,50 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
     });
     if (result?.ok) {
       result.netlifyAccountId = netlifyAccountId;
+      // 생성 직후 배포결과·생성사이트에 즉시 반영 (네이버 완료 전)
+      const domain = result.domain
+        || `https://${result.site_slug || job.site_slug}.netlify.app`;
+      if (!result.domain) result.domain = domain;
+      try {
+        const results = loadResults();
+        const earlyRow = {
+          name: result.site_slug || job.site_slug || 'kkang-site',
+          url: domain,
+          status: result.deployed ? 'success' : 'pending',
+          message: result.deployed
+            ? 'SEO 사이트 생성·배포 완료 — 네이버 진행 중'
+            : 'SEO 사이트 생성 완료 — 배포/네이버 진행 중',
+          source: 'kkang-site-builder',
+          output: result.output || '',
+          createdAt: new Date().toISOString(),
+        };
+        const idx = results.findIndex((r) => r.url === domain);
+        if (idx >= 0) results[idx] = { ...results[idx], ...earlyRow };
+        else results.unshift(earlyRow);
+        saveResults(results);
+        result.results = results;
+        event.sender.send('results-updated', results);
+      } catch (e) {
+        sendLog(`[WARN] 배포결과 즉시 저장 실패: ${e.message}`);
+      }
+      try {
+        const { entryFromNetlifyGenerate } = await import('./lib/sites-registry.js');
+        const earlySite = entryFromNetlifyGenerate(result, job);
+        if (earlySite) {
+          result.createdSites = await upsertCreatedSite(earlySite);
+          event.sender.send('sites-updated', { site: earlySite, createdSites: result.createdSites, phase: 'generated' });
+        }
+      } catch (e) {
+        sendLog(`[WARN] 생성 사이트 즉시 저장 실패: ${e.message}`);
+      }
+      event.sender.send('job-progress', {
+        job: 'kkang',
+        phase: 'naver',
+        active: true,
+        label: `네이버 등록 중… ${result.site_slug || ''}`.trim(),
+        percent: 55,
+        url: result.domain,
+      });
     }
 
     const manualNaver = String(job.naver_code || '').trim();
@@ -1064,6 +1232,7 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
             naverAccount,
             naverAccounts: config.naverAccounts || [],
             openaiApiKey: config.openaiApiKey || '',
+            yesCaptchaClientKey: config.yesCaptchaClientKey || '',
             headless: !!config.headless,
             metaInjectOnly: !!config.metaInjectOnly,
             outputRoot: OUTPUT_ROOT,
@@ -1131,13 +1300,13 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
       }
     }
 
-    // On success: append to deploy results for Naver pipeline visibility
+    // 최종 배포결과·생성사이트 갱신 (네이버 결과 반영)
     if (result?.ok && result.domain) {
       const results = loadResults();
       const naverNote = result.naverAuto?.metaContent
         ? ' · 네이버 인증 자동'
         : (result.naverAutoError ? ' · 네이버 인증 실패' : '');
-      results.unshift({
+      const finalRow = {
         name: result.site_slug || job.site_slug || 'kkang-site',
         url: result.domain,
         status: result.deployed ? 'success' : 'manual',
@@ -1145,15 +1314,20 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
         source: 'kkang-site-builder',
         output: result.output || '',
         createdAt: new Date().toISOString(),
-      });
+      };
+      const idx = results.findIndex((r) => r.url === result.domain);
+      if (idx >= 0) results[idx] = { ...results[idx], ...finalRow };
+      else results.unshift(finalRow);
       saveResults(results);
       result.results = results;
+      event.sender.send('results-updated', results);
 
       try {
         const { entryFromNetlifyGenerate } = await import('./lib/sites-registry.js');
         const siteEntry = entryFromNetlifyGenerate(result, job);
         if (siteEntry) {
           result.createdSites = await upsertCreatedSite(siteEntry);
+          event.sender.send('sites-updated', { site: siteEntry, createdSites: result.createdSites, phase: 'done' });
         }
       } catch (e) {
         sendLog(`[WARN] 생성 사이트 목록 저장 실패: ${e.message}`);
@@ -1163,16 +1337,25 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
     // 배포 후 Netlify 크레딧 갱신 (로그인 Chrome이 열려 있을 때)
     if (result?.ok && result.deployed) {
       try {
-        const { refreshNetlifyCredits, DEFAULT_TEAM_SLUG } = await import('./lib/netlify-credits.js');
+        const { refreshNetlifyCredits } = await import('./lib/netlify-credits.js');
         const cr = await refreshNetlifyCredits({
-          teamSlug: loadConfig().netlifyCreditsTeam || DEFAULT_TEAM_SLUG,
+          teamSlug: loadConfig().netlifyCreditsTeam || '',
         });
         if (cr) event.sender.send('netlify-credits-update', cr);
       } catch { /* ignore */ }
     }
+    event.sender.send('job-progress', {
+      job: 'kkang',
+      phase: result?.ok ? 'done' : 'error',
+      active: false,
+      percent: 100,
+      label: result?.ok ? `완료 · ${result.domain || result.site_slug || ''}` : (result?.error || '실패'),
+      url: result?.domain || '',
+    });
     return result;
   } catch (e) {
     event.sender.send('kkang-log', `[ERROR] ${e.message}`);
+    event.sender.send('job-progress', { job: 'kkang', phase: 'error', active: false, label: e.message });
     return { ok: false, error: e.message };
   }
 });
@@ -1268,6 +1451,7 @@ ipcMain.handle('kkang-retry-naver', async (event, options = {}) => {
       naverAccount,
       naverAccounts: config.naverAccounts || [],
       openaiApiKey: config.openaiApiKey || '',
+      yesCaptchaClientKey: config.yesCaptchaClientKey || '',
       headless: !!config.headless,
       metaInjectOnly: !!config.metaInjectOnly,
       outputRoot: OUTPUT_ROOT,
@@ -1713,6 +1897,7 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
       naverAccount,
       naverAccounts: config.naverAccounts || [],
       openaiApiKey: config.openaiApiKey || '',
+      yesCaptchaClientKey: config.yesCaptchaClientKey || '',
       headless: !!config.headless,
       metaInjectOnly: !!config.metaInjectOnly,
       outputRoot: OUTPUT_ROOT,

@@ -75,10 +75,26 @@ function parseLines(text) {
 function pickPrimaryNetlifyCreds() {
   const tokens = config.netlifyTokens || [];
   const norm = (t) => (typeof t === 'string' ? { token: t, id: '', used: false } : (t || {}));
-  const list = tokens.map(norm).filter((t) => (t.token || '').trim());
-  const picked = list.find((t) => !t.used) || list[0];
+  const list = tokens.map(norm);
+  // 토큰값 있는 항목 우선, 없어도 아이디만 있으면 로그인용으로 사용
+  const withToken = list.filter((t) => (t.token || '').trim());
+  const withId = list.filter((t) => (t.id || '').trim());
+  const picked = withToken.find((t) => !t.used)
+    || withId.find((t) => !t.used)
+    || withToken[0]
+    || withId[0]
+    || list[0];
   if (!picked) return { token: '', id: '' };
   return { token: String(picked.token || '').trim(), id: String(picked.id || '').trim() };
+}
+
+/** Netlify 로그인용: Tokens 아이디 (미사용 우선) */
+function pickNetlifyLoginId() {
+  const tokens = config.netlifyTokens || [];
+  const list = tokens.map((t) => (typeof t === 'string' ? { token: t, id: '', used: false } : (t || {})));
+  const withId = list.filter((t) => String(t.id || '').trim());
+  const picked = withId.find((t) => !t.used) || withId[0];
+  return String(picked?.id || '').trim();
 }
 
 function renderNetlifyTokens() {
@@ -567,10 +583,19 @@ function updateStats(results) {
     : '인덱싱 확인할 배포 URL이 없습니다.';
 }
 
+function updateResultsBadge(results) {
+  const badge = $('resultsBadge');
+  if (!badge) return;
+  const n = (results || savedResults || []).length;
+  badge.hidden = n < 1;
+  badge.textContent = String(n);
+}
+
 function renderResultsTable(results) {
   const list = $('resultsList');
   list.innerHTML = '';
   updateStats(results);
+  updateResultsBadge(results);
 
   if (!results?.length) {
     list.innerHTML = '<p class="empty-hint">저장된 결과가 없습니다.</p>';
@@ -597,11 +622,18 @@ function renderResultsTable(results) {
       <tbody></tbody>
     </table>`;
   const tbody = table.querySelector('tbody');
-  const rows = [...results].reverse();
+  // 최신 등록이 위로 (registeredAt / createdAt 내림차순)
+  const indexed = results.map((r, originalIndex) => ({ r, originalIndex }));
+  indexed.sort((a, b) => {
+    const ta = Date.parse(a.r.registeredAt || a.r.createdAt || 0) || 0;
+    const tb = Date.parse(b.r.registeredAt || b.r.createdAt || 0) || 0;
+    if (tb !== ta) return tb - ta;
+    return b.originalIndex - a.originalIndex;
+  });
+  const rows = indexed;
 
   for (let idx = 0; idx < rows.length; idx++) {
-    const r = rows[idx];
-    const originalIndex = r.originalIndex ?? (results.length - 1 - idx);
+    const { r, originalIndex } = rows[idx];
     const st = STATUS_MAP[r.status] || { label: r.status || '-', cls: 'unknown' };
     const manualBtn = r.status === 'captcha'
       ? `<button class="btn btn-primary btn-sm" type="button" data-action="mark-manual" data-idx="${originalIndex}">수동완료</button>`
@@ -1052,31 +1084,53 @@ function renderNetlifyCreditBadge(data) {
 }
 
 async function startNetlifyCreditsLogin() {
-  seoLog('Netlify 로그인 Chrome 실행…');
-  const teamHint = (
-    config.netlifyCreditsTeam
-    || netlifyCreditState?.teamSlug
-    || 'minji-cho9475'
-  ).trim();
-  const out = await window.electronAPI.netlifyCreditsLogin({ teamSlug: teamHint });
+  // 설정 탭에 방금 입력한 Tokens 아이디를 디스크에 저장한 뒤 로그인
+  const cfg = collectConfig();
+  config = { ...config, ...cfg };
+  await window.electronAPI.saveConfig(cfg);
+
+  const emailHint = pickNetlifyLoginId() || pickPrimaryNetlifyCreds().id || '';
+  if (!emailHint) {
+    const msg = '설정 → Netlify Tokens에 로그인할 아이디(@naver.com)를 입력하세요.';
+    seoLog(`✖ ${msg}`);
+    alert(msg);
+    return;
+  }
+  const emailShown = emailHint.includes('@') ? emailHint : `${emailHint}@naver.com`;
+  seoLog(`Netlify 로그인 Chrome 실행… (설정 Tokens 아이디: ${emailShown})`);
+  seoLog('이전 팀 URL(minji-cho9475 등)은 쓰지 않고, 로그인 계정 팀을 자동 감지합니다.');
+  // teamSlug 비움 → 로그인 후 현재 계정 팀으로 이동
+  const out = await window.electronAPI.netlifyCreditsLogin({
+    teamSlug: '',
+    email: emailHint,
+    netlifyId: emailHint,
+  });
   if (out?.error) {
     seoLog(`✖ ${out.error}`);
     alert(out.error);
     return;
   }
-  seoLog(`빌링: https://app.netlify.com/teams/${teamHint}/billing/general`);
-  seoLog('로그인 후 크레딧은 「↻」또는 배포 완료 시에만 갱신됩니다. (자동 반복 수집 없음)');
+  const team = (out?.teamSlug || '').trim();
+  if (team) {
+    config.netlifyCreditsTeam = team;
+    seoLog(`빌링: https://app.netlify.com/teams/${team}/billing/general`);
+  } else {
+    seoLog('빌링: 팀 자동 감지 대기 중 (Teams 홈)');
+  }
+  seoLog(`자동 로그인 계정: ${out?.email || emailShown}`);
+  seoLog('크레딧은 「↻」또는 배포 완료 시에만 갱신됩니다.');
   if (out) renderNetlifyCreditBadge(out);
 }
 
 async function refreshNetlifyCreditsUi() {
   seoLog('크레딧 새로고침…');
   const out = await window.electronAPI.netlifyCreditsRefresh({
-    teamSlug: (config.netlifyCreditsTeam || netlifyCreditState?.teamSlug || 'minji-cho9475').trim(),
+    teamSlug: (config.netlifyCreditsTeam || netlifyCreditState?.teamSlug || '').trim(),
   });
   if (out?.error && out.credits == null) {
     seoLog(`크레딧 새로고침: ${out.error}`);
   }
+  if (out?.teamSlug) config.netlifyCreditsTeam = out.teamSlug;
   if (out) renderNetlifyCreditBadge(out);
 }
 
@@ -2004,6 +2058,50 @@ function setRunControls({ active = false, paused = false } = {}) {
   $('stopRunBtn').disabled = !active;
 }
 
+function setJobProgress(data = {}) {
+  const box = $('runProgress');
+  if (!box) return;
+  const active = data.active !== false && data.phase !== 'done' && data.phase !== 'stopped' && data.phase !== 'error';
+  const hide = data.hidden === true || (!active && !data.keepVisible);
+  if (hide && data.phase !== 'done' && data.phase !== 'stopped' && data.phase !== 'error') {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+  let pct = Number(data.percent);
+  if (!Number.isFinite(pct)) {
+    const cur = Number(data.current) || 0;
+    const tot = Number(data.total) || 0;
+    pct = tot > 0 ? Math.round((cur / tot) * 100) : (active ? 8 : 0);
+  }
+  pct = Math.max(0, Math.min(100, pct));
+  if ($('runProgressFill')) $('runProgressFill').style.width = `${pct}%`;
+  if ($('runProgressPct')) $('runProgressPct').textContent = `${pct}%`;
+  if ($('runProgressLabel')) {
+    $('runProgressLabel').textContent = data.label || data.name || (active ? '실행 중…' : '대기 중');
+  }
+  if ($('runProgressMeta')) {
+    const bits = [];
+    if (data.job) bits.push(data.job === 'kkang' ? 'Netlify SEO' : data.job === 'run' ? '전체 실행' : data.job);
+    if (data.phase) bits.push(data.phase);
+    if (data.current && data.total) bits.push(`${data.current}/${data.total}`);
+    if (data.url) bits.push(data.url);
+    if (data.status) bits.push(data.status);
+    $('runProgressMeta').textContent = bits.filter(Boolean).join(' · ');
+  }
+  if (!active && (data.phase === 'done' || data.phase === 'stopped' || data.phase === 'error')) {
+    setTimeout(() => {
+      if ($('runProgress') && !$('startBtn')?.disabled && !seoBusy) {
+        // 새 작업이 없으면 게이지 숨김
+        const label = $('runProgressLabel')?.textContent || '';
+        if (/완료|정지|실패/.test(label) || data.phase === 'error') {
+          $('runProgress').hidden = true;
+        }
+      }
+    }, 8000);
+  }
+}
+
 async function startRun() {
   const cfg = collectConfig();
   if (!cfg.netlifyTokens.length) return alert('Netlify 토큰을 하나 이상 입력하세요.');
@@ -2020,12 +2118,21 @@ async function startRun() {
   }
 
   setRunControls({ active: true });
+  setJobProgress({ active: true, job: 'run', phase: 'start', label: '전체 실행 시작…', percent: 2 });
   $('logWindow').textContent = '';
 
   await window.electronAPI.saveConfig(cfg);
   const result = await window.electronAPI.startRun(cfg);
 
   setRunControls({ active: false });
+  setJobProgress({
+    active: false,
+    job: 'run',
+    phase: result?.error ? 'error' : (result?.stopped ? 'stopped' : 'done'),
+    label: result?.error ? result.error : (result?.stopped ? '정지됨' : '완료'),
+    percent: 100,
+    keepVisible: true,
+  });
 
   // 성공 ZIP이 「성공」폴더로 이동된 경우 — 선택 목록에서 제거
   const moved = Array.isArray(result?.movedZips) ? result.movedZips : [];
@@ -2049,19 +2156,13 @@ async function startRun() {
     logLine(`❌ 오류: ${result.error}`);
   } else if (result.stopped) {
     logLine('⏹ 배포가 정지되었습니다. (완료된 항목까지 저장됨)');
-    const newResults = result.results || [];
-    if (newResults.length) {
-      savedResults = [...savedResults, ...newResults];
-      renderResultsTable(savedResults);
-      switchTab('results');
-    }
   } else {
     logLine('✨ 실행 완료');
-    const newResults = result.results || [];
-    savedResults = [...savedResults, ...newResults];
-    renderResultsTable(savedResults);
-    switchTab('results');
   }
+  // 디스크(배포결과) 기준으로 다시 로드 — 실시간 저장분 누락/중복 방지
+  await loadSavedResults();
+  await loadCreatedSites(true);
+  if (!result.error) switchTab('results');
 }
 
 async function pauseRun() {
@@ -2979,7 +3080,7 @@ function seoSelectVisible(on) {
 }
 
 function seoRandomSelect() {
-  const n = parseInt($('seoTopicCount')?.value || '16', 10) || 16;
+  const n = parseInt($('seoTopicCount')?.value || '12', 10) || 12;
   const pool = visibleSeoKeywords();
   if (!pool.length) return alert('현재 탭에 선택할 키워드가 없습니다.');
   seoSelectVisible(false);
@@ -3108,6 +3209,15 @@ async function startSeoGenerate() {
   for (const s of collectUsedSeoSlugs()) seoBatchUsedSlugs.add(s);
   if ($('seoLog')) $('seoLog').textContent = '';
   await window.electronAPI.saveConfig(collectConfig());
+  setJobProgress({
+    active: true,
+    job: 'kkang',
+    phase: 'batch',
+    current: 0,
+    total: deployCount,
+    label: `SEO 생성 준비… 0/${deployCount}`,
+    percent: 2,
+  });
 
   let okCount = 0;
   let failCount = 0;
@@ -3122,6 +3232,15 @@ async function startSeoGenerate() {
       }
 
       seoLog(`═══ 배포 ${i + 1}/${deployCount} ═══`);
+      setJobProgress({
+        active: true,
+        job: 'kkang',
+        phase: 'generate',
+        current: i + 1,
+        total: deployCount,
+        label: `SEO 생성 ${i + 1}/${deployCount}`,
+        percent: Math.round(((i) / deployCount) * 100),
+      });
       // 현재 태그 내에서 키워드·사이트명 랜덤 재선택
       seoRandomSelect();
       const slug = sanitizeSeoSlug($('seoSiteSlug')?.value || '') || randomSeoSlug(true);
@@ -3143,7 +3262,7 @@ async function startSeoGenerate() {
         phone: ($('seoPhone')?.value || '').trim() || '010-6338-7124',
         naver_code: ($('seoNaver')?.value || '').trim(),
         google_code: ($('seoGoogle')?.value || '').trim(),
-        topic_count: parseInt($('seoTopicCount')?.value || '16', 10) || 16,
+        topic_count: parseInt($('seoTopicCount')?.value || '12', 10) || 12,
         use_ai: !!$('seoUseAi')?.checked,
         fast_ai: !!$('seoFastAi')?.checked,
         cursor_api_key: ($('cursorApiKey')?.value || config.cursorApiKey || '').trim(),
@@ -3202,6 +3321,14 @@ async function startSeoGenerate() {
   } finally {
     setSeoBusy(false);
     unlockSeoInputs();
+    setJobProgress({
+      active: false,
+      job: 'kkang',
+      phase: seoStopRequested ? 'stopped' : 'done',
+      label: seoStopRequested ? '배치 정지' : `배치 완료 · 성공 ${okCount}`,
+      percent: 100,
+      keepVisible: true,
+    });
     try { await window.electronAPI.focusMainWindow?.(); } catch { /* ignore */ }
   }
 
@@ -3799,6 +3926,23 @@ window.electronAPI.onTokenGenLog(tokenGenLog);
 window.electronAPI.onCrawlUrlLog(crawlLog);
 window.electronAPI.onNaverCollectProgress(onNaverCollectProgress);
 window.electronAPI.onKkangLog(seoLog);
+window.electronAPI.onJobProgress?.((data) => setJobProgress(data || {}));
+window.electronAPI.onResultsUpdated?.((list) => {
+  if (!Array.isArray(list)) return;
+  savedResults = list;
+  renderResultsTable(savedResults);
+});
+window.electronAPI.onSitesUpdated?.((data) => {
+  if (Array.isArray(data?.createdSites)) {
+    createdSites = data.createdSites;
+  } else if (data?.site) {
+    const id = data.site.id || data.site.url;
+    const idx = (createdSites || []).findIndex((s) => (s.id || s.url) === id);
+    if (idx >= 0) createdSites[idx] = { ...createdSites[idx], ...data.site };
+    else createdSites = [data.site, ...(createdSites || [])];
+  }
+  renderCreatedSites();
+});
 window.electronAPI.onNetlifyCreditsUpdate((data) => {
   renderNetlifyCreditBadge(data || {});
   if (data?.ok && data.credits != null) {
