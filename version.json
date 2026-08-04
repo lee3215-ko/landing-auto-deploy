@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.31",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/500105612",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.31/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/500105612",
-    "asset_id":  500105612,
-    "notes":  "Netlify Tokens 계정 자동 로그인, 팀 빌링 URL 자동 감지(minji 하드코딩 제거), 캡챠 인식 강화, 설정 진행 게이지, 배포결과 실시간 반영, results.json BOM 안전 로드",
+    "version":  "3.8.36",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.36/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.36/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "롱폼 SEO 미리보기 스타일로 사이트 생성 전환 (홈+6토픽, 이미지 카드, 전화/문자상담)",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/500105612",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.31/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.36/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }

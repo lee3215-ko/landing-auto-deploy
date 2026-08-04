@@ -42,6 +42,9 @@
           <span class="icon">📋</span> 배포 결과
           <span class="nav-badge" id="resultsBadge" hidden>0</span>
         </button>
+        <button class="nav-btn" id="nav-learn" type="button" data-tab="learn">
+          <span class="icon">🧠</span> 학습
+        </button>
       </nav>
       <div class="sidebar-footer">
         <span class="version-tag" id="appVersionTag">v…</span>
@@ -348,8 +351,9 @@
                   <input type="text" id="seoGoogle" placeholder="선택">
                 </div>
                 <div class="form-group">
-                  <label for="seoTopicCount">랜덤 선택 개수 (적을수록 빠름)</label>
-                  <input type="number" id="seoTopicCount" min="1" max="80" value="12">
+                  <label for="seoTopicCount">토픽 페이지 수 (기본 6 · 미리보기 롱폼)</label>
+                  <input type="number" id="seoTopicCount" min="4" max="8" value="6">
+                  <p class="bulk-hint">홈 + 토픽 N페이지. 밝은 롱폼·이미지 카드·지금 전화/문자상담 구조로 생성합니다.</p>
                 </div>
                 <div class="form-group">
                   <label for="seoOutputDir">저장 폴더</label>
@@ -357,6 +361,14 @@
                     <input type="text" id="seoOutputDir" placeholder="output/kkang-sites" style="flex:1;">
                     <button type="button" class="btn btn-ghost btn-sm" id="seoBrowseOutBtn">찾기</button>
                   </div>
+                </div>
+                <div class="form-group">
+                  <label for="seoImageDir">이미지 폴더 (선택)</label>
+                  <div class="row" style="gap:8px;">
+                    <input type="text" id="seoImageDir" placeholder="비우면 자동 생성 이미지 사용" style="flex:1;">
+                    <button type="button" class="btn btn-ghost btn-sm" id="seoBrowseImageBtn">찾기</button>
+                  </div>
+                  <p class="bulk-hint">폴더 안 PNG/JPG/WEBP를 사이트마다 랜덤으로 골라 썸네일·히어로·OG에 넣습니다. 비어 있거나 없으면 미리보기처럼 자동 제작합니다.</p>
                 </div>
                 <p class="bulk-hint">Cursor API는 <strong>설정</strong> 탭의 「Cursor API Key」, Netlify 토큰은 「Netlify Tokens」에서 관리합니다.</p>
                 <div class="form-group">
@@ -744,6 +756,45 @@
             <p class="bulk-hint" id="indexCheckHint">배포 URL을 네이버 <code>site:URL</code> 검색으로 확인합니다. <strong>네이버 로그인·계정 불필요</strong> (공개 검색만 사용).</p>
             <div id="indexProgress" class="index-progress" hidden></div>
             <div id="resultsList"></div>
+          </div>
+        </div>
+
+        <!-- 캡챠 학습 패널 -->
+        <div id="learnPanel" class="panel">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title"><span class="emoji">🧠</span> 캡챠 학습</div>
+                <div class="card-sub">실패 로그를 모아 두고, 필요할 때 「학습하기」로 실패율을 줄입니다</div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="btn btn-ghost btn-sm" id="learnRefreshBtn">새로고침</button>
+                <button type="button" class="btn btn-primary" id="learnTrainBtn">학습하기</button>
+              </div>
+            </div>
+            <p class="bulk-hint">캡챠 OCR·제출 실패는 자동으로 기록됩니다. 「학습하기」는 직접 누를 때만 실행됩니다. YesCaptcha 재시도·회피 답·문자 혼동 힌트가 갱신됩니다.</p>
+            <div class="stats-row" id="learnStatsRow" style="margin-top:12px;">
+              <div class="stat-card total">
+                <div class="value" id="learnFailCount">0</div>
+                <div class="label">실패 기록</div>
+              </div>
+              <div class="stat-card success">
+                <div class="value" id="learnOkCount">0</div>
+                <div class="label">성공 기록</div>
+              </div>
+              <div class="stat-card indexed">
+                <div class="value" id="learnAvoidCount">0</div>
+                <div class="label">회피 답</div>
+              </div>
+              <div class="stat-card manual">
+                <div class="value" id="learnTrainedAt" style="font-size:13px;">—</div>
+                <div class="label">마지막 학습</div>
+              </div>
+            </div>
+            <p class="bulk-hint" id="learnModelHint" style="margin-top:8px;"></p>
+            <div id="learnLog" class="log-window" style="height:120px;margin-top:12px;"></div>
+            <h3 style="font-size:13px;font-weight:700;margin:16px 0 8px;">최근 실패</h3>
+            <div id="learnFailList" class="item-list"></div>
           </div>
         </div>
       </div>

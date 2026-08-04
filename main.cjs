@@ -131,13 +131,26 @@ function readJsonFile(filePath, fallback) {
 
 function loadResults() {
   const data = readJsonFile(RESULTS_PATH, []);
-  return Array.isArray(data) ? data : [];
+  const all = Array.isArray(data) ? data : [];
+  // 배포결과 = 설정 탭 전용 (kkang 등 제외). 동기 require 없이 인라인 판별
+  return all.filter((r) => {
+    const s = String(r?.source || '').toLowerCase();
+    if (/kkang|dothome|cloudflare|cf-pages|cf_pages/.test(s)) return false;
+    if (/settings|pipeline/.test(s)) return true;
+    return !s;
+  });
 }
 
 function saveResults(results) {
   fs.mkdirSync(path.dirname(RESULTS_PATH), { recursive: true });
+  const cleaned = (Array.isArray(results) ? results : []).filter((r) => {
+    const s = String(r?.source || '').toLowerCase();
+    if (/kkang|dothome|cloudflare|cf-pages|cf_pages/.test(s)) return false;
+    if (/settings|pipeline/.test(s)) return true;
+    return !s;
+  });
   // BOM 없는 UTF-8로 저장 (Electron JSON.parse 호환)
-  fs.writeFileSync(RESULTS_PATH, JSON.stringify(results, null, 2), { encoding: 'utf8' });
+  fs.writeFileSync(RESULTS_PATH, JSON.stringify(cleaned, null, 2), { encoding: 'utf8' });
 }
 
 function loadGeneratedTokens() {
@@ -156,26 +169,42 @@ async function loadCreatedSites({ sync = true } = {}) {
     saveSitesRegistry,
     mergeLegacySources,
     enrichSitesFromLocal,
+    isCreatedSitesEntry,
   } = await import('./lib/sites-registry.js');
-  const current = loadSitesRegistry(CREATED_SITES_PATH);
+  const current = loadSitesRegistry(CREATED_SITES_PATH).filter(isCreatedSitesEntry);
   if (!sync) {
     return enrichSitesFromLocal(current, { kkangOutputRoot: path.join(OUTPUT_ROOT, 'kkang-sites') });
   }
   const config = loadConfig();
+  // kkang 등 구 배포결과 백필용 — 파일 원본에서 settings 제외분만
+  const rawResults = readJsonFile(RESULTS_PATH, []);
   const merged = mergeLegacySources(current, {
-    results: loadResults(),
+    results: Array.isArray(rawResults) ? rawResults : [],
     dothomeAccounts: config.dothome?.accounts || [],
     cloudflareSites: config.cloudflare?.sites || [],
-  });
+  }).filter(isCreatedSitesEntry);
   const enriched = enrichSitesFromLocal(merged, {
     kkangOutputRoot: path.join(OUTPUT_ROOT, 'kkang-sites'),
-  });
+  }).filter(isCreatedSitesEntry);
   return saveSitesRegistry(CREATED_SITES_PATH, enriched);
 }
 
 async function upsertCreatedSite(entry) {
-  const { loadSitesRegistry, saveSitesRegistry, upsertSite } = await import('./lib/sites-registry.js');
-  const sites = upsertSite(loadSitesRegistry(CREATED_SITES_PATH), entry);
+  const {
+    loadSitesRegistry,
+    saveSitesRegistry,
+    upsertSite,
+    isCreatedSitesEntry,
+    normalizeSiteEntry,
+  } = await import('./lib/sites-registry.js');
+  const normalized = normalizeSiteEntry(entry);
+  if (!normalized || !isCreatedSitesEntry(normalized)) {
+    return loadSitesRegistry(CREATED_SITES_PATH).filter(isCreatedSitesEntry);
+  }
+  const sites = upsertSite(
+    loadSitesRegistry(CREATED_SITES_PATH).filter(isCreatedSitesEntry),
+    normalized,
+  ).filter(isCreatedSitesEntry);
   return saveSitesRegistry(CREATED_SITES_PATH, sites);
 }
 
@@ -288,7 +317,11 @@ app.on('second-instance', (_event, _argv) => {
   else app.whenReady().then(bring);
 });
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  try {
+    const { setCaptchaLearnRoot } = await import('./lib/captcha-learn.js');
+    setCaptchaLearnRoot(path.join(OUTPUT_ROOT, 'captcha-learn'));
+  } catch { /* ignore */ }
   appReady = true;
   createWindow();
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -297,6 +330,9 @@ app.whenReady().then(() => {
       mainWindow.focus();
     });
   }
+  // 배포결과(설정) / 생성사이트(기타 탭) 분리 — 기존 혼재 데이터 정리
+  try { saveResults(loadResults()); } catch { /* ignore */ }
+  setTimeout(() => { loadCreatedSites({ sync: true }).catch(() => {}); }, 500);
   // 패키지 실행 시 시작 후 자동 업데이트 (신고 앱과 동일: 다이얼로그 → 진행률 창 → 재실행)
   if (app.isPackaged) {
     setTimeout(() => {
@@ -347,6 +383,26 @@ async function initDothomeMailSessionListeners() {
 
 ipcMain.handle('get-app-version', () => app.getVersion());
 
+ipcMain.handle('captcha-learn-stats', async () => {
+  const { getCaptchaLearnStats, listRecentCaptchaFailures, setCaptchaLearnRoot } = await import('./lib/captcha-learn.js');
+  setCaptchaLearnRoot(path.join(OUTPUT_ROOT, 'captcha-learn'));
+  return {
+    ok: true,
+    stats: getCaptchaLearnStats(),
+    recent: listRecentCaptchaFailures(40),
+  };
+});
+
+ipcMain.handle('captcha-learn-train', async (event) => {
+  const { trainCaptchaModel, getCaptchaLearnStats, setCaptchaLearnRoot } = await import('./lib/captcha-learn.js');
+  setCaptchaLearnRoot(path.join(OUTPUT_ROOT, 'captcha-learn'));
+  const sendLog = (line) => {
+    try { event.sender.send('captcha-learn-log', line); } catch { /* ignore */ }
+  };
+  const result = trainCaptchaModel({ onLog: sendLog });
+  return { ...result, stats: getCaptchaLearnStats() };
+});
+
 ipcMain.handle('clipboard-write', (_event, text) => {
   const value = text == null ? '' : String(text);
   clipboard.writeText(value);
@@ -374,6 +430,7 @@ ipcMain.handle('naver-session-start', async (event, options = {}) => {
       naverAccount: acct,
       naverAccounts: config.naverAccounts || [],
       openaiApiKey: config.openaiApiKey || '',
+      yesCaptchaClientKey: config.yesCaptchaClientKey || '',
       headless: false,
       forceRelogin: !!options.forceRelogin,
       userDataDir: profileDir,
@@ -547,44 +604,11 @@ ipcMain.handle('start-run', async (event, config) => {
       (line) => { event.sender.send('log-line', line); },
       {
         onProgress: (p) => event.sender.send('job-progress', { job: 'run', active: true, ...p }),
-        onResult: async (row, merged) => {
-          // 설정 전체 실행 → 배포결과(canonical) + 생성 사이트에 즉시 반영
+        onResult: async (_row, merged) => {
+          // 설정 전체 실행 → 배포결과 탭만 (생성 사이트에는 넣지 않음)
           if (Array.isArray(merged)) {
             saveResults(merged);
-            event.sender.send('results-updated', merged);
-          }
-          if (row?.url) {
-            try {
-              const slug = String(row.url).match(/https?:\/\/([^.]+)\.netlify\.app/i)?.[1]
-                || String(row.name || '').trim();
-              if (slug) {
-                const st = String(row.status || '').toLowerCase();
-                const siteEntry = {
-                  provider: 'netlify',
-                  name: slug,
-                  url: String(row.url).replace(/\/?$/, '/').replace(/\/$/, '') || row.url,
-                  createdAt: row.createdAt || row.registeredAt || new Date().toISOString(),
-                  status: (st === 'success' || st === 'already') ? 'deployed' : (st || 'created'),
-                  detail: {
-                    title: row.name || '',
-                    naverStatus: row.status || '',
-                    naverAccountId: row.naverAccountId || '',
-                    netlifyAccountId: row.netlifyAccountId || '',
-                    naverAuto: st === 'success' || st === 'already',
-                    from: 'settings-pipeline',
-                    message: row.error || '',
-                  },
-                };
-                const createdSites = await upsertCreatedSite(siteEntry);
-                event.sender.send('sites-updated', {
-                  site: siteEntry,
-                  createdSites,
-                  phase: 'settings-run',
-                });
-              }
-            } catch (e) {
-              event.sender.send('log-line', `[WARN] 생성 사이트 실시간 등록 실패: ${e.message}`);
-            }
+            event.sender.send('results-updated', loadResults());
           }
         },
       },
@@ -1142,32 +1166,10 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
     });
     if (result?.ok) {
       result.netlifyAccountId = netlifyAccountId;
-      // 생성 직후 배포결과·생성사이트에 즉시 반영 (네이버 완료 전)
+      // 넷리파이 SEO → 생성 사이트 탭만 (배포결과에는 넣지 않음)
       const domain = result.domain
         || `https://${result.site_slug || job.site_slug}.netlify.app`;
       if (!result.domain) result.domain = domain;
-      try {
-        const results = loadResults();
-        const earlyRow = {
-          name: result.site_slug || job.site_slug || 'kkang-site',
-          url: domain,
-          status: result.deployed ? 'success' : 'pending',
-          message: result.deployed
-            ? 'SEO 사이트 생성·배포 완료 — 네이버 진행 중'
-            : 'SEO 사이트 생성 완료 — 배포/네이버 진행 중',
-          source: 'kkang-site-builder',
-          output: result.output || '',
-          createdAt: new Date().toISOString(),
-        };
-        const idx = results.findIndex((r) => r.url === domain);
-        if (idx >= 0) results[idx] = { ...results[idx], ...earlyRow };
-        else results.unshift(earlyRow);
-        saveResults(results);
-        result.results = results;
-        event.sender.send('results-updated', results);
-      } catch (e) {
-        sendLog(`[WARN] 배포결과 즉시 저장 실패: ${e.message}`);
-      }
       try {
         const { entryFromNetlifyGenerate } = await import('./lib/sites-registry.js');
         const earlySite = entryFromNetlifyGenerate(result, job);
@@ -1239,7 +1241,8 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
             onLog: sendLog,
             firstDeploy: !!deferDeployForNaver,
           });
-          result.naverAccountId = naverAccount.id;
+          result.naverAccountId = naverResult?.naverAccountId || naverAccount.id;
+          result.netlifyAccountId = netlifyAccountId || result.netlifyAccountId || '';
           if (naverResult?.deployed || naverResult?.deployUrl) {
             result.deployed = true;
             if (naverResult.deployUrl) result.domain = naverResult.deployUrl;
@@ -1253,7 +1256,7 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
           const naverOk = ['success', 'already', 'manual'].includes(naverSt) && !naverResult?.partial;
           result.naverAuto = {
             ...naverResult,
-            naverAccountId: naverResult?.naverAccountId || naverAccount.id,
+            naverAccountId: result.naverAccountId,
           };
           if (naverOk) {
             result.message = (result.message || '') + (deferDeployForNaver
@@ -1270,6 +1273,7 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
           sendLog(`[ERROR] 네이버 HTML 인증 자동 삽입 실패: ${naverErr.message}`);
           sendLog('   → 「생성 사이트」탭에서 「네이버 인증」또는 「색인재시도」로 재시도할 수 있습니다.');
           result.naverAccountId = naverAccount.id;
+          result.netlifyAccountId = netlifyAccountId || result.netlifyAccountId || '';
           result.naverAuto = {
             status: 'error',
             error: naverErr.message,
@@ -1300,28 +1304,8 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
       }
     }
 
-    // 최종 배포결과·생성사이트 갱신 (네이버 결과 반영)
+    // 최종 생성사이트 갱신 (네이버 결과 반영) — 배포결과 탭과 분리
     if (result?.ok && result.domain) {
-      const results = loadResults();
-      const naverNote = result.naverAuto?.metaContent
-        ? ' · 네이버 인증 자동'
-        : (result.naverAutoError ? ' · 네이버 인증 실패' : '');
-      const finalRow = {
-        name: result.site_slug || job.site_slug || 'kkang-site',
-        url: result.domain,
-        status: result.deployed ? 'success' : 'manual',
-        message: (result.deployed ? 'SEO 사이트 생성·배포 완료' : 'SEO 사이트 생성 완료 (배포 안 함)') + naverNote,
-        source: 'kkang-site-builder',
-        output: result.output || '',
-        createdAt: new Date().toISOString(),
-      };
-      const idx = results.findIndex((r) => r.url === result.domain);
-      if (idx >= 0) results[idx] = { ...results[idx], ...finalRow };
-      else results.unshift(finalRow);
-      saveResults(results);
-      result.results = results;
-      event.sender.send('results-updated', results);
-
       try {
         const { entryFromNetlifyGenerate } = await import('./lib/sites-registry.js');
         const siteEntry = entryFromNetlifyGenerate(result, job);
@@ -1729,8 +1713,8 @@ ipcMain.handle('dothome-mail-session-login', async (event, options = {}) => {
   if (!naverAccount?.id || !naverAccount?.pw) {
     return { ok: false, error: '설정 탭에 네이버 계정(아이디·비밀번호)을 등록하세요. 이메일 앞부분과 동일해야 합니다.' };
   }
-  if (!config.openaiApiKey) {
-    return { ok: false, error: '설정 탭에 OpenAI API Key가 필요합니다. (로그인 캡챠)' };
+  if (!config.openaiApiKey && !config.yesCaptchaClientKey) {
+    return { ok: false, error: '설정 탭에 OpenAI 또는 YesCaptcha 키가 필요합니다. (로그인 캡챠)' };
   }
 
   const {
@@ -1746,6 +1730,7 @@ ipcMain.handle('dothome-mail-session-login', async (event, options = {}) => {
       naverId: naverAccount.id,
       naverPw: naverAccount.pw,
       openaiApiKey: config.openaiApiKey || '',
+      yesCaptchaClientKey: config.yesCaptchaClientKey || '',
       headless: false,
       forceRelogin: !!options.forceRelogin,
       scratchDir: path.join(OUTPUT_ROOT, 'dothome-mail-captcha'),

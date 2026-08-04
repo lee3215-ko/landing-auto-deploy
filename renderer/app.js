@@ -28,12 +28,13 @@ let seoKeywordsLoaded = false;
 
 const PAGE_META = {
   config: { title: '설정', subtitle: 'Netlify 대량 배포 및 네이버 서치어드바이저 자동 등록' },
-  'seo-gen': { title: '넷리파이 생성', subtitle: '키워드 SEO 랜딩 생성 · Cursor AI · Netlify 배포 (KKang)' },
+  'seo-gen': { title: '넷리파이 생성', subtitle: '롱폼 SEO 미리보기 스타일 · 이미지 카드 · Netlify 배포' },
   'cf-pages': { title: 'Cloudflare Pages 생성', subtitle: 'Cloudflare Pages 사이트 생성 · 배포 (기본 틀 · 순차 업데이트)' },
   dothome: { title: '닷홈 호스팅 생성', subtitle: '닷홈 회원가입 자동화 · 이후 FTP/사이트 배포' },
   'url-crawl': { title: 'URL 수집', subtitle: '하위 URL 수집 후 네이버 웹페이지 수집 일괄 신청' },
   sites: { title: '생성 사이트', subtitle: 'Netlify · Cloudflare Pages · 닷홈 생성 목록 (생성일 포함)' },
   results: { title: '배포/등록 결과', subtitle: '저장된 배포 URL 및 네이버 등록 현황' },
+  learn: { title: '학습', subtitle: '캡챠 실패 로그 · 수동 학습으로 실패율 감소' },
 };
 
 const SITE_PROVIDER_META = {
@@ -448,6 +449,7 @@ function collectConfig() {
     kkangBuilderPath: ($('seoBuilderPath')?.value || config.kkangBuilderPath || '').trim(),
     kkangFastAi: $('seoFastAi') ? !!$('seoFastAi').checked : (config.kkangFastAi !== false),
     kkangOutputDir: ($('seoOutputDir')?.value || config.kkangOutputDir || '').trim(),
+    kkangImageDir: ($('seoImageDir')?.value || config.kkangImageDir || '').trim(),
     kkangNetlifyToken: primaryNetlify.token,
     kkangNetlifyId: primaryNetlify.id,
     cloudflare: {
@@ -883,6 +885,7 @@ function switchTab(name) {
   $('urlCrawlPanel').classList.toggle('active', name === 'url-crawl');
   $('sitesPanel')?.classList.toggle('active', name === 'sites');
   $('resultsPanel').classList.toggle('active', name === 'results');
+  $('learnPanel')?.classList.toggle('active', name === 'learn');
   $('nav-config').classList.toggle('active', name === 'config');
   $('nav-seo-gen')?.classList.toggle('active', name === 'seo-gen');
   $('nav-cf-pages')?.classList.toggle('active', name === 'cf-pages');
@@ -890,6 +893,7 @@ function switchTab(name) {
   $('nav-url-crawl').classList.toggle('active', name === 'url-crawl');
   $('nav-sites')?.classList.toggle('active', name === 'sites');
   $('nav-results').classList.toggle('active', name === 'results');
+  $('nav-learn')?.classList.toggle('active', name === 'learn');
   const meta = PAGE_META[name] || PAGE_META.config;
   $('pageTitle').textContent = meta.title;
   $('pageSubtitle').textContent = meta.subtitle;
@@ -906,6 +910,7 @@ function switchTab(name) {
   if (name === 'results') loadSavedResults();
   if (name === 'sites') loadCreatedSites();
   if (name === 'seo-gen' && !seoKeywordsLoaded) loadSeoKeywords();
+  if (name === 'learn') loadCaptchaLearnPanel();
 }
 
 let netlifyCreditState = null;
@@ -1270,9 +1275,17 @@ function siteAccountIds(site) {
   return { naverId: '', netlifyId: '' };
 }
 
+function isCreatedSitesRow(site) {
+  const from = String(site?.detail?.from || '').toLowerCase();
+  // 설정 탭 전체실행/ZIP 배포는 배포결과 탭 전용
+  if (/settings|pipeline/.test(from)) return false;
+  return true;
+}
+
 function getFilteredCreatedSites() {
   const q = ($('sitesSearch')?.value || '').trim().toLowerCase();
   return createdSites
+    .filter(isCreatedSitesRow)
     .filter((s) => sitesFilter === 'all' || s.provider === sitesFilter)
     .filter((s) => {
       if (!q) return true;
@@ -1280,6 +1293,7 @@ function getFilteredCreatedSites() {
       const hay = [
         s.name, s.url, s.status, s.provider,
         d.brand, d.keyword, d.ftpId, d.hostId, d.email, d.notes, d.phone,
+        d.naverAccountId, d.netlifyAccountId,
       ].join(' ').toLowerCase();
       return hay.includes(q);
     })
@@ -1293,8 +1307,8 @@ function getFilteredCreatedSites() {
 function renderCreatedSites() {
   const list = $('sitesList');
   if (!list) return;
-  updateSitesStats(createdSites);
   const rows = getFilteredCreatedSites();
+  updateSitesStats(rows);
   if (!rows.length) {
     list.innerHTML = '<p class="empty-hint">표시할 생성 사이트가 없습니다. 넷리파이/Cloudflare/닷홈에서 만들거나 「새로고침」으로 기존 데이터를 불러오세요.</p>';
     return;
@@ -2424,6 +2438,7 @@ async function startTokenGen() {
     descriptionPrefix,
     mode,
     openaiApiKey: cfg.openaiApiKey,
+    yesCaptchaClientKey: cfg.yesCaptchaClientKey || '',
     outputRoot: cfg.outputRoot || './output',
   });
 
@@ -2528,6 +2543,7 @@ async function load() {
   if ($('seoBuilderPath')) $('seoBuilderPath').value = config.kkangBuilderPath || '';
   if ($('seoFastAi')) $('seoFastAi').checked = config.kkangFastAi !== false;
   if ($('seoOutputDir')) $('seoOutputDir').value = config.kkangOutputDir || '';
+  if ($('seoImageDir')) $('seoImageDir').value = config.kkangImageDir || '';
   randomSeoSlug(false);
   updateSeoPreviewUrl();
   if (config.netlifyCreditsLast) {
@@ -2691,6 +2707,10 @@ function setupEvents() {
   $('seoRandomSlugBtn')?.addEventListener('click', () => randomSeoSlug(true));
   $('seoSiteSlug')?.addEventListener('input', updateSeoPreviewUrl);
   $('seoBrowseOutBtn')?.addEventListener('click', browseSeoOutputDir);
+  $('seoBrowseImageBtn')?.addEventListener('click', browseSeoImageDir);
+  $('learnRefreshBtn')?.addEventListener('click', () => loadCaptchaLearnPanel());
+  $('learnTrainBtn')?.addEventListener('click', trainCaptchaLearn);
+  window.electronAPI.onCaptchaLearnLog?.((line) => appendLearnLog(line));
   $('seoBrowseBuilderBtn')?.addEventListener('click', browseSeoBuilderPath);
   $('seoSelectAllBtn')?.addEventListener('click', () => seoSelectVisible(true));
   $('seoClearKwBtn')?.addEventListener('click', () => seoSelectVisible(false));
@@ -3262,7 +3282,7 @@ async function startSeoGenerate() {
         phone: ($('seoPhone')?.value || '').trim() || '010-6338-7124',
         naver_code: ($('seoNaver')?.value || '').trim(),
         google_code: ($('seoGoogle')?.value || '').trim(),
-        topic_count: parseInt($('seoTopicCount')?.value || '12', 10) || 12,
+        topic_count: Math.max(4, Math.min(8, parseInt($('seoTopicCount')?.value || '6', 10) || 6)),
         use_ai: !!$('seoUseAi')?.checked,
         fast_ai: !!$('seoFastAi')?.checked,
         cursor_api_key: ($('cursorApiKey')?.value || config.cursorApiKey || '').trim(),
@@ -3271,6 +3291,7 @@ async function startSeoGenerate() {
         deploy,
         create_site: !!$('seoCreateSite')?.checked,
         output_dir: ($('seoOutputDir')?.value || '').trim(),
+        image_dir: ($('seoImageDir')?.value || config.kkangImageDir || '').trim(),
         kkangBuilderPath: ($('seoBuilderPath')?.value || '').trim(),
         keywords: [...seoSelected],
       };
@@ -3541,6 +3562,82 @@ function renderDhAccounts() {
 async function browseDhImageDir() {
   const dir = await window.electronAPI.selectFolder();
   if (dir && $('dhImageDir')) $('dhImageDir').value = dir;
+}
+
+async function browseSeoImageDir() {
+  const dir = await window.electronAPI.selectFolder();
+  if (dir && $('seoImageDir')) $('seoImageDir').value = dir;
+}
+
+function appendLearnLog(line) {
+  const el = $('learnLog');
+  if (!el) return;
+  const t = el.textContent || '';
+  el.textContent = t ? `${t}\n${line}` : String(line || '');
+  el.scrollTop = el.scrollHeight;
+}
+
+function renderCaptchaLearnPanel(payload) {
+  const stats = payload?.stats || {};
+  const model = stats.model || {};
+  if ($('learnFailCount')) $('learnFailCount').textContent = String(stats.failureCount ?? 0);
+  if ($('learnOkCount')) $('learnOkCount').textContent = String(stats.successCount ?? 0);
+  if ($('learnAvoidCount')) $('learnAvoidCount').textContent = String((model.avoidAnswers || []).length);
+  if ($('learnTrainedAt')) {
+    $('learnTrainedAt').textContent = model.trainedAt
+      ? formatDate(model.trainedAt)
+      : '미학습';
+  }
+  if ($('learnModelHint')) {
+    const notes = (model.notes || []).join(' · ');
+    const retries = model.yesCaptchaRetries || 2;
+    $('learnModelHint').textContent = model.trainedAt
+      ? `학습 모델 적용 중 · YesCaptcha 재시도 ${retries}회${notes ? ` · ${notes}` : ''}`
+      : '아직 학습하지 않았습니다. 실패가 쌓이면 「학습하기」를 누르세요.';
+  }
+  const list = $('learnFailList');
+  if (!list) return;
+  const recent = payload?.recent || [];
+  if (!recent.length) {
+    list.innerHTML = '<p class="bulk-hint">실패 기록이 없습니다.</p>';
+    return;
+  }
+  list.innerHTML = recent.map((r) => {
+    const ans = (r.answers || []).slice(0, 4).join(', ') || '—';
+    return `<div class="list-item" style="padding:10px 12px;">
+      <div style="font-size:12px;color:var(--text-dim);">${escapeHtml(formatDate(r.at))} · ${escapeHtml(r.context || '')} · ${escapeHtml(r.solver || '')}</div>
+      <div style="font-size:13px;margin-top:4px;">${escapeHtml(r.reason || 'fail')} · 시도: ${escapeHtml(ans)}</div>
+    </div>`;
+  }).join('');
+}
+
+async function loadCaptchaLearnPanel() {
+  try {
+    const res = await window.electronAPI.captchaLearnStats();
+    if (res?.ok) renderCaptchaLearnPanel(res);
+    else appendLearnLog(res?.error || '학습 통계 로드 실패');
+  } catch (e) {
+    appendLearnLog(e.message || String(e));
+  }
+}
+
+async function trainCaptchaLearn() {
+  if (!confirm('쌓인 캡챠 실패/성공 기록으로 학습할까요?\n(자동 실행되지 않으며, 이 버튼을 눌렀을 때만 학습합니다.)')) return;
+  if ($('learnTrainBtn')) $('learnTrainBtn').disabled = true;
+  appendLearnLog('학습 시작…');
+  try {
+    const res = await window.electronAPI.captchaLearnTrain();
+    if (res?.ok) {
+      appendLearnLog(`✔ ${res.message || '학습 완료'}`);
+      renderCaptchaLearnPanel({ stats: res.stats, recent: (await window.electronAPI.captchaLearnStats())?.recent || [] });
+    } else {
+      appendLearnLog(`✖ ${res?.message || '학습 실패'}`);
+    }
+  } catch (e) {
+    appendLearnLog(`✖ ${e.message || e}`);
+  } finally {
+    if ($('learnTrainBtn')) $('learnTrainBtn').disabled = false;
+  }
 }
 
 async function browseDhGoogleFile() {
