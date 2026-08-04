@@ -1,11 +1,12 @@
 {
     "version":  "3.8.36",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.36/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/500903422",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.36/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/500903422",
+    "asset_id":  500903422,
     "notes":  "롱폼 SEO 미리보기 스타일로 사이트 생성 전환 (홈+6토픽, 이미지 카드, 전화/문자상담)",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/500903422",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.36/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
