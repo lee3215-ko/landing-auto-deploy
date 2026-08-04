@@ -517,6 +517,155 @@ ipcMain.handle('load-config', () => loadConfig());
 ipcMain.handle('save-config', (_, config) => { saveConfig(config); return true; });
 ipcMain.handle('load-results', () => loadResults());
 ipcMain.handle('save-results', (_, results) => { saveResults(results); return true; });
+
+/** 배포결과·생성사이트 「수동캡챠」: 공유 네이버 창에서 캡챠 대기 → 수집 자동 진행 */
+ipcMain.handle('manual-captcha-collect', async (event, options = {}) => {
+  const config = loadConfig();
+  const sendLog = (line) => {
+    try { event.sender.send('log-line', line); } catch { /* ignore */ }
+  };
+  const url = String(options.siteUrl || options.url || '').trim();
+  if (!url) return { ok: false, error: '사이트 URL이 없습니다.' };
+
+  const accounts = Array.isArray(config.naverAccounts) ? config.naverAccounts : [];
+  let naverAccount = null;
+  const prefer = String(options.naverAccountId || '').trim();
+  if (prefer) naverAccount = accounts.find((a) => a?.id === prefer && a?.pw) || null;
+  if (!naverAccount) naverAccount = accounts.find((a) => a?.id && a?.pw) || null;
+
+  try {
+    const { runManualCaptchaAndCollect } = await import('./lib/manual-captcha.js');
+    const out = await runManualCaptchaAndCollect({
+      siteUrl: url,
+      siteDir: options.siteDir || options.folder || '',
+      siteSlug: options.siteSlug || '',
+      naverAccount,
+      openaiApiKey: config.openaiApiKey || '',
+      yesCaptchaClientKey: config.yesCaptchaClientKey || '',
+      outputRoot: OUTPUT_ROOT,
+      sendLog,
+      waitTimeoutMs: Number(options.waitTimeoutMs) || 10 * 60 * 1000,
+    });
+
+    // results.json 갱신 + 성공 시 ZIP → 「성공」폴더 이동
+    let movedZip = null;
+    try {
+      const results = loadResults();
+      const key = url.replace(/\/$/, '').toLowerCase();
+      const idx = results.findIndex((r) => String(r?.url || '').replace(/\/$/, '').toLowerCase() === key);
+      if (idx >= 0) {
+        if (out?.ok) {
+          const prev = results[idx];
+          results[idx] = {
+            ...prev,
+            status: 'success',
+            error: undefined,
+            registeredAt: new Date().toISOString(),
+            pageUrlCount: out.pageUrlCount ?? prev.pageUrlCount,
+            siteDir: out.siteDir || prev.siteDir,
+          };
+
+          let sourcePath = String(options.sourcePath || prev.sourcePath || '').trim();
+          let sourceType = String(options.sourceType || prev.sourceType || '')
+            .toLowerCase() || (/\.zip$/i.test(sourcePath) ? 'zip' : '');
+          // 결과 행에 ZIP 경로가 없으면 생성사이트 detail에서 보완
+          if (!sourcePath) {
+            try {
+              const { loadSitesRegistry } = await import('./lib/sites-registry.js');
+              const sites = loadSitesRegistry(CREATED_SITES_PATH);
+              const match = sites.find((s) => String(s?.url || '').replace(/\/$/, '').toLowerCase() === key)
+                || sites.find((s) => s.provider === 'netlify' && s.name === String(prev.siteSlug || options.siteSlug || '').trim());
+              const sp = String(match?.detail?.sourcePath || '').trim();
+              if (sp) {
+                sourcePath = sp;
+                sourceType = String(match?.detail?.sourceType || '').toLowerCase()
+                  || (/\.zip$/i.test(sp) ? 'zip' : sourceType);
+              }
+            } catch { /* ignore */ }
+          }
+          if (sourceType === 'zip' && sourcePath) {
+            try {
+              const { moveZipToSuccessFolder } = await import('./lib/source-utils.js');
+              const mv = moveZipToSuccessFolder(sourcePath);
+              if (mv?.ok && !mv.skipped) {
+                movedZip = { from: mv.from, to: mv.path };
+                results[idx].sourcePath = mv.path;
+                results[idx].sourceType = 'zip';
+                sendLog(`📦 성공 ZIP 이동: ${path.basename(sourcePath)} → 성공\\${path.basename(mv.path)}`);
+              } else if (mv?.ok && mv.skipped) {
+                movedZip = { from: mv.from, to: mv.path, skipped: true };
+                sendLog(`📦 이미 성공 폴더에 있음: ${path.basename(sourcePath)}`);
+              } else if (mv?.error) {
+                sendLog(`⚠ 성공 ZIP 이동 실패(원본 유지): ${mv.error}`);
+              }
+            } catch (e) {
+              sendLog(`⚠ 성공 ZIP 이동 예외: ${e.message}`);
+            }
+          }
+        } else {
+          results[idx] = {
+            ...results[idx],
+            status: out?.status === 'captcha' ? 'captcha' : (results[idx].status || 'captcha'),
+            error: out?.message || out?.error || results[idx].error,
+          };
+        }
+        saveResults(results);
+        event.sender.send('results-updated', results);
+      } else if (out?.ok) {
+        // 결과 행이 없어도 options에 ZIP 경로가 있으면 이동
+        const sourcePath = String(options.sourcePath || '').trim();
+        const sourceType = String(options.sourceType || '')
+          .toLowerCase() || (/\.zip$/i.test(sourcePath) ? 'zip' : '');
+        if (sourceType === 'zip' && sourcePath) {
+          try {
+            const { moveZipToSuccessFolder } = await import('./lib/source-utils.js');
+            const mv = moveZipToSuccessFolder(sourcePath);
+            if (mv?.ok && !mv.skipped) {
+              movedZip = { from: mv.from, to: mv.path };
+              sendLog(`📦 성공 ZIP 이동: ${path.basename(sourcePath)} → 성공\\${path.basename(mv.path)}`);
+            }
+          } catch { /* ignore */ }
+        }
+      }
+    } catch { /* ignore */ }
+
+    // 생성 사이트 목록 갱신 (생성사이트 탭·배포결과 공통)
+    let createdSites = null;
+    try {
+      const { loadSitesRegistry } = await import('./lib/sites-registry.js');
+      const sites = loadSitesRegistry(CREATED_SITES_PATH);
+      const key = url.replace(/\/$/, '').toLowerCase();
+      const createdId = String(options.createdSiteId || '').trim();
+      const site = (createdId && sites.find((s) => s.id === createdId))
+        || sites.find((s) => String(s?.url || '').replace(/\/$/, '').toLowerCase() === key)
+        || sites.find((s) => s.provider === 'netlify' && s.name === String(options.siteSlug || '').trim());
+      if (site) {
+        createdSites = await upsertCreatedSite({
+          ...site,
+          url: site.url || url,
+          status: 'deployed',
+          detail: {
+            ...(site.detail || {}),
+            output: out?.siteDir || options.siteDir || site.detail?.output || '',
+            naverAuto: !!out?.ok,
+            naverStatus: out?.ok ? 'success' : (out?.status || 'captcha'),
+            naverError: out?.ok ? '' : (out?.message || out?.error || '수동캡챠 미완료'),
+            naverAccountId: naverAccount?.id || site.detail?.naverAccountId || '',
+            pageUrlCount: out?.pageUrlCount ?? site.detail?.pageUrlCount ?? 0,
+            sourcePath: movedZip?.to || site.detail?.sourcePath || options.sourcePath || '',
+            sourceType: options.sourceType || site.detail?.sourceType || '',
+            manualCaptchaAt: new Date().toISOString(),
+          },
+        });
+      }
+    } catch { /* ignore */ }
+
+    return { ...out, createdSites, movedZip };
+  } catch (e) {
+    sendLog(`[ERROR] 수동캡챠: ${e.message}`);
+    return { ok: false, error: e.message };
+  }
+});
 ipcMain.handle('load-created-sites', async (_, options = {}) => loadCreatedSites(options || {}));
 ipcMain.handle('save-created-sites', async (_, sites) => {
   const { saveSitesRegistry } = await import('./lib/sites-registry.js');
@@ -908,6 +1057,7 @@ ipcMain.handle('submit-naver-collect', async (event, options = {}) => {
       siteUrls: Array.isArray(siteUrls) ? siteUrls : undefined,
       naverAccount: crawlAccount,
       openaiApiKey: config.openaiApiKey || '',
+      yesCaptchaClientKey: config.yesCaptchaClientKey || '',
       outputRoot: OUTPUT_ROOT,
       headless: !!config.headless,
       doFast: !!doFast,
@@ -1267,11 +1417,11 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
             result.naverAutoError = naverResult?.error
               || `네이버 등록 실패 (상태: ${naverResult?.status || 'unknown'})`;
             sendLog(`⚠ 네이버 소유확인 미완료 (${naverSt || 'unknown'}) · 계정 ${naverAccount.id}`);
-            sendLog('   → 「생성 사이트」탭에서 「색인재시도」로 소유확인·인덱싱만 다시 할 수 있습니다.');
+            sendLog('   → 「생성 사이트」탭에서 「수동캡챠」로 소유확인·수집을 이어갈 수 있습니다.');
           }
         } catch (naverErr) {
           sendLog(`[ERROR] 네이버 HTML 인증 자동 삽입 실패: ${naverErr.message}`);
-          sendLog('   → 「생성 사이트」탭에서 「네이버 인증」또는 「색인재시도」로 재시도할 수 있습니다.');
+          sendLog('   → 「생성 사이트」탭에서 「네이버 인증」또는 「수동캡챠」로 재시도할 수 있습니다.');
           result.naverAccountId = naverAccount.id;
           result.netlifyAccountId = netlifyAccountId || result.netlifyAccountId || '';
           result.naverAuto = {
@@ -1475,7 +1625,7 @@ ipcMain.handle('kkang-retry-naver', async (event, options = {}) => {
       return { ok: true, naver: naverResult, createdSites, siteDir, siteUrl, title };
     }
 
-    sendLog(`⚠ 소유확인 미완료 (${naverSt}) · 「색인재시도」로 다시 시도하세요.`);
+    sendLog(`⚠ 소유확인 미완료 (${naverSt}) · 「수동캡챠」로 다시 시도하세요.`);
     return {
       ok: false,
       partial: true,
@@ -1561,6 +1711,7 @@ ipcMain.handle('kkang-retry-naver-index', async (event, options = {}) => {
       naverAccount,
       naverAccounts: config.naverAccounts || [],
       openaiApiKey: config.openaiApiKey || '',
+      yesCaptchaClientKey: config.yesCaptchaClientKey || '',
       headless: !!config.headless,
       outputRoot: OUTPUT_ROOT,
       onLog: sendLog,

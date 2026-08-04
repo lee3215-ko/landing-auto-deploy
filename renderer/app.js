@@ -515,7 +515,7 @@ const STATUS_MAP = {
   error: { label: '오류', cls: 'error' },
   captcha: { label: '캡챠', cls: 'captcha' },
   unknown: { label: '미확인', cls: 'unknown' },
-  manual: { label: '수동 완료', cls: 'manual' },
+  manual: { label: '수동캡챠완료', cls: 'manual' },
 };
 
 const INDEX_CHECK_STATUSES = new Set(['success', 'manual']);
@@ -638,7 +638,7 @@ function renderResultsTable(results) {
     const { r, originalIndex } = rows[idx];
     const st = STATUS_MAP[r.status] || { label: r.status || '-', cls: 'unknown' };
     const manualBtn = r.status === 'captcha'
-      ? `<button class="btn btn-primary btn-sm" type="button" data-action="mark-manual" data-idx="${originalIndex}">수동완료</button>`
+      ? `<button class="btn btn-primary btn-sm" type="button" data-action="manual-captcha" data-idx="${originalIndex}" title="네이버 창에서 캡챠 수동 입력 → 수집 자동 진행">수동캡챠</button>`
       : '';
     const url = (r.url || '').trim();
     const urlCell = url
@@ -762,11 +762,64 @@ async function deleteResult(index) {
 }
 
 async function markManualCaptcha(index) {
-  if (!confirm('수동 캡챠 완료로 표시하시겠습니까?')) return;
-  savedResults[index].status = 'manual';
-  savedResults[index].registeredAt = new Date().toISOString();
-  await window.electronAPI.saveResults(savedResults);
-  filterResults();
+  const row = savedResults[index];
+  if (!row?.url) return alert('URL이 없습니다.');
+  if (!confirm(
+    `수동캡챠를 시작할까요?\n\n${row.url}\n\n`
+    + '이미 켜져 있는 네이버 Chrome 창에 새 탭을 열어 진행합니다.\n'
+    + '(사이트 생성 중인 탭은 그대로 둡니다)\n'
+    + '직접 캡챠를 풀면, 이어서 수집주기·robots·사이트맵·웹페이지 수집이 자동 진행됩니다.',
+  )) return;
+
+  const btn = document.querySelector(`#resultsList [data-action="manual-captcha"][data-idx="${index}"]`);
+  if (btn) { btn.disabled = true; btn.textContent = '대기중…'; }
+  try {
+    logLine(`═══ 수동캡챠 시작: ${row.url} ═══`);
+    const out = await window.electronAPI.manualCaptchaCollect({
+      siteUrl: row.url,
+      siteDir: row.siteDir || row.folder || '',
+      siteSlug: row.siteSlug || '',
+      naverAccountId: row.naverAccountId || '',
+      sourceType: row.sourceType || '',
+      sourcePath: row.sourcePath || '',
+    });
+    if (out?.ok) {
+      savedResults[index] = {
+        ...savedResults[index],
+        status: 'success',
+        error: undefined,
+        registeredAt: new Date().toISOString(),
+        pageUrlCount: out.pageUrlCount ?? savedResults[index].pageUrlCount,
+        siteDir: out.siteDir || savedResults[index].siteDir,
+        sourcePath: out.movedZip?.to || savedResults[index].sourcePath,
+      };
+      await window.electronAPI.saveResults(savedResults);
+      logLine(`✔ 수동캡챠 완료: ${out.message || row.url}`);
+      if (out.movedZip?.from && !out.movedZip.skipped) {
+        const fromKey = String(out.movedZip.from).toLowerCase();
+        const before = deploySources.length;
+        deploySources = deploySources.filter((s) => String(s.path || '').toLowerCase() !== fromKey);
+        if (deploySources.length !== before) {
+          updateDeploySourcesUI(
+            deploySources.length
+              ? `남은 소스 ${deploySources.length}개 (성공 ZIP 이동됨)`
+              : '',
+          );
+          await window.electronAPI.saveConfig(collectConfig()).catch(() => {});
+        }
+        logLine(`📦 성공 ZIP → 성공\\${out.movedZip.to ? out.movedZip.to.split(/[/\\\\]/).pop() : ''}`);
+      }
+      filterResults();
+    } else {
+      logLine(`⚠ 수동캡챠: ${out?.error || out?.message || '실패'}`);
+      alert(out?.error || out?.message || '수동캡챠 실패');
+      if (btn) { btn.disabled = false; btn.textContent = '수동캡챠'; }
+    }
+  } catch (e) {
+    logLine(`[ERROR] 수동캡챠: ${e.message}`);
+    alert(e.message || '수동캡챠 오류');
+    if (btn) { btn.disabled = false; btn.textContent = '수동캡챠'; }
+  }
 }
 
 async function clearAllResults() {
@@ -1206,7 +1259,7 @@ function isSiteNaverDone(site) {
   return false;
 }
 
-/** 메타는 있는데 소유확인/캡챠 실패 → 색인재시도 대상 */
+/** 메타는 있는데 소유확인/캡챠 실패 → 수동캡챠 대상 */
 function needsNaverIndexRetry(site) {
   if (site?.provider !== 'netlify') return false;
   if (isSiteNaverDone(site)) return false;
@@ -1355,11 +1408,11 @@ function renderCreatedSites() {
       if (naverDone) {
         naverBtn = `
           <span class="status-pill success" title="네이버 소유확인·인덱싱 신청 완료${accounts.naverId ? ` · ${accounts.naverId}` : ''}">네이버 완료</span>
-          <button class="btn btn-ghost btn-sm" type="button" data-sites-action="retry-naver-index" data-id="${escapeHtml(s.id)}" title="소유확인·인덱싱만 다시">색인재시도</button>`;
+          <button class="btn btn-ghost btn-sm" type="button" data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}" title="네이버 창에서 캡챠 수동 입력 → 수집 자동 진행">수동캡챠</button>`;
       } else if (indexRetry) {
         naverBtn = `
           <span class="status-pill indexed-fail" title="${escapeHtml(s.detail?.naverError || s.detail?.naverStatus || '소유확인 미완료')}">네이버 미완료</span>
-          <button class="btn btn-warning btn-sm" type="button" data-sites-action="retry-naver-index" data-id="${escapeHtml(s.id)}" title="서치어드바이저 검색 → 소유확인 → 인덱싱 (재배포 없음)">색인재시도</button>
+          <button class="btn btn-warning btn-sm" type="button" data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}" title="네이버 창에서 HTML태그 선택·캡챠 수동 입력 → 수집 자동 진행">수동캡챠</button>
           <button class="btn btn-ghost btn-sm" type="button" data-sites-action="retry-naver" data-id="${escapeHtml(s.id)}" title="HTML 인증부터 다시">인증재시도</button>`;
       } else {
         naverBtn = `<button class="btn btn-primary btn-sm" type="button" data-sites-action="retry-naver" data-id="${escapeHtml(s.id)}" title="네이버 HTML 인증 추출 → head 삽입 → Netlify 재배포">네이버 인증</button>`;
@@ -1583,43 +1636,68 @@ async function setManualNaverId(id) {
   openManualNaverIdModal(site);
 }
 
-async function retrySiteNaverIndex(id) {
+/** 생성 사이트 「수동캡챠」— 배포결과 탭과 동일 (verify→HTML태그→캡챠 수동→수집) */
+async function siteManualCaptcha(id) {
   if (!id) return;
   const site = createdSites.find((s) => s.id === id);
   if (!site) return alert('사이트를 찾을 수 없습니다.');
   if (site.provider !== 'netlify') return alert('Netlify 사이트만 가능합니다.');
+  if (!(site.url || '').trim()) return alert('사이트 URL이 없습니다.');
   if (!(config.naverAccounts || []).some((a) => a?.id && a?.pw)) {
-    return alert('네이버 계정이 없습니다.\n설정 탭에 네이버 아이디/비밀번호를 등록하세요.');
+    return alert('네이버 계정이 없습니다.\n설정 탭에 네이버 아이디/비밀번호를 등록하세요.\n우측 상단 「네이버 로그인」도 먼저 해주세요.');
   }
-  if (!confirm(`${site.name}\n서치어드바이저에서 사이트 검색 → 소유확인 → 인덱싱을 다시 진행할까요?\n(Netlify 재배포 없음)`)) {
-    return;
-  }
+  if (!confirm(
+    `수동캡챠를 시작할까요?\n\n${site.url}\n\n`
+    + '이미 켜져 있는 네이버 Chrome 창에 새 탭을 열어 진행합니다.\n'
+    + '(사이트 생성 중인 탭은 그대로 둡니다)\n'
+    + '직접 캡챠를 풀면, 이어서 수집주기·robots·사이트맵·웹페이지 수집이 자동 진행됩니다.',
+  )) return;
 
-  setSitesIndexProgress(`색인재시도 중: ${site.url || site.name}`, true);
+  const btn = document.querySelector(`#sitesList [data-sites-action="manual-captcha"][data-id="${id}"]`);
+  if (btn) { btn.disabled = true; btn.textContent = '대기중…'; }
+  setSitesIndexProgress(`수동캡챠 대기: ${site.url || site.name}`, true);
   try {
     await window.electronAPI.saveConfig(collectConfig());
-    const out = await window.electronAPI.kkangRetryNaverIndex({
-      siteId: site.id,
-      siteSlug: site.name,
+    logLine(`═══ 수동캡챠(생성사이트): ${site.url} ═══`);
+    const out = await window.electronAPI.manualCaptchaCollect({
       siteUrl: site.url,
       siteDir: site.detail?.output || '',
+      siteSlug: site.name || '',
       naverAccountId: site.detail?.naverAccountId || '',
+      createdSiteId: site.id,
+      sourceType: site.detail?.sourceType || '',
+      sourcePath: site.detail?.sourcePath || '',
     });
     if (out?.createdSites) createdSites = out.createdSites;
     else await loadCreatedSites(false);
     renderCreatedSites();
 
     if (out?.ok) {
-      setSitesIndexProgress(`✔ 색인재시도 완료: ${site.url}`, true);
-      const acct = out.naver?.naverAccountId || site.detail?.naverAccountId || '';
-      alert(`색인재시도 완료\n${site.url}${acct ? `\n계정: ${acct}` : ''}`);
+      setSitesIndexProgress(`✔ 수동캡챠 완료: ${site.url}`, true);
+      logLine(`✔ 수동캡챠 완료: ${out.message || site.url}`);
+      if (out.movedZip?.from && !out.movedZip.skipped) {
+        const fromKey = String(out.movedZip.from).toLowerCase();
+        deploySources = deploySources.filter((s) => String(s.path || '').toLowerCase() !== fromKey);
+        updateDeploySourcesUI(
+          deploySources.length
+            ? `남은 소스 ${deploySources.length}개 (성공 ZIP 이동됨)`
+            : '',
+        );
+        await window.electronAPI.saveConfig(collectConfig()).catch(() => {});
+        logLine(`📦 성공 ZIP → 성공\\${out.movedZip.to ? out.movedZip.to.split(/[/\\\\]/).pop() : ''}`);
+      }
+      await loadSavedResults().catch(() => {});
     } else {
       setSitesIndexProgress('', false);
-      alert(out?.error || '색인재시도 실패');
+      logLine(`⚠ 수동캡챠: ${out?.error || out?.message || '실패'}`);
+      alert(out?.error || out?.message || '수동캡챠 실패');
+      if (btn) { btn.disabled = false; btn.textContent = '수동캡챠'; }
     }
   } catch (e) {
     setSitesIndexProgress('', false);
+    logLine(`[ERROR] 수동캡챠: ${e.message}`);
     alert(e.message || String(e));
+    if (btn) { btn.disabled = false; btn.textContent = '수동캡챠'; }
   }
 }
 
@@ -2663,8 +2741,8 @@ function setupEvents() {
       await checkSiteIndexOne(btn.dataset.id);
     } else if (action === 'retry-naver') {
       await retrySiteNaver(btn.dataset.id);
-    } else if (action === 'retry-naver-index') {
-      await retrySiteNaverIndex(btn.dataset.id);
+    } else if (action === 'manual-captcha' || action === 'retry-naver-index') {
+      await siteManualCaptcha(btn.dataset.id);
     } else if (action === 'set-naver-id') {
       await setManualNaverId(btn.dataset.id);
     }
@@ -2824,7 +2902,7 @@ function setupEvents() {
     }
     const idx = parseInt(t.dataset.idx, 10);
     if (t.dataset.action === 'delete-result') deleteResult(idx);
-    else if (t.dataset.action === 'mark-manual') markManualCaptcha(idx);
+    else if (t.dataset.action === 'manual-captcha' || t.dataset.action === 'mark-manual') markManualCaptcha(idx);
     else if (t.dataset.action === 'check-index-one') checkIndexOne(idx, { force: true });
     else if (t.dataset.action === 'reinject-index') reinjectIndexOne(idx);
   });
