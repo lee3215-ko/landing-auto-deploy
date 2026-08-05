@@ -1643,8 +1643,14 @@ async function siteManualCaptcha(id) {
   if (!site) return alert('사이트를 찾을 수 없습니다.');
   if (site.provider !== 'netlify') return alert('Netlify 사이트만 가능합니다.');
   if (!(site.url || '').trim()) return alert('사이트 URL이 없습니다.');
-  if (!(config.naverAccounts || []).some((a) => a?.id && a?.pw)) {
-    return alert('네이버 계정이 없습니다.\n설정 탭에 네이버 아이디/비밀번호를 등록하세요.\n우측 상단 「네이버 로그인」도 먼저 해주세요.');
+  // 이미 네이버 Chrome이 떠 있으면 계정 검사로 막지 않음 (생성 중 수동캡챠)
+  let sessionReady = false;
+  try {
+    const st = await window.electronAPI.naverSessionStatus();
+    sessionReady = st?.status === 'ready' || !!st?.accountId;
+  } catch { /* ignore */ }
+  if (!sessionReady && !(config.naverAccounts || []).some((a) => a?.id && a?.pw)) {
+    return alert('네이버 세션이 없습니다.\n우측 상단 「네이버 로그인」으로 창을 연 뒤 다시 시도하세요.');
   }
   if (!confirm(
     `수동캡챠를 시작할까요?\n\n${site.url}\n\n`

@@ -540,6 +540,7 @@ ipcMain.handle('manual-captcha-collect', async (event, options = {}) => {
       siteDir: options.siteDir || options.folder || '',
       siteSlug: options.siteSlug || '',
       naverAccount,
+      naverAccounts: accounts,
       openaiApiKey: config.openaiApiKey || '',
       yesCaptchaClientKey: config.yesCaptchaClientKey || '',
       outputRoot: OUTPUT_ROOT,
