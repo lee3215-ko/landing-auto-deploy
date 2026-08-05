@@ -410,7 +410,9 @@ ipcMain.handle('clipboard-write', (_event, text) => {
 });
 
 ipcMain.handle('naver-session-status', async () => {
-  const { getNaverSessionStatus } = await import('./lib/naver-session.js');
+  const { getNaverSessionStatus, attachNaverChrome } = await import('./lib/naver-session.js');
+  // 이미 떠 있는 서치어드바이저 Chrome이 있으면 상태 idle로 오인하지 않도록 재연결
+  try { await attachNaverChrome(); } catch { /* ignore */ }
   return getNaverSessionStatus();
 });
 

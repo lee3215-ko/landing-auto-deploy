@@ -766,13 +766,13 @@ async function markManualCaptcha(index) {
   if (!row?.url) return alert('URL이 없습니다.');
   if (!confirm(
     `수동캡챠를 시작할까요?\n\n${row.url}\n\n`
-    + '이미 켜져 있는 네이버 Chrome 창에 새 탭을 열어 진행합니다.\n'
-    + '(사이트 생성 중인 탭은 그대로 둡니다)\n'
-    + '직접 캡챠를 풀면, 이어서 수집주기·robots·사이트맵·웹페이지 수집이 자동 진행됩니다.',
+    + '지금 열려 있는 서치어드바이저 창에서 (+)새 탭을 연 뒤\n'
+    + 'HTML 태그 → 소유확인 캡챠를 진행합니다.\n'
+    + '(생성 중인 탭은 그대로 둡니다)',
   )) return;
 
   const btn = document.querySelector(`#resultsList [data-action="manual-captcha"][data-idx="${index}"]`);
-  if (btn) { btn.disabled = true; btn.textContent = '대기중…'; }
+  if (btn) { btn.disabled = true; btn.textContent = '새탭 진행중…'; }
   try {
     logLine(`═══ 수동캡챠 시작: ${row.url} ═══`);
     const out = await window.electronAPI.manualCaptchaCollect({
@@ -1636,32 +1636,24 @@ async function setManualNaverId(id) {
   openManualNaverIdModal(site);
 }
 
-/** 생성 사이트 「수동캡챠」— 배포결과 탭과 동일 (verify→HTML태그→캡챠 수동→수집) */
+/** 생성 사이트 「수동캡챠」— 열린 서치어드바이저 창에 새 탭만 열어 진행 */
 async function siteManualCaptcha(id) {
   if (!id) return;
   const site = createdSites.find((s) => s.id === id);
   if (!site) return alert('사이트를 찾을 수 없습니다.');
   if (site.provider !== 'netlify') return alert('Netlify 사이트만 가능합니다.');
   if (!(site.url || '').trim()) return alert('사이트 URL이 없습니다.');
-  // 이미 네이버 Chrome이 떠 있으면 계정 검사로 막지 않음 (생성 중 수동캡챠)
-  let sessionReady = false;
-  try {
-    const st = await window.electronAPI.naverSessionStatus();
-    sessionReady = st?.status === 'ready' || !!st?.accountId;
-  } catch { /* ignore */ }
-  if (!sessionReady && !(config.naverAccounts || []).some((a) => a?.id && a?.pw)) {
-    return alert('네이버 세션이 없습니다.\n우측 상단 「네이버 로그인」으로 창을 연 뒤 다시 시도하세요.');
-  }
+  // 로그인 게이트 없음 — 백엔드가 포트 9334 Chrome에 바로 붙음
   if (!confirm(
     `수동캡챠를 시작할까요?\n\n${site.url}\n\n`
-    + '이미 켜져 있는 네이버 Chrome 창에 새 탭을 열어 진행합니다.\n'
-    + '(사이트 생성 중인 탭은 그대로 둡니다)\n'
-    + '직접 캡챠를 풀면, 이어서 수집주기·robots·사이트맵·웹페이지 수집이 자동 진행됩니다.',
+    + '지금 열려 있는 서치어드바이저 창에서 (+)새 탭을 연 뒤\n'
+    + 'HTML 태그 → 소유확인 캡챠를 진행합니다.\n'
+    + '(생성 중인 탭은 그대로 둡니다)',
   )) return;
 
   const btn = document.querySelector(`#sitesList [data-sites-action="manual-captcha"][data-id="${id}"]`);
-  if (btn) { btn.disabled = true; btn.textContent = '대기중…'; }
-  setSitesIndexProgress(`수동캡챠 대기: ${site.url || site.name}`, true);
+  if (btn) { btn.disabled = true; btn.textContent = '새탭 진행중…'; }
+  setSitesIndexProgress(`수동캡챠 새탭 진행: ${site.url || site.name}`, true);
   try {
     await window.electronAPI.saveConfig(collectConfig());
     logLine(`═══ 수동캡챠(생성사이트): ${site.url} ═══`);
