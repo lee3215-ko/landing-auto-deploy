@@ -97,20 +97,107 @@ function loadConfig() {
 }
 
 function pickNaverAccountForDothome(config, options = {}) {
+  const accounts = Array.isArray(config.naverAccounts) ? config.naverAccounts : [];
+  const { pickStartNaverAccount, NAVER_SITE_SOFT_LIMIT } = requireNaverSessionSync();
   if (options.naverAccount?.id && options.naverAccount?.pw) {
-    return {
+    const pref = {
       id: String(options.naverAccount.id).trim(),
       pw: String(options.naverAccount.pw).trim(),
+      siteCount: options.naverAccount.siteCount,
     };
+    const picked = pickStartNaverAccount(accounts, pref);
+    if (picked) return picked;
   }
-  const accounts = Array.isArray(config.naverAccounts) ? config.naverAccounts : [];
   const emailLocal = String(options.emailLocal || config.dothome?.emailLocal || '').trim().replace(/@.*$/, '');
   if (emailLocal) {
     const matched = accounts.find((a) => String(a.id || '').trim() === emailLocal);
-    if (matched?.id && matched?.pw) return { id: matched.id.trim(), pw: matched.pw.trim() };
+    if (matched?.id && matched?.pw) {
+      const picked = pickStartNaverAccount(accounts, matched);
+      if (picked) return picked;
+    }
   }
-  const first = accounts.find((a) => a?.id && a?.pw);
-  return first ? { id: String(first.id).trim(), pw: String(first.pw).trim() } : null;
+  const picked = pickStartNaverAccount(accounts, null);
+  if (picked) return picked;
+  // 모두 한도면 null (호출측에서 안내)
+  const any = accounts.find((a) => a?.id && a?.pw);
+  if (any && Number(any.siteCount) >= NAVER_SITE_SOFT_LIMIT) return null;
+  return any ? { id: String(any.id).trim(), pw: String(any.pw).trim(), siteCount: any.siteCount ?? null } : null;
+}
+
+/** 동기 require 대신 캐시된 헬퍼 — 최초 1회 dynamic import 결과를 씀 */
+let _naverSessionHelpers = null;
+function requireNaverSessionSync() {
+  if (_naverSessionHelpers) return _naverSessionHelpers;
+  // main은 CJS — createRequire로 ESM 헬퍼를 못 가져오므로 인라인 폴백
+  const SOFT = 95;
+  const isFull = (a) => a?.siteCount != null && Number(a.siteCount) >= SOFT;
+  const list = (accounts) => (Array.isArray(accounts) ? accounts : [])
+    .map((a) => ({
+      id: String(a?.id || '').trim(),
+      pw: String(a?.pw || '').trim(),
+      siteCount: a?.siteCount != null ? Number(a.siteCount) : null,
+      siteCountAt: a?.siteCountAt || '',
+    }))
+    .filter((a) => a.id && a.pw);
+  const pickStartNaverAccount = (accounts, preferred) => {
+    const arr = list(accounts);
+    if (!arr.length) return null;
+    const prefId = String(preferred?.id || '').trim();
+    let start = 0;
+    if (prefId) {
+      const i = arr.findIndex((a) => a.id === prefId);
+      if (i >= 0) start = i;
+    }
+    for (let off = 0; off < arr.length; off++) {
+      const c = arr[(start + off) % arr.length];
+      if (!isFull(c)) return c;
+    }
+    return null;
+  };
+  _naverSessionHelpers = { pickStartNaverAccount, NAVER_SITE_SOFT_LIMIT: SOFT, isFull };
+  return _naverSessionHelpers;
+}
+
+function persistNaverSiteCount(accountId, count) {
+  const id = String(accountId || '').trim();
+  if (!id || count == null || Number.isNaN(Number(count))) return null;
+  const n = Math.max(0, Number(count));
+  const config = loadConfig();
+  const accounts = Array.isArray(config.naverAccounts) ? config.naverAccounts : [];
+  let changed = false;
+  config.naverAccounts = accounts.map((a) => {
+    if (String(a?.id || '').trim() !== id) return a;
+    changed = true;
+    return {
+      ...a,
+      siteCount: n,
+      siteCountAt: new Date().toISOString(),
+    };
+  });
+  if (!changed) return null;
+  saveConfig(config);
+  try {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('naver-accounts-updated', {
+          naverAccounts: config.naverAccounts,
+          accountId: id,
+          siteCount: n,
+        });
+      }
+    }
+  } catch { /* ignore */ }
+  return config.naverAccounts;
+}
+
+function makeOnSiteCount() {
+  return async ({ accountId, siteCount }) => {
+    persistNaverSiteCount(accountId, siteCount);
+    try {
+      const { setKnownNaverSiteCount } = await import('./lib/naver-session.js');
+      setKnownNaverSiteCount(accountId, siteCount);
+    } catch { /* ignore */ }
+  };
 }
 
 function saveConfig(config) {
@@ -363,9 +450,22 @@ function broadcastDothomeMailSession(data) {
 }
 
 async function initNaverSessionListeners() {
-  const { onNaverSessionStatus, getNaverSessionStatus, setNaverSessionProfileDir } = await import('./lib/naver-session.js');
+  const {
+    onNaverSessionStatus,
+    getNaverSessionStatus,
+    setNaverSessionProfileDir,
+    setDefaultOnSiteCount,
+    setKnownNaverSiteCount,
+  } = await import('./lib/naver-session.js');
   const profileDir = path.join(app.getPath('userData'), 'chrome-naver-session');
   setNaverSessionProfileDir(profileDir);
+  setDefaultOnSiteCount(makeOnSiteCount());
+  try {
+    const cfg = loadConfig();
+    for (const a of (cfg.naverAccounts || [])) {
+      if (a?.id && a.siteCount != null) setKnownNaverSiteCount(a.id, a.siteCount);
+    }
+  } catch { /* ignore */ }
   onNaverSessionStatus((snap) => broadcastNaverSession(snap));
   broadcastNaverSession(getNaverSessionStatus());
 }
@@ -419,11 +519,21 @@ ipcMain.handle('naver-session-status', async () => {
 ipcMain.handle('naver-session-start', async (event, options = {}) => {
   const config = loadConfig();
   const preferredId = String(options.naverAccountId || '').trim();
-  const acct = preferredId
+  const { ensureNaverSession, getNaverSessionStatus, onNaverSessionStatus, setNaverSessionProfileDir, pickStartNaverAccount, setKnownNaverSiteCount } = await import('./lib/naver-session.js');
+  for (const a of (config.naverAccounts || [])) {
+    if (a?.id && a.siteCount != null) setKnownNaverSiteCount(a.id, a.siteCount);
+  }
+  const preferred = preferredId
     ? (config.naverAccounts || []).find((a) => a.id === preferredId)
-    : (config.naverAccounts || []).find((a) => a?.id && a?.pw);
-  if (!acct?.id || !acct?.pw) return { ok: false, error: '설정에 네이버 계정이 없습니다.' };
-  const { ensureNaverSession, getNaverSessionStatus, onNaverSessionStatus, setNaverSessionProfileDir } = await import('./lib/naver-session.js');
+    : null;
+  const acct = pickStartNaverAccount(config.naverAccounts || [], preferred)
+    || (preferred?.id && preferred?.pw ? preferred : null);
+  if (!acct?.id || !acct?.pw) {
+    return {
+      ok: false,
+      error: '설정에 사용 가능한 네이버 계정이 없습니다. (95개 이상인 계정은 자동 건너뜁니다)',
+    };
+  }
   onNaverSessionStatus((snap) => broadcastNaverSession(snap));
   const profileDir = path.join(app.getPath('userData'), 'chrome-naver-session');
   setNaverSessionProfileDir(profileDir);
@@ -438,6 +548,7 @@ ipcMain.handle('naver-session-start', async (event, options = {}) => {
       userDataDir: profileDir,
       outputFolder: path.join(OUTPUT_ROOT, 'naver-session'),
       onLog: (msg) => event.sender.send('log-line', `[네이버세션] ${msg}`),
+      onSiteCount: makeOnSiteCount(),
     });
     return { ok: true, ...getNaverSessionStatus() };
   } catch (e) {
@@ -461,7 +572,9 @@ ipcMain.handle('naver-session-refresh-sites', async (event) => {
     if (!p) {
       // 세션 핸들이 끊겼으면 설정 계정으로 재연결 시도
       const config = loadConfig();
-      const acct = (config.naverAccounts || []).find((a) => a?.id && a?.pw);
+      const { pickStartNaverAccount } = await import('./lib/naver-session.js');
+      const acct = pickStartNaverAccount(config.naverAccounts || [], null)
+        || (config.naverAccounts || []).find((a) => a?.id && a?.pw);
       if (!acct) {
         return {
           ok: false,
@@ -477,6 +590,7 @@ ipcMain.handle('naver-session-refresh-sites', async (event) => {
         headless: false,
         outputFolder: path.join(OUTPUT_ROOT, 'naver-session'),
         onLog: (msg) => send(msg),
+        onSiteCount: makeOnSiteCount(),
       });
       p = await getNaverSessionPage();
     }
@@ -490,6 +604,7 @@ ipcMain.handle('naver-session-refresh-sites', async (event) => {
     send('등록 사이트 수 새로고침…');
     const n = await countAdvisorRegisteredSites(p, { forceReload: true });
     const snap = getNaverSessionStatus();
+    if (snap.accountId && n != null) persistNaverSiteCount(snap.accountId, n);
     if (n != null && n >= NAVER_SITE_SOFT_LIMIT) {
       send(`등록 ${n}개 ≥ ${NAVER_SITE_SOFT_LIMIT} — 다음 생성부터 다음 네이버 아이디로 전환됩니다.`);
     } else {
@@ -516,7 +631,40 @@ app.on('activate', () => {
 
 // IPC handlers
 ipcMain.handle('load-config', () => loadConfig());
-ipcMain.handle('save-config', (_, config) => { saveConfig(config); return true; });
+ipcMain.handle('save-config', async (_, config) => {
+  saveConfig(config);
+  // 저장 시 계정별 siteCount·비번을 세션 헬퍼에 동기화
+  try {
+    const { setKnownNaverSiteCount, setNaverAccountPasswordOverride } = await import('./lib/naver-session.js');
+    for (const a of (config?.naverAccounts || [])) {
+      if (a?.id && a.siteCount != null) setKnownNaverSiteCount(a.id, a.siteCount);
+      if (a?.id && a?.pw) setNaverAccountPasswordOverride(a.id, a.pw);
+    }
+  } catch { /* ignore */ }
+  return true;
+});
+/** 설정 UI에서 비번 변경 즉시 반영 (저장 전에도 로그인에 사용) */
+ipcMain.handle('naver-account-credentials', async (_, payload = {}) => {
+  const id = String(payload.id || '').trim();
+  const pw = String(payload.pw ?? '');
+  if (!id) return { ok: false, error: 'id 필요' };
+  try {
+    const { setNaverAccountPasswordOverride } = await import('./lib/naver-session.js');
+    setNaverAccountPasswordOverride(id, pw);
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+  // config에도 즉시 반영
+  const config = loadConfig();
+  let hit = false;
+  config.naverAccounts = (config.naverAccounts || []).map((a) => {
+    if (String(a?.id || '').trim() !== id) return a;
+    hit = true;
+    return { ...a, pw };
+  });
+  if (hit) saveConfig(config);
+  return { ok: true };
+});
 ipcMain.handle('load-results', () => loadResults());
 ipcMain.handle('save-results', (_, results) => { saveResults(results); return true; });
 
@@ -537,6 +685,95 @@ ipcMain.handle('manual-captcha-collect', async (event, options = {}) => {
 
   try {
     const { runManualCaptchaAndCollect } = await import('./lib/manual-captcha.js');
+    const ensureMetaLive = async ({ siteUrl, content, siteDir, metaTag, siteSlug }) => {
+      try {
+        const dir = String(siteDir || '').trim();
+        if (!dir || !fs.existsSync(path.join(dir, 'index.html'))) {
+          return { ok: false, error: '로컬 index.html 폴더 없음' };
+        }
+        const tokens = Array.isArray(config.netlifyTokens) ? config.netlifyTokens : [];
+        const token = tokens
+          .map((t) => (typeof t === 'string' ? t : (t?.token || '')))
+          .map((t) => String(t || '').trim())
+          .find(Boolean)
+          || String(config.kkangNetlifyToken || '').trim();
+        if (!token) return { ok: false, error: 'Netlify 토큰 없음 (설정 탭)' };
+
+        let slug = String(siteSlug || options.siteSlug || '').trim();
+        if (!slug) {
+          try { slug = new URL(siteUrl).hostname.replace(/\.netlify\.app$/i, ''); } catch { /* ignore */ }
+        }
+        if (!slug) slug = 'site';
+
+        const { injectMetaAllHtml } = await import('./lib/naver-register.js');
+        const { deploySite } = await import('./lib/deploy.js');
+        const tag = metaTag || (content
+          ? `<meta name="naver-site-verification" content="${content}" />`
+          : '');
+        if (!tag) return { ok: false, error: '메타 태그 없음' };
+
+        sendLog('   메타 → 전체 HTML head 삽입…');
+        injectMetaAllHtml(dir, tag);
+        sendLog('   Netlify 재배포 중…');
+        const deployInfo = await deploySite({
+          netlifyToken: token,
+          siteName: slug,
+          dir,
+          serviceName: slug,
+        });
+        return { ok: true, url: deployInfo?.url || siteUrl };
+      } catch (e) {
+        return { ok: false, error: e.message || String(e) };
+      }
+    };
+
+    const persistManualCaptchaStatus = async ({ status, message, popupMessage } = {}) => {
+      const key = url.replace(/\/$/, '').toLowerCase();
+      const errText = String(popupMessage || message || '').trim();
+      // 메타미검출도 수동캡챠 버튼은 유지 (captcha) — 오류 문구에 팝업 내용 기록
+      const rowStatus = (status === 'meta_missing' || status === 'captcha') ? 'captcha' : (status || 'captcha');
+      try {
+        const results = loadResults();
+        const idx = results.findIndex((r) => String(r?.url || '').replace(/\/$/, '').toLowerCase() === key);
+        if (idx >= 0) {
+          results[idx] = {
+            ...results[idx],
+            status: rowStatus,
+            error: errText || results[idx].error,
+            popupMessage: popupMessage || results[idx].popupMessage || '',
+            naverStatus: status || results[idx].naverStatus || '',
+            manualCaptchaAt: new Date().toISOString(),
+          };
+          saveResults(results);
+          event.sender.send('results-updated', results);
+        }
+      } catch { /* ignore */ }
+      try {
+        const { loadSitesRegistry } = await import('./lib/sites-registry.js');
+        const sites = loadSitesRegistry(CREATED_SITES_PATH);
+        const createdId = String(options.createdSiteId || '').trim();
+        const site = (createdId && sites.find((s) => s.id === createdId))
+          || sites.find((s) => String(s?.url || '').replace(/\/$/, '').toLowerCase() === key)
+          || sites.find((s) => s.provider === 'netlify' && s.name === String(options.siteSlug || '').trim());
+        if (site) {
+          const createdSites = await upsertCreatedSite({
+            ...site,
+            url: site.url || url,
+            status: 'deployed',
+            detail: {
+              ...(site.detail || {}),
+              naverAuto: false,
+              naverStatus: status || 'meta_missing',
+              naverError: errText,
+              popupMessage: popupMessage || '',
+              manualCaptchaAt: new Date().toISOString(),
+            },
+          });
+          event.sender.send('sites-updated', { createdSites });
+        }
+      } catch { /* ignore */ }
+    };
+
     const out = await runManualCaptchaAndCollect({
       siteUrl: url,
       siteDir: options.siteDir || options.folder || '',
@@ -548,6 +785,8 @@ ipcMain.handle('manual-captcha-collect', async (event, options = {}) => {
       outputRoot: OUTPUT_ROOT,
       sendLog,
       waitTimeoutMs: Number(options.waitTimeoutMs) || 10 * 60 * 1000,
+      ensureMetaLive,
+      onRecordStatus: persistManualCaptchaStatus,
     });
 
     // results.json 갱신 + 성공 시 ZIP → 「성공」폴더 이동
@@ -563,6 +802,7 @@ ipcMain.handle('manual-captcha-collect', async (event, options = {}) => {
             ...prev,
             status: 'success',
             error: undefined,
+            popupMessage: undefined,
             registeredAt: new Date().toISOString(),
             pageUrlCount: out.pageUrlCount ?? prev.pageUrlCount,
             siteDir: out.siteDir || prev.siteDir,
@@ -606,10 +846,14 @@ ipcMain.handle('manual-captcha-collect', async (event, options = {}) => {
             }
           }
         } else {
+          const popup = out?.popupMessage || '';
+          const errText = popup || out?.message || out?.error || results[idx].error;
           results[idx] = {
             ...results[idx],
-            status: out?.status === 'captcha' ? 'captcha' : (results[idx].status || 'captcha'),
-            error: out?.message || out?.error || results[idx].error,
+            status: 'captcha',
+            error: errText,
+            popupMessage: popup || results[idx].popupMessage || '',
+            naverStatus: out?.status || results[idx].naverStatus || 'captcha',
           };
         }
         saveResults(results);
@@ -652,7 +896,8 @@ ipcMain.handle('manual-captcha-collect', async (event, options = {}) => {
             output: out?.siteDir || options.siteDir || site.detail?.output || '',
             naverAuto: !!out?.ok,
             naverStatus: out?.ok ? 'success' : (out?.status || 'captcha'),
-            naverError: out?.ok ? '' : (out?.message || out?.error || '수동캡챠 미완료'),
+            naverError: out?.ok ? '' : (out?.popupMessage || out?.message || out?.error || '수동캡챠 미완료'),
+            popupMessage: out?.ok ? '' : (out?.popupMessage || site.detail?.popupMessage || ''),
             naverAccountId: naverAccount?.id || site.detail?.naverAccountId || '',
             pageUrlCount: out?.pageUrlCount ?? site.detail?.pageUrlCount ?? 0,
             sourcePath: movedZip?.to || site.detail?.sourcePath || options.sourcePath || '',

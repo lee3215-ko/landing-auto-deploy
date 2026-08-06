@@ -618,9 +618,53 @@ textarea {
   margin-left: 6px;
 }
 
+.log-channel-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.log-channel-btn {
+  border: 1px solid var(--border, #e2e8f0);
+  background: var(--surface-2, #f8fafc);
+  color: var(--text-muted, #64748b);
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.log-channel-btn:hover {
+  border-color: var(--primary, #2563eb);
+  color: var(--primary, #2563eb);
+}
+
+.log-channel-btn.active {
+  background: var(--primary, #2563eb);
+  border-color: var(--primary, #2563eb);
+  color: #fff;
+}
+
+.log-channel-count {
+  opacity: 0.85;
+  font-weight: 700;
+}
+
 .tag-count {
   background: var(--info-bg);
   color: var(--info);
+}
+
+.tag-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.tag-muted {
+  background: rgba(100, 116, 139, 0.12);
+  color: #64748b;
 }
 
 .tag-used {

@@ -64,6 +64,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   naverSessionStart: (options) => ipcRenderer.invoke('naver-session-start', options || {}),
   naverSessionRefreshSites: () => ipcRenderer.invoke('naver-session-refresh-sites'),
   onNaverSessionUpdate: (callback) => ipcRenderer.on('naver-session-update', (_, data) => callback(data)),
+  onNaverAccountsUpdated: (callback) => ipcRenderer.on('naver-accounts-updated', (_, data) => callback(data)),
+  naverAccountCredentials: (payload) => ipcRenderer.invoke('naver-account-credentials', payload || {}),
   focusMainWindow: () => ipcRenderer.invoke('focus-main-window'),
   sendHotkey: (hotkey) => ipcRenderer.invoke('send-hotkey', hotkey || {}),
   netlifyCreditsLogin: (options) => ipcRenderer.invoke('netlify-credits-login', options || {}),

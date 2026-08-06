@@ -25,6 +25,33 @@ let seoCounts = {};
 let seoSelected = new Set();
 let seoFolder = 'all';
 let seoKeywordsLoaded = false;
+/** 수동캡챠 진행 중 URL — 탭 전환·목록 리렌더 후에도 「새탭 진행중…」유지 */
+const manualCaptchaBusyUrls = new Set();
+
+function normManualCaptchaUrl(url) {
+  return String(url || '').replace(/\/$/, '').toLowerCase().trim();
+}
+
+function isManualCaptchaBusy(url) {
+  const k = normManualCaptchaUrl(url);
+  return !!k && manualCaptchaBusyUrls.has(k);
+}
+
+function setManualCaptchaBusy(url, busy) {
+  const k = normManualCaptchaUrl(url);
+  if (!k) return;
+  if (busy) manualCaptchaBusyUrls.add(k);
+  else manualCaptchaBusyUrls.delete(k);
+}
+
+/** @param {{ attrs: string, url: string, cls?: string, title?: string }} opts */
+function manualCaptchaButtonHtml({ attrs, url, cls = 'btn btn-primary btn-sm', title = '' }) {
+  const busy = isManualCaptchaBusy(url);
+  const label = busy ? '새탭 진행중…' : '수동캡챠';
+  const disabled = busy ? ' disabled' : '';
+  const tip = title || '네이버 창에서 캡챠 수동 입력 → 수집 자동 진행';
+  return `<button class="${cls}" type="button" ${attrs}${disabled} title="${escapeHtml(tip)}">${label}</button>`;
+}
 
 const PAGE_META = {
   config: { title: '설정', subtitle: 'Netlify 대량 배포 및 네이버 서치어드바이저 자동 등록' },
@@ -34,8 +61,115 @@ const PAGE_META = {
   'url-crawl': { title: 'URL 수집', subtitle: '하위 URL 수집 후 네이버 웹페이지 수집 일괄 신청' },
   sites: { title: '생성 사이트', subtitle: 'Netlify · Cloudflare Pages · 닷홈 생성 목록 (생성일 포함)' },
   results: { title: '배포/등록 결과', subtitle: '저장된 배포 URL 및 네이버 등록 현황' },
-  learn: { title: '학습', subtitle: '캡챠 실패 로그 · 수동 학습으로 실패율 감소' },
+  logs: { title: '로그', subtitle: '탭별 실행 로그 · 필터로 구분해서 보기' },
 };
+
+/** 로그 탭 채널 */
+const LOG_CHANNELS = [
+  { id: 'all', label: '전체' },
+  { id: 'config', label: '설정' },
+  { id: 'seo-gen', label: '넷리파이 생성' },
+  { id: 'cf-pages', label: 'Cloudflare' },
+  { id: 'dothome', label: '닷홈' },
+  { id: 'url-crawl', label: 'URL 수집' },
+  { id: 'sites', label: '생성 사이트' },
+  { id: 'results', label: '배포 결과' },
+  { id: 'system', label: '시스템' },
+];
+const LOG_CHANNEL_IDS = new Set(LOG_CHANNELS.map((c) => c.id).filter((id) => id !== 'all'));
+const appLogStore = Object.fromEntries([...LOG_CHANNEL_IDS].map((id) => [id, []]));
+const MAX_APP_LOG_LINES = 2500;
+let logFilterChannel = 'all';
+let currentTabName = 'config';
+
+function resolveLogChannel(explicit) {
+  if (explicit && LOG_CHANNEL_IDS.has(explicit)) return explicit;
+  if (LOG_CHANNEL_IDS.has(currentTabName)) return currentTabName;
+  return 'system';
+}
+
+function appendAppLog(channel, line) {
+  const ch = resolveLogChannel(channel);
+  const text = String(line ?? '');
+  const entry = { t: Date.now(), channel: ch, line: text };
+  if (!appLogStore[ch]) appLogStore[ch] = [];
+  appLogStore[ch].push(entry);
+  if (appLogStore[ch].length > MAX_APP_LOG_LINES) {
+    appLogStore[ch].splice(0, appLogStore[ch].length - MAX_APP_LOG_LINES);
+  }
+  if (currentTabName === 'logs') renderLogsWindow(entry);
+}
+
+function getFilteredLogEntries() {
+  if (logFilterChannel === 'all') {
+    return Object.keys(appLogStore)
+      .flatMap((ch) => appLogStore[ch])
+      .sort((a, b) => a.t - b.t);
+  }
+  return [...(appLogStore[logFilterChannel] || [])];
+}
+
+function formatLogEntry(entry) {
+  const d = new Date(entry.t);
+  const pad = (n) => String(n).padStart(2, '0');
+  const ts = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const label = LOG_CHANNELS.find((c) => c.id === entry.channel)?.label || entry.channel;
+  if (logFilterChannel === 'all') return `[${ts}] [${label}] ${entry.line}`;
+  return `[${ts}] ${entry.line}`;
+}
+
+function renderLogChannelTabs() {
+  const el = $('logChannelTabs');
+  if (!el) return;
+  el.innerHTML = LOG_CHANNELS.map((c) => {
+    const count = c.id === 'all'
+      ? Object.values(appLogStore).reduce((n, arr) => n + arr.length, 0)
+      : (appLogStore[c.id]?.length || 0);
+    const active = logFilterChannel === c.id ? ' active' : '';
+    return `<button type="button" class="log-channel-btn${active}" data-log-channel="${c.id}">${c.label}${count ? ` <span class="log-channel-count">${count}</span>` : ''}</button>`;
+  }).join('');
+}
+
+function renderLogsWindow(liveEntry = null) {
+  const w = $('logsWindow');
+  if (!w) return;
+  if (liveEntry
+    && (logFilterChannel === 'all' || logFilterChannel === liveEntry.channel)
+    && w.dataset.rendered === '1') {
+    w.textContent += `${formatLogEntry(liveEntry)}\n`;
+    w.scrollTop = w.scrollHeight;
+    const n = getFilteredLogEntries().length;
+    if ($('logsLineCount')) $('logsLineCount').textContent = `${n}줄`;
+    renderLogChannelTabs();
+    return;
+  }
+  const entries = getFilteredLogEntries();
+  w.textContent = entries.map(formatLogEntry).join('\n') + (entries.length ? '\n' : '');
+  w.dataset.rendered = '1';
+  w.scrollTop = w.scrollHeight;
+  const title = LOG_CHANNELS.find((c) => c.id === logFilterChannel)?.label || '로그';
+  if ($('logsChannelTitle')) $('logsChannelTitle').textContent = title;
+  if ($('logsLineCount')) $('logsLineCount').textContent = `${entries.length}줄`;
+  renderLogChannelTabs();
+}
+
+function clearAppLogs(channel = 'all') {
+  if (channel === 'all') {
+    for (const id of LOG_CHANNEL_IDS) appLogStore[id] = [];
+  } else if (appLogStore[channel]) {
+    appLogStore[channel] = [];
+  }
+  const w = $('logsWindow');
+  if (w) w.dataset.rendered = '';
+  renderLogsWindow();
+}
+
+function setLogFilterChannel(id) {
+  logFilterChannel = LOG_CHANNELS.some((c) => c.id === id) ? id : 'all';
+  const w = $('logsWindow');
+  if (w) w.dataset.rendered = '';
+  renderLogsWindow();
+}
 
 const SITE_PROVIDER_META = {
   netlify: { label: 'Netlify', cls: 'netlify' },
@@ -155,11 +289,20 @@ function renderNaverAccounts() {
 
   el.innerHTML = visible.map(({ acc, i }) => {
     const expanded = acc.expanded !== false;
-    const label = acc.id || `빈 계정 ${i + 1}`;
+    const idLabel = acc.id || `빈 계정 ${i + 1}`;
+    const pwLabel = acc.pw ? ` / ${acc.pw}` : ' / (PW 없음)';
+    const label = `${idLabel}${pwLabel}`;
+    const sc = acc.siteCount != null && Number.isFinite(Number(acc.siteCount))
+      ? Number(acc.siteCount)
+      : null;
+    const full = sc != null && sc >= 95;
+    const countTag = sc != null
+      ? `<span class="tag ${full ? 'tag-danger' : 'tag-count'}" title="마지막 인식한 서치어드바이저 등록 사이트 수${acc.siteCountAt ? ` · ${acc.siteCountAt}` : ''}">${sc}개${full ? '·한도' : ''}</span>`
+      : `<span class="tag tag-muted" title="아직 조회된 등록 수 없음">—개</span>`;
     return `
     <div class="item ${expanded ? 'expanded' : ''}" data-idx="${i}">
       <div class="item-header">
-        <span class="item-title" data-action="toggle-account" data-idx="${i}">${escapeHtml(label)}</span>
+        <span class="item-title" data-action="toggle-account" data-idx="${i}">${escapeHtml(label)} ${countTag}</span>
         <div style="display:flex;align-items:center;gap:6px;">
           <button type="button" class="btn btn-danger btn-sm" data-action="remove-account" data-idx="${i}">삭제</button>
           <span class="toggle-icon" data-action="toggle-account" data-idx="${i}">${expanded ? '▲' : '▼'}</span>
@@ -168,8 +311,9 @@ function renderNaverAccounts() {
       <div class="item-body">
         <div class="row">
           <div class="form-group"><label>ID</label><input type="text" data-idx="${i}" data-field="id" value="${escapeHtml(acc.id)}"></div>
-          <div class="form-group"><label>PW</label><input type="password" data-idx="${i}" data-field="pw" value="${escapeHtml(acc.pw)}"></div>
+          <div class="form-group"><label>PW</label><input type="text" data-idx="${i}" data-field="pw" value="${escapeHtml(acc.pw)}" autocomplete="off" spellcheck="false"></div>
         </div>
+        ${full ? '<p class="bulk-hint" style="margin:6px 0 0;color:var(--danger);">등록 95개 이상 — 자동 로그인·생성 시 이 계정을 건너뜁니다.</p>' : ''}
       </div>
     </div>`;
   }).join('');
@@ -234,13 +378,26 @@ function toggleToken(i) {
 
 function addNaverAccount() {
   config.naverAccounts.forEach(a => { a.expanded = false; });
-  config.naverAccounts.push({ id: '', pw: '', expanded: true });
+  config.naverAccounts.push({ id: '', pw: '', siteCount: null, siteCountAt: '', expanded: true });
   renderNaverAccounts();
 }
 function removeNaverAccount(i) { config.naverAccounts.splice(i, 1); renderNaverAccounts(); }
+let naverPwSaveTimer = null;
 function updateNaverAccount(i, field, value) {
+  if (!config.naverAccounts[i]) return;
   config.naverAccounts[i][field] = value;
   if (field === 'id') renderNaverAccounts();
+  // 비밀번호는 입력 즉시 세션/저장에 반영 (다음 로그인·생성에 바로 사용)
+  if (field === 'pw') {
+    const id = String(config.naverAccounts[i].id || '').trim();
+    if (id) {
+      clearTimeout(naverPwSaveTimer);
+      naverPwSaveTimer = setTimeout(() => {
+        window.electronAPI.naverAccountCredentials?.({ id, pw: value }).catch(() => {});
+        window.electronAPI.saveConfig?.(collectConfig()).catch(() => {});
+      }, 250);
+    }
+  }
 }
 function toggleAccount(i) {
   config.naverAccounts[i].expanded = !config.naverAccounts[i].expanded;
@@ -413,8 +570,15 @@ function collectConfig() {
         : { token: (t.token || '').trim(), id: (t.id || '').trim(), used: !!t.used, usedCount: t.usedCount || 0 })
       .filter(t => t.token),
     naverAccounts: config.naverAccounts
-      .map(a => ({ id: a.id.trim(), pw: a.pw.trim() }))
-      .filter(a => a.id && a.pw),
+      .map((a) => ({
+        id: String(a.id || '').trim(),
+        pw: String(a.pw || '').trim(),
+        siteCount: a.siteCount != null && Number.isFinite(Number(a.siteCount))
+          ? Number(a.siteCount)
+          : null,
+        siteCountAt: a.siteCountAt || '',
+      }))
+      .filter((a) => a.id && a.pw),
     services: config.services
       .filter(s => s.keyword?.trim())
       .map(s => ({ ...s, count: parseInt(s.count) || 1 })),
@@ -514,6 +678,7 @@ const STATUS_MAP = {
   already_registered: { label: '이미 등록', cls: 'already' },
   error: { label: '오류', cls: 'error' },
   captcha: { label: '캡챠', cls: 'captcha' },
+  meta_missing: { label: '메타미검출', cls: 'error' },
   unknown: { label: '미확인', cls: 'unknown' },
   manual: { label: '수동캡챠완료', cls: 'manual' },
 };
@@ -637,9 +802,17 @@ function renderResultsTable(results) {
   for (let idx = 0; idx < rows.length; idx++) {
     const { r, originalIndex } = rows[idx];
     const st = STATUS_MAP[r.status] || { label: r.status || '-', cls: 'unknown' };
-    const manualBtn = r.status === 'captcha'
-      ? `<button class="btn btn-primary btn-sm" type="button" data-action="manual-captcha" data-idx="${originalIndex}" title="네이버 창에서 캡챠 수동 입력 → 수집 자동 진행">수동캡챠</button>`
+    const showManualCaptcha = r.status === 'captcha'
+      || r.status === 'meta_missing'
+      || /메타\s*태그|메타미검출|찾을\s*수\s*없/i.test(String(r.error || r.popupMessage || ''));
+    const manualBtn = showManualCaptcha
+      ? manualCaptchaButtonHtml({
+        attrs: `data-action="manual-captcha" data-idx="${originalIndex}"`,
+        url: r.url,
+        cls: 'btn btn-primary btn-sm',
+      })
       : '';
+    const errHint = r.popupMessage || r.error || '';
     const url = (r.url || '').trim();
     const urlCell = url
       ? `<div class="url-cell">
@@ -652,7 +825,7 @@ function renderResultsTable(results) {
       <td class="col-check"><input type="checkbox" class="result-url-check" data-url="${escapeHtml(url)}" ${url ? '' : 'disabled'}></td>
       <td>${escapeHtml(r.name || '-')}</td>
       <td>${urlCell}</td>
-      <td><span class="status-pill ${st.cls}">${st.label}</span>${manualBtn}${r.error ? `<br><span style="color:var(--danger);font-size:11px;">${escapeHtml(r.error)}</span>` : ''}</td>
+      <td><span class="status-pill ${st.cls}">${/메타미검출|메타\s*태그/i.test(errHint) ? '메타미검출' : st.label}</span>${manualBtn}${errHint ? `<br><span style="color:var(--danger);font-size:11px;">${escapeHtml(errHint)}</span>` : ''}</td>
       <td>${renderIndexCell(r, originalIndex)}</td>
       <td>${formatDate(r.registeredAt)}</td>
       <td>${escapeHtml(r.naverAccountId || '-')}</td>
@@ -764,6 +937,9 @@ async function deleteResult(index) {
 async function markManualCaptcha(index) {
   const row = savedResults[index];
   if (!row?.url) return alert('URL이 없습니다.');
+  if (isManualCaptchaBusy(row.url)) {
+    return alert('이미 이 사이트 수동캡챠가 진행 중입니다.\n다른 탭으로 다녀와도 버튼은 「새탭 진행중…」으로 유지됩니다.');
+  }
   if (!confirm(
     `수동캡챠를 시작할까요?\n\n${row.url}\n\n`
     + '지금 열려 있는 서치어드바이저 창에서 (+)새 탭을 연 뒤\n'
@@ -771,8 +947,8 @@ async function markManualCaptcha(index) {
     + '(생성 중인 탭은 그대로 둡니다)',
   )) return;
 
-  const btn = document.querySelector(`#resultsList [data-action="manual-captcha"][data-idx="${index}"]`);
-  if (btn) { btn.disabled = true; btn.textContent = '새탭 진행중…'; }
+  setManualCaptchaBusy(row.url, true);
+  filterResults();
   try {
     logLine(`═══ 수동캡챠 시작: ${row.url} ═══`);
     const out = await window.electronAPI.manualCaptchaCollect({
@@ -809,16 +985,21 @@ async function markManualCaptcha(index) {
         }
         logLine(`📦 성공 ZIP → 성공\\${out.movedZip.to ? out.movedZip.to.split(/[/\\\\]/).pop() : ''}`);
       }
-      filterResults();
     } else {
-      logLine(`⚠ 수동캡챠: ${out?.error || out?.message || '실패'}`);
-      alert(out?.error || out?.message || '수동캡챠 실패');
-      if (btn) { btn.disabled = false; btn.textContent = '수동캡챠'; }
+      const failMsg = out?.popupMessage || out?.error || out?.message || '실패';
+      logLine(`⚠ 수동캡챠: ${failMsg}`);
+      if (out?.status === 'meta_missing' || /메타미검출|메타\s*태그/i.test(failMsg)) {
+        alert(`메타미검출이 기록되었습니다.\n\n${failMsg}\n\n「인증재시도」·삭제 또는 다른 사이트 「수동캡챠」를 진행하세요.`);
+      } else {
+        alert(failMsg);
+      }
     }
   } catch (e) {
     logLine(`[ERROR] 수동캡챠: ${e.message}`);
     alert(e.message || '수동캡챠 오류');
-    if (btn) { btn.disabled = false; btn.textContent = '수동캡챠'; }
+  } finally {
+    setManualCaptchaBusy(row.url, false);
+    filterResults();
   }
 }
 
@@ -938,7 +1119,7 @@ function switchTab(name) {
   $('urlCrawlPanel').classList.toggle('active', name === 'url-crawl');
   $('sitesPanel')?.classList.toggle('active', name === 'sites');
   $('resultsPanel').classList.toggle('active', name === 'results');
-  $('learnPanel')?.classList.toggle('active', name === 'learn');
+  $('logsPanel')?.classList.toggle('active', name === 'logs');
   $('nav-config').classList.toggle('active', name === 'config');
   $('nav-seo-gen')?.classList.toggle('active', name === 'seo-gen');
   $('nav-cf-pages')?.classList.toggle('active', name === 'cf-pages');
@@ -946,7 +1127,7 @@ function switchTab(name) {
   $('nav-url-crawl').classList.toggle('active', name === 'url-crawl');
   $('nav-sites')?.classList.toggle('active', name === 'sites');
   $('nav-results').classList.toggle('active', name === 'results');
-  $('nav-learn')?.classList.toggle('active', name === 'learn');
+  $('nav-logs')?.classList.toggle('active', name === 'logs');
   const meta = PAGE_META[name] || PAGE_META.config;
   $('pageTitle').textContent = meta.title;
   $('pageSubtitle').textContent = meta.subtitle;
@@ -963,11 +1144,14 @@ function switchTab(name) {
   if (name === 'results') loadSavedResults();
   if (name === 'sites') loadCreatedSites();
   if (name === 'seo-gen' && !seoKeywordsLoaded) loadSeoKeywords();
-  if (name === 'learn') loadCaptchaLearnPanel();
+  if (name === 'logs') {
+    const w = $('logsWindow');
+    if (w) w.dataset.rendered = '';
+    renderLogsWindow();
+  }
 }
 
 let netlifyCreditState = null;
-let currentTabName = 'config';
 
 function formatNetlifyCredits(n) {
   if (n == null || Number.isNaN(Number(n))) return '—';
@@ -1408,11 +1592,20 @@ function renderCreatedSites() {
       if (naverDone) {
         naverBtn = `
           <span class="status-pill success" title="네이버 소유확인·인덱싱 신청 완료${accounts.naverId ? ` · ${accounts.naverId}` : ''}">네이버 완료</span>
-          <button class="btn btn-ghost btn-sm" type="button" data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}" title="네이버 창에서 캡챠 수동 입력 → 수집 자동 진행">수동캡챠</button>`;
+          ${manualCaptchaButtonHtml({
+            attrs: `data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}"`,
+            url: s.url,
+            cls: 'btn btn-ghost btn-sm',
+          })}`;
       } else if (indexRetry) {
         naverBtn = `
           <span class="status-pill indexed-fail" title="${escapeHtml(s.detail?.naverError || s.detail?.naverStatus || '소유확인 미완료')}">네이버 미완료</span>
-          <button class="btn btn-warning btn-sm" type="button" data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}" title="네이버 창에서 HTML태그 선택·캡챠 수동 입력 → 수집 자동 진행">수동캡챠</button>
+          ${manualCaptchaButtonHtml({
+            attrs: `data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}"`,
+            url: s.url,
+            cls: 'btn btn-warning btn-sm',
+            title: '네이버 창에서 HTML태그 선택·캡챠 수동 입력 → 수집 자동 진행',
+          })}
           <button class="btn btn-ghost btn-sm" type="button" data-sites-action="retry-naver" data-id="${escapeHtml(s.id)}" title="HTML 인증부터 다시">인증재시도</button>`;
       } else {
         naverBtn = `<button class="btn btn-primary btn-sm" type="button" data-sites-action="retry-naver" data-id="${escapeHtml(s.id)}" title="네이버 HTML 인증 추출 → head 삽입 → Netlify 재배포">네이버 인증</button>`;
@@ -1643,6 +1836,9 @@ async function siteManualCaptcha(id) {
   if (!site) return alert('사이트를 찾을 수 없습니다.');
   if (site.provider !== 'netlify') return alert('Netlify 사이트만 가능합니다.');
   if (!(site.url || '').trim()) return alert('사이트 URL이 없습니다.');
+  if (isManualCaptchaBusy(site.url)) {
+    return alert('이미 이 사이트 수동캡챠가 진행 중입니다.\n다른 탭으로 다녀와도 버튼은 「새탭 진행중…」으로 유지됩니다.');
+  }
   // 로그인 게이트 없음 — 백엔드가 포트 9334 Chrome에 바로 붙음
   if (!confirm(
     `수동캡챠를 시작할까요?\n\n${site.url}\n\n`
@@ -1651,8 +1847,8 @@ async function siteManualCaptcha(id) {
     + '(생성 중인 탭은 그대로 둡니다)',
   )) return;
 
-  const btn = document.querySelector(`#sitesList [data-sites-action="manual-captcha"][data-id="${id}"]`);
-  if (btn) { btn.disabled = true; btn.textContent = '새탭 진행중…'; }
+  setManualCaptchaBusy(site.url, true);
+  renderCreatedSites();
   setSitesIndexProgress(`수동캡챠 새탭 진행: ${site.url || site.name}`, true);
   try {
     await window.electronAPI.saveConfig(collectConfig());
@@ -1668,7 +1864,6 @@ async function siteManualCaptcha(id) {
     });
     if (out?.createdSites) createdSites = out.createdSites;
     else await loadCreatedSites(false);
-    renderCreatedSites();
 
     if (out?.ok) {
       setSitesIndexProgress(`✔ 수동캡챠 완료: ${site.url}`, true);
@@ -1687,15 +1882,21 @@ async function siteManualCaptcha(id) {
       await loadSavedResults().catch(() => {});
     } else {
       setSitesIndexProgress('', false);
-      logLine(`⚠ 수동캡챠: ${out?.error || out?.message || '실패'}`);
-      alert(out?.error || out?.message || '수동캡챠 실패');
-      if (btn) { btn.disabled = false; btn.textContent = '수동캡챠'; }
+      const failMsg = out?.popupMessage || out?.error || out?.message || '실패';
+      logLine(`⚠ 수동캡챠: ${failMsg}`);
+      if (out?.status === 'meta_missing' || /메타미검출|메타\s*태그/i.test(failMsg)) {
+        alert(`메타미검출이 기록되었습니다.\n\n${failMsg}\n\n「인증재시도」·삭제 또는 다른 사이트 「수동캡챠」를 진행하세요.`);
+      } else {
+        alert(failMsg);
+      }
     }
   } catch (e) {
     setSitesIndexProgress('', false);
     logLine(`[ERROR] 수동캡챠: ${e.message}`);
     alert(e.message || String(e));
-    if (btn) { btn.disabled = false; btn.textContent = '수동캡챠'; }
+  } finally {
+    setManualCaptchaBusy(site.url, false);
+    renderCreatedSites();
   }
 }
 
@@ -1750,10 +1951,7 @@ async function retrySiteNaver(id) {
 }
 
 function crawlLog(line) {
-  const w = $('crawlLog');
-  if (!w) return;
-  w.textContent += line + '\n';
-  w.scrollTop = w.scrollHeight;
+  appendAppLog('url-crawl', line);
 }
 
 function getCrawlHomeUrls() {
@@ -2209,7 +2407,7 @@ async function startRun() {
 
   setRunControls({ active: true });
   setJobProgress({ active: true, job: 'run', phase: 'start', label: '전체 실행 시작…', percent: 2 });
-  $('logWindow').textContent = '';
+  clearAppLogs('config');
 
   await window.electronAPI.saveConfig(cfg);
   const result = await window.electronAPI.startRun(cfg);
@@ -2402,10 +2600,7 @@ function renderGeneratedTokens() {
 }
 
 function tokenGenLog(line) {
-  const w = $('tokenGenLog');
-  if (!w) return;
-  w.textContent += line + '\n';
-  w.scrollTop = w.scrollHeight;
+  appendAppLog('config', line);
 }
 
 let netlifyRecording = false;
@@ -2436,7 +2631,6 @@ async function startRecordNetlify() {
   if (!confirm('Chrome이 열립니다. 직접 가입/로그인하면 클릭·입력이 기록됩니다.\n완료 후 [기록 완료] 버튼을 다시 누르세요.\n\n시작할까요?')) return;
 
   btn.disabled = true;
-  $('tokenGenLog').textContent = '';
 
   const out = await window.electronAPI.recordNetlifyFlowStart({
     mode,
@@ -2503,7 +2697,7 @@ async function startTokenGen() {
 
   const prevLabel = $('startTokenGenBtn').textContent;
   $('startTokenGenBtn').textContent = '⏳ 진행 중...';
-  $('tokenGenLog').textContent = '';
+  clearAppLogs('config');
   tokenGenWaitingLogin = false;
   setTokenGenRunning(true);
 
@@ -2566,7 +2760,12 @@ async function load() {
       ? { token: t, id: '', used: false, usedCount: 0, expanded: false }
       : { ...t, used: !!t.used, usedCount: t.usedCount || 0, expanded: false }
   );
-  config.naverAccounts = (config.naverAccounts || []).map(a => ({ ...a, expanded: false }));
+  config.naverAccounts = (config.naverAccounts || []).map((a) => ({
+    ...a,
+    siteCount: a.siteCount != null && Number.isFinite(Number(a.siteCount)) ? Number(a.siteCount) : null,
+    siteCountAt: a.siteCountAt || '',
+    expanded: false,
+  }));
   config.netlifyGenAccounts = (config.netlifyGenAccounts || []).map(a => {
     const naverId = a.naverId || (a.email && !a.email.includes('@') ? a.email : '') || a.id || '';
     return {
@@ -2701,7 +2900,6 @@ function setupEvents() {
   $('metaInjectOnly')?.addEventListener('change', async () => {
     await window.electronAPI.saveConfig(collectConfig());
   });
-  $('clearLogBtn').addEventListener('click', () => { $('logWindow').textContent = ''; });
   $('resultsSearch').addEventListener('input', filterResults);
   $('clearAllResultsBtn').addEventListener('click', clearAllResults);
   $('checkIndexBtn').addEventListener('click', () => runIndexCheck());
@@ -2767,7 +2965,6 @@ function setupEvents() {
   });
   $('copyCrawlUrlsBtn')?.addEventListener('click', copyCrawlUrls);
   $('clearCrawlUrlsBtn')?.addEventListener('click', clearCrawlUrls);
-  $('clearCrawlLogBtn')?.addEventListener('click', () => { if ($('crawlLog')) $('crawlLog').textContent = ''; });
   for (const id of ['crawlOptFast', 'crawlOptRobots', 'crawlOptSitemap', 'crawlOptWebpage']) {
     $(id)?.addEventListener('change', async () => {
       await window.electronAPI.saveConfig(collectConfig());
@@ -2784,9 +2981,20 @@ function setupEvents() {
   $('seoSiteSlug')?.addEventListener('input', updateSeoPreviewUrl);
   $('seoBrowseOutBtn')?.addEventListener('click', browseSeoOutputDir);
   $('seoBrowseImageBtn')?.addEventListener('click', browseSeoImageDir);
-  $('learnRefreshBtn')?.addEventListener('click', () => loadCaptchaLearnPanel());
-  $('learnTrainBtn')?.addEventListener('click', trainCaptchaLearn);
-  window.electronAPI.onCaptchaLearnLog?.((line) => appendLearnLog(line));
+  $('logChannelTabs')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-log-channel]');
+    if (!btn) return;
+    setLogFilterChannel(btn.dataset.logChannel);
+  });
+  $('logsClearChannelBtn')?.addEventListener('click', () => {
+    clearAppLogs(logFilterChannel === 'all' ? 'all' : logFilterChannel);
+  });
+  $('logsClearAllBtn')?.addEventListener('click', () => clearAppLogs('all'));
+  $('logsCopyBtn')?.addEventListener('click', async () => {
+    const text = getFilteredLogEntries().map(formatLogEntry).join('\n');
+    if (!text) return alert('복사할 로그가 없습니다.');
+    await copyToClipboard(text, '로그 복사됨');
+  });
   $('seoBrowseBuilderBtn')?.addEventListener('click', browseSeoBuilderPath);
   $('seoSelectAllBtn')?.addEventListener('click', () => seoSelectVisible(true));
   $('seoClearKwBtn')?.addEventListener('click', () => seoSelectVisible(false));
@@ -2797,7 +3005,6 @@ function setupEvents() {
   $('seoAddKwBtn')?.addEventListener('click', addSeoKeywords);
   $('seoGenerateBtn')?.addEventListener('click', startSeoGenerate);
   $('seoStopBtn')?.addEventListener('click', stopSeoGenerate);
-  $('seoClearLogBtn')?.addEventListener('click', () => { if ($('seoLog')) $('seoLog').textContent = ''; });
 
   // Cloudflare Pages 생성 (기본 틀)
   $('cfRandomSlugBtn')?.addEventListener('click', () => randomCfSlug(true));
@@ -2805,7 +3012,6 @@ function setupEvents() {
   $('cfBrowseOutBtn')?.addEventListener('click', browseCfOutputDir);
   $('cfGenerateBtn')?.addEventListener('click', startCfGenerate);
   $('cfStopBtn')?.addEventListener('click', stopCfGenerate);
-  $('cfClearLogBtn')?.addEventListener('click', () => { if ($('cfLog')) $('cfLog').textContent = ''; });
 
   // 닷홈 호스팅 생성
   $('dhHostId')?.addEventListener('input', updateDhPreviewUrl);
@@ -2818,7 +3024,6 @@ function setupEvents() {
   $('dhFullPipelineBtn')?.addEventListener('click', startDhFullPipeline);
   $('dhStopBtn')?.addEventListener('click', stopDhGenerate);
   $('vpnHotkeyTestBtn')?.addEventListener('click', testVpnHotkey);
-  $('dhClearLogBtn')?.addEventListener('click', () => { if ($('dhLog')) $('dhLog').textContent = ''; });
   $('dhAccountsList')?.addEventListener('click', (e) => {
     if (dhBusy) return;
     const genBtn = e.target?.closest?.('[data-dh-seo-gen]');
@@ -2876,6 +3081,14 @@ function setupEvents() {
     const field = t.dataset.field;
     if (Number.isNaN(idx) || !field) return;
     updateNaverAccount(idx, field, t.value);
+  });
+  // PW는 타이핑 중에도 실시간 반영
+  $('naverAccounts').addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.tagName !== 'INPUT' || t.dataset.field !== 'pw') return;
+    const idx = parseInt(t.dataset.idx, 10);
+    if (Number.isNaN(idx)) return;
+    updateNaverAccount(idx, 'pw', t.value);
   });
 
   $('services').addEventListener('click', (e) => {
@@ -2936,10 +3149,8 @@ window.electronAPI.onSitesIndexUpdated((p) => {
   }
 });
 
-async function logLine(line) {
-  const w = $('logWindow');
-  w.textContent += line + '\n';
-  w.scrollTop = w.scrollHeight;
+async function logLine(line, channel) {
+  appendAppLog(channel || resolveLogChannel(), line);
 
   if (line.includes('[RUN_PAUSED]')) setRunControls({ active: true, paused: true });
   if (line.includes('[RUN_RESUMED]')) setRunControls({ active: true, paused: false });
@@ -2967,10 +3178,7 @@ async function logLine(line) {
 }
 
 function seoLog(line) {
-  const w = $('seoLog');
-  if (!w) return;
-  w.textContent += line + '\n';
-  w.scrollTop = w.scrollHeight;
+  appendAppLog('seo-gen', line);
 }
 
 function updateSeoPreviewUrl() {
@@ -3303,7 +3511,7 @@ async function startSeoGenerate() {
   seoStopRequested = false;
   seoBatchUsedSlugs.clear();
   for (const s of collectUsedSeoSlugs()) seoBatchUsedSlugs.add(s);
-  if ($('seoLog')) $('seoLog').textContent = '';
+  clearAppLogs('seo-gen');
   await window.electronAPI.saveConfig(collectConfig());
   setJobProgress({
     active: true,
@@ -3459,10 +3667,7 @@ async function stopSeoGenerate() {
 let cfBusy = false;
 
 function cfLog(line) {
-  const w = $('cfLog');
-  if (!w) return;
-  w.textContent += line + '\n';
-  w.scrollTop = w.scrollHeight;
+  appendAppLog('cf-pages', line);
 }
 
 function sanitizeCfSlug(raw) {
@@ -3547,10 +3752,7 @@ let dhBusy = false;
 let dhStopRequested = false;
 
 function dhLog(line) {
-  const w = $('dhLog');
-  if (!w) return;
-  w.textContent += line + '\n';
-  w.scrollTop = w.scrollHeight;
+  appendAppLog('dothome', line);
 }
 
 function updateDhPreviewUrl() {
@@ -3643,77 +3845,6 @@ async function browseDhImageDir() {
 async function browseSeoImageDir() {
   const dir = await window.electronAPI.selectFolder();
   if (dir && $('seoImageDir')) $('seoImageDir').value = dir;
-}
-
-function appendLearnLog(line) {
-  const el = $('learnLog');
-  if (!el) return;
-  const t = el.textContent || '';
-  el.textContent = t ? `${t}\n${line}` : String(line || '');
-  el.scrollTop = el.scrollHeight;
-}
-
-function renderCaptchaLearnPanel(payload) {
-  const stats = payload?.stats || {};
-  const model = stats.model || {};
-  if ($('learnFailCount')) $('learnFailCount').textContent = String(stats.failureCount ?? 0);
-  if ($('learnOkCount')) $('learnOkCount').textContent = String(stats.successCount ?? 0);
-  if ($('learnAvoidCount')) $('learnAvoidCount').textContent = String((model.avoidAnswers || []).length);
-  if ($('learnTrainedAt')) {
-    $('learnTrainedAt').textContent = model.trainedAt
-      ? formatDate(model.trainedAt)
-      : '미학습';
-  }
-  if ($('learnModelHint')) {
-    const notes = (model.notes || []).join(' · ');
-    const retries = model.yesCaptchaRetries || 2;
-    $('learnModelHint').textContent = model.trainedAt
-      ? `학습 모델 적용 중 · YesCaptcha 재시도 ${retries}회${notes ? ` · ${notes}` : ''}`
-      : '아직 학습하지 않았습니다. 실패가 쌓이면 「학습하기」를 누르세요.';
-  }
-  const list = $('learnFailList');
-  if (!list) return;
-  const recent = payload?.recent || [];
-  if (!recent.length) {
-    list.innerHTML = '<p class="bulk-hint">실패 기록이 없습니다.</p>';
-    return;
-  }
-  list.innerHTML = recent.map((r) => {
-    const ans = (r.answers || []).slice(0, 4).join(', ') || '—';
-    return `<div class="list-item" style="padding:10px 12px;">
-      <div style="font-size:12px;color:var(--text-dim);">${escapeHtml(formatDate(r.at))} · ${escapeHtml(r.context || '')} · ${escapeHtml(r.solver || '')}</div>
-      <div style="font-size:13px;margin-top:4px;">${escapeHtml(r.reason || 'fail')} · 시도: ${escapeHtml(ans)}</div>
-    </div>`;
-  }).join('');
-}
-
-async function loadCaptchaLearnPanel() {
-  try {
-    const res = await window.electronAPI.captchaLearnStats();
-    if (res?.ok) renderCaptchaLearnPanel(res);
-    else appendLearnLog(res?.error || '학습 통계 로드 실패');
-  } catch (e) {
-    appendLearnLog(e.message || String(e));
-  }
-}
-
-async function trainCaptchaLearn() {
-  if (!confirm('쌓인 캡챠 실패/성공 기록으로 학습할까요?\n(자동 실행되지 않으며, 이 버튼을 눌렀을 때만 학습합니다.)')) return;
-  if ($('learnTrainBtn')) $('learnTrainBtn').disabled = true;
-  appendLearnLog('학습 시작…');
-  try {
-    const res = await window.electronAPI.captchaLearnTrain();
-    if (res?.ok) {
-      appendLearnLog(`✔ ${res.message || '학습 완료'}`);
-      renderCaptchaLearnPanel({ stats: res.stats, recent: (await window.electronAPI.captchaLearnStats())?.recent || [] });
-    } else {
-      appendLearnLog(`✖ ${res?.message || '학습 실패'}`);
-    }
-  } catch (e) {
-    appendLearnLog(`✖ ${e.message || e}`);
-  } finally {
-    if ($('learnTrainBtn')) $('learnTrainBtn').disabled = false;
-  }
 }
 
 async function browseDhGoogleFile() {
@@ -4130,6 +4261,33 @@ window.electronAPI.onNetlifyCreditsUpdate((data) => {
 });
 window.electronAPI.onNaverSessionUpdate?.((data) => {
   updateNaverSessionBadge(data || {});
+  // 배지 사이트 수 → 현재 로그인 계정 행에도 반영
+  const id = String(data?.accountId || '').trim();
+  const n = data?.siteCount;
+  if (id && n != null && Array.isArray(config.naverAccounts)) {
+    const acc = config.naverAccounts.find((a) => String(a?.id || '').trim() === id);
+    if (acc && acc.siteCount !== n) {
+      acc.siteCount = Number(n);
+      acc.siteCountAt = new Date().toISOString();
+      renderNaverAccounts();
+    }
+  }
+});
+window.electronAPI.onNaverAccountsUpdated?.((data) => {
+  if (!Array.isArray(data?.naverAccounts)) return;
+  const expandedMap = new Map(
+    (config.naverAccounts || []).map((a, i) => [String(a?.id || '').trim() || `#${i}`, a.expanded]),
+  );
+  config.naverAccounts = data.naverAccounts.map((a, i) => ({
+    ...a,
+    expanded: expandedMap.has(String(a?.id || '').trim())
+      ? expandedMap.get(String(a.id).trim())
+      : false,
+  }));
+  renderNaverAccounts();
+  if (data.accountId != null && data.siteCount != null) {
+    logLine(`[네이버] ${data.accountId} 등록 수 기록: ${data.siteCount}개`);
+  }
 });
 window.electronAPI.naverSessionStatus?.().then((s) => {
   if (s) updateNaverSessionBadge(s);
