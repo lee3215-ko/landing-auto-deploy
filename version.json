@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.61",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/503684115",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.61/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/503684115",
-    "asset_id":  503684115,
-    "notes":  "웹수집 URL pretty 경로(.html 제거), 네이버 비밀번호 평문 표시, robots 팝업 스팸 완화",
+    "version":  "3.8.62",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.62/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.62/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "넷리파이 생성: 업체명=로고·메타 타이틀 동일 적용",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/503684115",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.61/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.62/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
