@@ -82,6 +82,8 @@ function loadConfig() {
         hostId: '',
         hostPw: 'dlwkdrns12435!',
         emailLocal: '',
+        mailNaverId: '',
+        mailNaverPw: '',
         ftpHost: '',
         keyword: '',
         externalUrl: '',
@@ -96,6 +98,7 @@ function loadConfig() {
   }
 }
 
+/** 서치어드바이저 등록용 — 설정 탭 naverAccounts만 사용 (닷홈 메일 계정과 분리) */
 function pickNaverAccountForDothome(config, options = {}) {
   const accounts = Array.isArray(config.naverAccounts) ? config.naverAccounts : [];
   const { pickStartNaverAccount, NAVER_SITE_SOFT_LIMIT } = requireNaverSessionSync();
@@ -107,14 +110,6 @@ function pickNaverAccountForDothome(config, options = {}) {
     };
     const picked = pickStartNaverAccount(accounts, pref);
     if (picked) return picked;
-  }
-  const emailLocal = String(options.emailLocal || config.dothome?.emailLocal || '').trim().replace(/@.*$/, '');
-  if (emailLocal) {
-    const matched = accounts.find((a) => String(a.id || '').trim() === emailLocal);
-    if (matched?.id && matched?.pw) {
-      const picked = pickStartNaverAccount(accounts, matched);
-      if (picked) return picked;
-    }
   }
   const picked = pickStartNaverAccount(accounts, null);
   if (picked) return picked;
@@ -2009,18 +2004,10 @@ ipcMain.handle('dothome-signup', async (event, options = {}) => {
   const config = loadConfig();
   const { runDothomeSignup } = await import('./lib/dothome-signup.js');
   const sendLog = (line) => event.sender.send('dothome-log', line);
-  const emailLocal = String(options.emailLocal || config.dothome?.emailLocal || '').trim().replace(/@.*$/, '');
-
-  // 네이버 메일용 계정: 이메일 앞부분과 같은 아이디 우선
-  const accounts = Array.isArray(config.naverAccounts) ? config.naverAccounts : [];
-  let naverAccount = accounts.find((a) => a?.id && a?.pw && a.id === emailLocal) || null;
-  if (!naverAccount && config.urlCrawlNaver?.id && config.urlCrawlNaver?.pw) {
-    if (!emailLocal || config.urlCrawlNaver.id === emailLocal) {
-      naverAccount = { id: config.urlCrawlNaver.id, pw: config.urlCrawlNaver.pw };
-    }
-  }
+  const { naverAccount, emailLocal, error: mailErr } = resolveDothomeMailAccount(config, options);
   if (!naverAccount) {
-    naverAccount = accounts.find((a) => a?.id && a?.pw) || null;
+    sendLog(`[ERROR] ${mailErr}`);
+    return { ok: false, error: mailErr };
   }
 
   try {
@@ -2059,6 +2046,8 @@ ipcMain.handle('dothome-signup', async (event, options = {}) => {
       dh.hostId = out.account.id;
       dh.hostPw = out.account.pw;
       dh.emailLocal = options.emailLocal || dh.emailLocal || '';
+      if (options.mailNaverId) dh.mailNaverId = String(options.mailNaverId).trim().replace(/@.*$/, '');
+      if (options.mailNaverPw) dh.mailNaverPw = String(options.mailNaverPw).trim();
       config.dothome = dh;
       saveConfig(config);
       try {
@@ -2082,19 +2071,30 @@ ipcMain.handle('dothome-signup-stop', async () => {
   return { ok: true };
 });
 
+/**
+ * 닷홈 메일 인증용 계정 — 닷홈 탭 입력값만 사용 (설정 탭 서치어드바이저 계정과 분리)
+ */
+function resolveDothomeMailAccount(config, options = {}) {
+  const dh = config.dothome || {};
+  const emailLocal = String(options.emailLocal || dh.emailLocal || '').trim().replace(/@.*$/, '');
+  const id = String(options.mailNaverId || dh.mailNaverId || emailLocal || '').trim().replace(/@.*$/, '');
+  const pw = String(options.mailNaverPw || dh.mailNaverPw || '').trim();
+  if (!id || !pw) {
+    return {
+      naverAccount: null,
+      emailLocal,
+      error: '닷홈 탭에 네이버 메일 아이디·비밀번호를 입력하세요. (설정 탭 계정은 서치어드바이저 전용)',
+    };
+  }
+  return {
+    naverAccount: { id, pw },
+    emailLocal: emailLocal || id,
+  };
+}
+
+/** @deprecated 이름 호환 — 메일 계정은 resolveDothomeMailAccount 사용 */
 function resolveDothomeNaverAccount(config, emailLocal = '') {
-  const local = String(emailLocal || config.dothome?.emailLocal || '').trim().replace(/@.*$/, '');
-  const accounts = Array.isArray(config.naverAccounts) ? config.naverAccounts : [];
-  let naverAccount = accounts.find((a) => a?.id && a?.pw && a.id === local) || null;
-  if (!naverAccount && config.urlCrawlNaver?.id && config.urlCrawlNaver?.pw) {
-    if (!local || config.urlCrawlNaver.id === local) {
-      naverAccount = { id: config.urlCrawlNaver.id, pw: config.urlCrawlNaver.pw };
-    }
-  }
-  if (!naverAccount) {
-    naverAccount = accounts.find((a) => a?.id && a?.pw) || null;
-  }
-  return { naverAccount, emailLocal: local };
+  return resolveDothomeMailAccount(config, { emailLocal });
 }
 
 ipcMain.handle('dothome-mail-session-status', async () => {
@@ -2105,12 +2105,9 @@ ipcMain.handle('dothome-mail-session-status', async () => {
 ipcMain.handle('dothome-mail-session-login', async (event, options = {}) => {
   const config = loadConfig();
   const sendLog = (line) => event.sender.send('dothome-log', line);
-  const { naverAccount, emailLocal } = resolveDothomeNaverAccount(
-    config,
-    options.emailLocal || '',
-  );
+  const { naverAccount, emailLocal, error: mailErr } = resolveDothomeMailAccount(config, options);
   if (!naverAccount?.id || !naverAccount?.pw) {
-    return { ok: false, error: '설정 탭에 네이버 계정(아이디·비밀번호)을 등록하세요. 이메일 앞부분과 동일해야 합니다.' };
+    return { ok: false, error: mailErr || '닷홈 탭에 네이버 메일 아이디·비밀번호를 입력하세요.' };
   }
   if (!config.openaiApiKey && !config.yesCaptchaClientKey) {
     return { ok: false, error: '설정 탭에 OpenAI 또는 YesCaptcha 키가 필요합니다. (로그인 캡챠)' };
@@ -2124,7 +2121,7 @@ ipcMain.handle('dothome-mail-session-login', async (event, options = {}) => {
   setDothomeMailProfileDir(path.join(app.getPath('userData'), 'chrome-dothome-mail'));
 
   try {
-    sendLog(`[DOTHOME-MAIL] 로그인 요청: ${naverAccount.id}${emailLocal && emailLocal !== naverAccount.id ? ` (가입메일 ${emailLocal})` : ''}`);
+    sendLog(`[DOTHOME-MAIL] 로그인 요청: ${naverAccount.id}${emailLocal && emailLocal !== naverAccount.id ? ` (가입메일 ${emailLocal}@naver.com)` : ''} · 닷홈 탭 계정`);
     const st = await startDothomeNaverMailLogin({
       naverId: naverAccount.id,
       naverPw: naverAccount.pw,

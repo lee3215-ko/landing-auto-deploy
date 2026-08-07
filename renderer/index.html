@@ -519,23 +519,27 @@
               </div>
 
               <div class="form-group">
-                <label for="dhEmailLocal">네이버 이메일 아이디 (앞부분)</label>
+                <label for="dhEmailLocal">닷홈 가입용 네이버 이메일</label>
                 <div class="row" style="gap:8px;align-items:center;">
                   <input type="text" id="dhEmailLocal" placeholder="myemail" style="flex:1;" autocomplete="email">
                   <span style="white-space:nowrap;color:var(--text-muted);">@naver.com</span>
                 </div>
-                <p class="bulk-hint">가입 이메일로 사용합니다. 설정 탭 OpenAI API Key로 보안문자를 인식합니다.</p>
+                <p class="bulk-hint">닷홈 회원가입 폼에 넣을 이메일입니다. (설정 탭 네이버 계정과 무관)</p>
               </div>
 
               <div class="form-group">
-                <label>네이버 메일 (인증코드용)</label>
+                <label>네이버 메일 로그인 (인증코드용)</label>
+                <div class="row" style="gap:8px;align-items:center;margin-bottom:8px;">
+                  <input type="text" id="dhMailNaverId" placeholder="네이버 아이디" style="flex:1;" autocomplete="username">
+                  <input type="text" id="dhMailNaverPw" placeholder="비밀번호" style="flex:1;" autocomplete="off" spellcheck="false">
+                </div>
                 <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;">
                   <button class="btn btn-primary btn-sm" id="dhMailLoginBtn" type="button">📧 네이버 메일 로그인</button>
                   <button class="btn btn-ghost btn-sm" id="dhMailReloginBtn" type="button" title="강제 재로그인">다시 로그인</button>
                   <button class="btn btn-ghost btn-sm" id="dhMailCloseBtn" type="button">창 닫기</button>
                   <span id="dhMailSessionBadge" class="status-pill indexed-pending" style="font-size:12px;">메일 미로그인</span>
                 </div>
-                <p class="bulk-hint" id="dhMailSessionHint">가입·풀파이프라인 전에 한 번 로그인하세요. 성공한 메일 창은 닫지 말고 유지하면, 이후 인증코드는 그 창에서만 조회합니다 (매회 재로그인·캡챠 없음).</p>
+                <p class="bulk-hint" id="dhMailSessionHint">위에 입력한 아이디·비밀번호로만 메일 로그인합니다. 설정 탭 네이버 계정(서치어드바이저용)은 사용하지 않습니다. 창을 유지하면 인증코드만 이 창에서 읽습니다.</p>
               </div>
 
               <div class="form-group">

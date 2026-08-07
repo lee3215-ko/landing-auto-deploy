@@ -634,6 +634,8 @@ function collectConfig() {
       hostId: ($('dhHostId')?.value || '').trim(),
       hostPw: ($('dhFixedPw')?.value || 'dlwkdrns12435!').trim(),
       emailLocal: ($('dhEmailLocal')?.value || '').trim().replace(/@.*$/, ''),
+      mailNaverId: ($('dhMailNaverId')?.value || '').trim().replace(/@.*$/, ''),
+      mailNaverPw: ($('dhMailNaverPw')?.value || '').trim(),
       keyword: ($('dhKeyword')?.value || '').trim(),
       externalUrl: ($('dhExternalUrl')?.value || '').trim(),
       phone: ($('dhPhone')?.value || '010-6338-7124').trim() || '010-6338-7124',
@@ -2848,6 +2850,8 @@ async function load() {
 
   const dh = config.dothome || {};
   if ($('dhEmailLocal')) $('dhEmailLocal').value = dh.emailLocal || '';
+  if ($('dhMailNaverId')) $('dhMailNaverId').value = dh.mailNaverId || dh.emailLocal || '';
+  if ($('dhMailNaverPw')) $('dhMailNaverPw').value = dh.mailNaverPw || '';
   if ($('dhFixedPw')) $('dhFixedPw').value = 'dlwkdrns12435!';
   if ($('dhHostId')) $('dhHostId').value = dh.hostId || '';
   if ($('dhKeyword')) $('dhKeyword').value = dh.keyword || '';
@@ -3017,6 +3021,11 @@ function setupEvents() {
   $('dhHostId')?.addEventListener('input', updateDhPreviewUrl);
   $('dhBrowseImageBtn')?.addEventListener('click', browseDhImageDir);
   $('dhBrowseGoogleBtn')?.addEventListener('click', browseDhGoogleFile);
+  $('dhEmailLocal')?.addEventListener('change', () => {
+    const local = ($('dhEmailLocal')?.value || '').trim().replace(/@.*$/, '');
+    const mailEl = $('dhMailNaverId');
+    if (local && mailEl && !String(mailEl.value || '').trim()) mailEl.value = local;
+  });
   $('dhMailLoginBtn')?.addEventListener('click', () => startDhMailLogin(false));
   $('dhMailReloginBtn')?.addEventListener('click', () => startDhMailLogin(true));
   $('dhMailCloseBtn')?.addEventListener('click', closeDhMailSession);
@@ -3895,14 +3904,25 @@ function updateDhMailSessionBadge(data) {
   if (hint) {
     hint.textContent = loggedIn
       ? `메일 창 유지 중 (${id}). 창을 닫지 마세요. 가입·풀파이프라인 시 이 창에서만 인증코드를 가져옵니다.`
-      : '가입·풀파이프라인 전에 한 번 로그인하세요. 성공한 메일 창은 닫지 말고 유지하면, 이후 인증코드는 그 창에서만 조회합니다 (매회 재로그인·캡챠 없음).';
+      : '닷홈 탭 아이디·비밀번호로 로그인한 뒤 창을 유지하세요. 인증코드만 이 창에서 읽습니다. (설정 탭 계정은 서치어드바이저용)';
   }
+}
+
+function dhMailCredsOrAlert() {
+  const emailLocal = ($('dhEmailLocal')?.value || '').trim().replace(/@.*$/, '');
+  const mailNaverId = ($('dhMailNaverId')?.value || '').trim().replace(/@.*$/, '') || emailLocal;
+  const mailNaverPw = ($('dhMailNaverPw')?.value || '').trim();
+  if (!mailNaverId || !mailNaverPw) {
+    alert('닷홈 탭에 네이버 메일 아이디·비밀번호를 입력하세요.');
+    return null;
+  }
+  return { emailLocal: emailLocal || mailNaverId, mailNaverId, mailNaverPw };
 }
 
 async function startDhMailLogin(forceRelogin = false) {
   if (dhBusy || dhMailLoginBusy) return;
-  const emailLocal = ($('dhEmailLocal')?.value || '').trim().replace(/@.*$/, '');
-  if (!emailLocal) return alert('네이버 이메일 아이디(앞부분)를 먼저 입력하세요.');
+  const creds = dhMailCredsOrAlert();
+  if (!creds) return;
   if (!($('openaiApiKey')?.value || '').trim()) {
     return alert('설정 탭에 OpenAI API Key를 입력하세요. (로그인 캡챠용)');
   }
@@ -3914,12 +3934,14 @@ async function startDhMailLogin(forceRelogin = false) {
   dhLog(forceRelogin ? '📧 네이버 메일 다시 로그인…' : '📧 네이버 메일 로그인…');
   try {
     const res = await window.electronAPI.dothomeMailSessionLogin({
-      emailLocal,
+      emailLocal: creds.emailLocal,
+      mailNaverId: creds.mailNaverId,
+      mailNaverPw: creds.mailNaverPw,
       forceRelogin: !!forceRelogin,
     });
     updateDhMailSessionBadge(res || {});
     if (res?.ok && res.loggedIn) {
-      dhLog(`✔ 네이버 메일 로그인 완료: ${res.accountId || emailLocal} (창 유지)`);
+      dhLog(`✔ 네이버 메일 로그인 완료: ${res.accountId || creds.mailNaverId} (창 유지)`);
     } else {
       dhLog(`✖ 메일 로그인 실패: ${res?.error || 'unknown'}`);
       alert(res?.error || '네이버 메일 로그인 실패');
@@ -4038,8 +4060,9 @@ async function startDhDeploy(ftpId, generate = true) {
 
 async function startDhGenerate() {
   if (dhBusy) return;
-  const emailLocal = ($('dhEmailLocal')?.value || '').trim().replace(/@.*$/, '');
-  if (!emailLocal) return alert('네이버 이메일 아이디(앞부분)를 입력하세요.');
+  const creds = dhMailCredsOrAlert();
+  if (!creds) return;
+  if (!creds.emailLocal) return alert('닷홈 가입용 네이버 이메일을 입력하세요.');
   if (!ensureDhMailLoggedInOrAlert()) return;
   if (!($('openaiApiKey')?.value || '').trim()) {
     return alert('설정 탭에 OpenAI API Key를 입력하세요. (보안문자 인식용)');
@@ -4057,7 +4080,7 @@ async function startDhGenerate() {
   dhStopRequested = false;
   if ($('dhLog')) $('dhLog').textContent = '';
   dhLog(`🏠 닷홈 회원가입 시작… (${count}회)`);
-  dhLog(`이메일: ${emailLocal}@naver.com`);
+  dhLog(`이메일: ${creds.emailLocal}@naver.com · 메일계정: ${creds.mailNaverId}`);
 
   let okCount = 0;
   try {
@@ -4069,7 +4092,9 @@ async function startDhGenerate() {
       dhLog(`═══ 가입 ${i + 1}/${count} ═══`);
       await window.electronAPI.saveConfig(collectConfig());
       const out = await window.electronAPI.dothomeSignup({
-        emailLocal,
+        emailLocal: creds.emailLocal,
+        mailNaverId: creds.mailNaverId,
+        mailNaverPw: creds.mailNaverPw,
         headless: !!$('headlessMode')?.checked,
       });
       const fresh = await window.electronAPI.loadConfig();
@@ -4106,8 +4131,9 @@ async function startDhGenerate() {
 /** 회원가입 → SEO 생성 → FTP·네이버 배포 연속 */
 async function startDhFullPipeline() {
   if (dhBusy) return;
-  const emailLocal = ($('dhEmailLocal')?.value || '').trim().replace(/@.*$/, '');
-  if (!emailLocal) return alert('네이버 이메일 아이디(앞부분)를 입력하세요.');
+  const creds = dhMailCredsOrAlert();
+  if (!creds) return;
+  if (!creds.emailLocal) return alert('닷홈 가입용 네이버 이메일을 입력하세요.');
   if (!ensureDhMailLoggedInOrAlert()) return;
   const inputs = dhSeoInputsOrAlert();
   if (!inputs) return;
@@ -4115,7 +4141,7 @@ async function startDhFullPipeline() {
     return alert('설정 탭에 OpenAI API Key를 입력하세요.');
   }
   if (!(config.naverAccounts || []).some((a) => a?.id && a?.pw)) {
-    return alert('설정 탭에 네이버 계정을 등록하세요. (배포 시 색인용)');
+    return alert('설정 탭에 네이버 계정을 등록하세요. (서치어드바이저 등록용)');
   }
 
   const count = Math.max(1, Math.min(30, parseInt($('dhSignupCount')?.value || '1', 10) || 1));
@@ -4123,6 +4149,7 @@ async function startDhFullPipeline() {
   dhStopRequested = false;
   if ($('dhLog')) $('dhLog').textContent = '';
   dhLog(`🚀 가입→생성→배포 시작 (${count}회)`);
+  dhLog(`이메일: ${creds.emailLocal}@naver.com · 메일계정: ${creds.mailNaverId}`);
 
   let okCount = 0;
   try {
@@ -4134,7 +4161,9 @@ async function startDhFullPipeline() {
       dhLog(`═══ 풀파이프라인 ${i + 1}/${count} ═══`);
       await window.electronAPI.saveConfig(collectConfig());
       const signup = await window.electronAPI.dothomeSignup({
-        emailLocal,
+        emailLocal: creds.emailLocal,
+        mailNaverId: creds.mailNaverId,
+        mailNaverPw: creds.mailNaverPw,
         headless: !!$('headlessMode')?.checked,
       });
       let fresh = await window.electronAPI.loadConfig();
