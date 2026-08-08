@@ -2442,15 +2442,36 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
     const errMsg = e?.message || String(e);
     const captchaFail = /캡챠|captcha|보안절차|수동캡챠/i.test(errMsg);
     const dnsMissing = /ENOTFOUND|서브도메인 DNS|DNS 없음|Non-existent/i.test(errMsg);
+    const movedZip = e?.movedZip || null;
+    const ftpOk = !!e?.ftpOk;
+    // FTP까지 성공해 ZIP이 「성공」으로 옮겨진 경우 — 대기열에서 제거
+    let deploySources = Array.isArray(config.dothome?.deploySources)
+      ? config.dothome.deploySources
+      : [];
+    if (useZip && (movedZip || ftpOk)) {
+      const fromKey = String(movedZip?.from || zipPath || '').toLowerCase();
+      const toKey = String(movedZip?.to || '').toLowerCase();
+      const dh = { ...(config.dothome || {}) };
+      dh.deploySources = (dh.deploySources || []).filter((s) => {
+        const p = String(s?.path || '').toLowerCase();
+        return p && p !== fromKey && p !== toKey && p !== zipPath.toLowerCase();
+      });
+      config.dothome = dh;
+      deploySources = dh.deploySources;
+      saveConfig(config);
+      if (movedZip?.to && !movedZip.skipped) {
+        sendLog(`📦 ZIP은 성공 폴더로 이동됨 (네이버 단계 실패): ${path.basename(movedZip.to)}`);
+      }
+    }
     let createdSites;
     try {
       const { entryFromDothomeAccount } = await import('./lib/sites-registry.js');
-      const failUrl = `${resolveSiteUrl(account, { https: true })}/`;
+      const failUrl = String(e?.siteUrl || `${resolveSiteUrl(account, { https: true })}/`).trim();
       const siteEntry = entryFromDothomeAccount(account, {
         url: failUrl,
-        siteDir: account.siteDir || options.siteDir || '',
+        siteDir: e?.siteDir || account.siteDir || options.siteDir || '',
         keyword: keyword || account.keyword || '',
-        sourcePath: zipPath || account.sourcePath || '',
+        sourcePath: e?.sourcePath || movedZip?.to || zipPath || account.sourcePath || '',
         sourceType: useZip ? 'zip' : (account.sourceType || 'ai'),
         naverStatus: captchaFail ? 'captcha' : 'error',
         naverError: errMsg,
@@ -2465,7 +2486,8 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
           naverStatus: captchaFail ? 'captcha' : 'error',
           naverError: errMsg,
           naverAccountId: naverAccount?.id || account.naverAccountId || '',
-          sourcePath: zipPath || account.sourcePath || '',
+          siteDir: e?.siteDir || account.siteDir || '',
+          sourcePath: e?.sourcePath || movedZip?.to || zipPath || account.sourcePath || '',
           sourceType: useZip ? 'zip' : (account.sourceType || 'ai'),
           ...(dnsMissing ? {
             hostingStatus: 'dns_missing',
@@ -2476,7 +2498,7 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
         });
       }
     } catch { /* ignore */ }
-    return { ok: false, error: errMsg, createdSites };
+    return { ok: false, error: errMsg, createdSites, movedZip, deploySources, ftpOk };
   }
 });
 

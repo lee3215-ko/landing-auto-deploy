@@ -2331,8 +2331,9 @@ async function redeployDothomeCreatedSite(id) {
     if (Array.isArray(out?.deploySources)) {
       dhDeploySources = out.deploySources;
       updateDhZipUi();
-    } else if (zipPath && out?.ok) {
+    } else if (zipPath && (out?.ok || out?.movedZip || out?.ftpOk)) {
       removeDhZipPath(zipPath);
+      if (out.movedZip?.from) removeDhZipPath(out.movedZip.from);
       if (out.movedZip?.to) removeDhZipPath(out.movedZip.to);
     }
     renderDhAccounts();
@@ -2344,10 +2345,16 @@ async function redeployDothomeCreatedSite(id) {
       setSitesIndexProgress(`✔ 다시 배포 완료: ${out.siteUrl || ftpId}`, true);
       dhLog(`✔ 다시 배포 완료: ${out.siteUrl || ftpId}`);
       if (out.naver?.status) dhLog(`✔ 네이버: ${out.naver.status}`);
+      if (out.movedZip?.to && !out.movedZip.skipped) {
+        dhLog(`📦 성공 ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
+      }
       alert(`다시 배포 완료\n${out.siteUrl || ''}${out.naver?.status ? `\n네이버: ${out.naver.status}` : ''}`);
     } else {
       setSitesIndexProgress('', false);
       dhLog(`✖ 다시 배포 실패: ${out?.error || ''}`);
+      if (out?.movedZip?.to && !out.movedZip.skipped) {
+        dhLog(`📦 FTP는 성공 — ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
+      }
       if (out?.createdSites) {
         createdSites = out.createdSites;
         renderCreatedSites();
@@ -4641,8 +4648,9 @@ async function startDhDeploy(ftpId, generate = true) {
     if (fresh) config = fresh;
     if (Array.isArray(out?.deploySources)) {
       dhDeploySources = out.deploySources;
-    } else if (zip?.path && out?.ok) {
+    } else if (zip?.path && (out?.ok || out?.movedZip || out?.ftpOk)) {
       removeDhZipPath(zip.path);
+      if (out.movedZip?.from) removeDhZipPath(out.movedZip.from);
       if (out.movedZip?.to) removeDhZipPath(out.movedZip.to);
     }
     updateDhZipUi();
@@ -4652,6 +4660,9 @@ async function startDhDeploy(ftpId, generate = true) {
       dhLog(`✔ 배포 완료: ${out.siteUrl || ''}`);
       if (out.naver?.status) dhLog(`✔ 네이버 등록: ${out.naver.status}`);
       if (out.googleVerifyFile) dhLog(`✔ 구글 인증 파일: ${out.googleVerifyFile}`);
+      if (out.movedZip?.to && !out.movedZip.skipped) {
+        dhLog(`📦 성공 ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
+      }
       if (out.createdSites) createdSites = out.createdSites;
       else await loadCreatedSites(true);
       renderCreatedSites();
@@ -4659,6 +4670,13 @@ async function startDhDeploy(ftpId, generate = true) {
       alert(`배포 완료\n${out.siteUrl || ''}${naverLine}`);
     } else {
       dhLog(`✖ ${out?.error || '배포 실패'}`);
+      if (out?.movedZip?.to && !out.movedZip.skipped) {
+        dhLog(`📦 FTP는 성공 — ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
+      }
+      if (out?.createdSites) {
+        createdSites = out.createdSites;
+        renderCreatedSites();
+      }
       alert(out?.error || '배포 실패');
     }
   } catch (e) {
@@ -4811,8 +4829,10 @@ async function startDhFullPipeline() {
       if (fresh) config = fresh;
       if (Array.isArray(out?.deploySources)) {
         dhDeploySources = out.deploySources;
-      } else if (zip?.path && out?.ok) {
+      } else if (zip?.path && (out?.ok || out?.movedZip || out?.ftpOk)) {
         removeDhZipPath(zip.path);
+        if (out.movedZip?.from) removeDhZipPath(out.movedZip.from);
+        if (out.movedZip?.to) removeDhZipPath(out.movedZip.to);
       }
       updateDhZipUi();
       renderDhAccounts();
@@ -4823,9 +4843,15 @@ async function startDhFullPipeline() {
       if (out?.ok) {
         okCount += 1;
         dhLog(`✔ 배포 완료: ${out.siteUrl || ftpId}`);
+        if (out.movedZip?.to && !out.movedZip.skipped) {
+          dhLog(`📦 성공 ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
+        }
         await maybeSendVpnHotkey(okCount);
       } else {
         dhLog(`✖ 배포 실패: ${out?.error || ''}`);
+        if (out?.movedZip?.to && !out.movedZip.skipped) {
+          dhLog(`📦 FTP는 성공 — ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
+        }
       }
     }
     alert(`풀파이프라인 완료\n성공 ${okCount}/${count}`);
