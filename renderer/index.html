@@ -513,9 +513,20 @@
             <div class="card">
               <div class="card-header">
                 <div>
-                  <div class="card-title"><span class="emoji">🏠</span> 닷홈 가입 · 정적 SEO</div>
-                  <div class="card-sub">가입 → 정적 SEO 생성 → FTP → 네이버 등록·HTML인증 → 인덱싱</div>
+                  <div class="card-title"><span class="emoji">🏠</span> 닷홈 가입 · 배포</div>
+                  <div class="card-sub">가입 → (ZIP 또는 AI SEO) → FTP → 네이버 등록·HTML인증 → 인덱싱</div>
                 </div>
+              </div>
+
+              <div class="form-group">
+                <label>배포 소스 (ZIP)</label>
+                <div class="row" style="gap:8px;flex-wrap:wrap;">
+                  <button type="button" class="btn btn-ghost btn-sm" id="dhSelectZipsBtn">📦 ZIP 다중 선택</button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="dhClearZipsBtn">지우기</button>
+                  <span id="dhZipLabel" style="font-size:13px;color:var(--text-muted);"></span>
+                </div>
+                <p class="bulk-hint" id="dhZipInfo" style="display:none;"></p>
+                <p class="bulk-hint">설정 탭과 동일하게 ZIP을 고르면 그 사이트를 FTP로 올립니다. <strong>ZIP을 비우면</strong> 아래 키워드·이미지로 AI SEO 사이트를 생성합니다.</p>
               </div>
 
               <div class="form-group">
@@ -624,9 +635,9 @@
                   <button class="btn btn-danger" id="dhStopBtn" type="button" disabled>⏹ 정지</button>
                 </div>
                 <button class="btn btn-primary btn-block" id="dhFullPipelineBtn" type="button">▶ 회원가입 → 생성 → 배포 (한번에)</button>
-                <p class="bulk-hint">위 버튼: 가입만. 아래 버튼: 가입 후 정적 SEO 생성·FTP·네이버 등록까지 개수만큼 연속 진행.</p>
+                <p class="bulk-hint">위 버튼: 가입만. 아래 버튼: 가입 후 ZIP(있으면) 또는 AI SEO 생성 → FTP·네이버 등록. ZIP이 있으면 ZIP 개수만큼, 없으면 위 개수만큼 반복합니다.</p>
               </div>
-              <p class="bulk-hint" style="margin-top:10px;">① <strong>네이버 메일 로그인</strong> → ② 가입/풀파이프라인. 이메일 앞부분과 설정 탭 네이버 계정 아이디가 같아야 합니다. 흐름: 가입→무료호스팅→(유지된 메일 창에서 인증코드)→reCAPTCHA→신청 → 계정 카드에서 사이트 생성/배포</p>
+              <p class="bulk-hint" style="margin-top:10px;">① <strong>네이버 메일 로그인</strong> → ② 가입/풀파이프라인. 서치어드바이저는 설정 탭 네이버 계정을 사용합니다.</p>
             </div>
 
             <div class="card">

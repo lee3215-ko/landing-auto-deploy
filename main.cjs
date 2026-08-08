@@ -90,6 +90,7 @@ function loadConfig() {
         phone: '010-6338-7124',
         imageDir: '',
         googleVerifyFile: '',
+        deploySources: [],
         usedIds: [],
         usedFtpIds: [],
         accounts: [],
@@ -2250,8 +2251,11 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
   const phoneDisplay = String(options.phoneDisplay || config.dothome?.phone || '010-6338-7124').trim();
   const cursorApiKey = String(options.cursorApiKey || config.cursorApiKey || '').trim();
   const googleVerifyFile = String(options.googleVerifyFile || config.dothome?.googleVerifyFile || '').trim();
-  const generate = options.generate !== false; // 기본: 생성 후 배포
-  const registerNaver = options.registerNaver !== false && !!generate;
+  const zipPath = String(options.zipPath || options.sourcePath || '').trim();
+  const useZip = !!zipPath;
+  // ZIP이면 AI 생성 생략. ZIP 없고 generate 기본 true.
+  const generate = useZip ? false : (options.generate !== false);
+  const registerNaver = options.registerNaver !== false;
   const siteDir = String(options.siteDir || account.siteDir || '').trim();
   const naverAccount = pickNaverAccountForDothome(config, options);
 
@@ -2265,7 +2269,8 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
 
     const out = await deployDothomeSite({
       account,
-      siteDir: generate ? '' : siteDir,
+      siteDir: generate && !useZip ? '' : siteDir,
+      zipPath,
       generate,
       keyword,
       phoneDisplay,
@@ -2293,18 +2298,30 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
     dh.phone = phoneDisplay;
     dh.ftpHost = ftpHost;
     dh.googleVerifyFile = googleVerifyFile;
+    // 사용한 ZIP은 목록에서 제거 (성공 폴더로 이동된 경로 반영)
+    if (useZip && Array.isArray(dh.deploySources)) {
+      const fromKey = zipPath.toLowerCase();
+      const toKey = String(out.movedZip?.to || '').toLowerCase();
+      dh.deploySources = dh.deploySources.filter((s) => {
+        const p = String(s?.path || '').toLowerCase();
+        return p && p !== fromKey && p !== toKey;
+      });
+    }
     config.dothome = dh;
     const deployedAt = new Date().toISOString();
     const acc = patchDothomeAccount(config, account.ftpId, {
       url: siteUrl,
       deployedAt,
       siteDir: out.siteDir || account.siteDir,
-      keyword,
+      keyword: useZip ? (keyword || path.basename(zipPath, '.zip')) : keyword,
       cms: 'none',
+      sourcePath: out.sourcePath || zipPath || '',
+      sourceType: out.sourceType || (useZip ? 'zip' : 'ai'),
       naverStatus: out.naver?.status || '',
       naverMeta: out.naver?.metaContent || '',
       naverAccountId: out.naver?.naverAccountId || naverAccount?.id || '',
     });
+    saveConfig(config);
 
     sendLog(`✔ 배포 완료: ${siteUrl}`);
     if (out.naver?.status) sendLog(`✔ 네이버: ${out.naver.status}`);
@@ -2315,16 +2332,18 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
       const siteEntry = entryFromDothomeAccount(acc || account, {
         url: siteUrl,
         siteDir: out.siteDir || account.siteDir,
-        keyword,
+        keyword: useZip ? (keyword || path.basename(zipPath, '.zip')) : keyword,
         deployedAt,
         naverStatus: out.naver?.status || '',
         naverAccountId: out.naver?.naverAccountId || naverAccount?.id || '',
+        sourcePath: out.sourcePath || zipPath || '',
+        sourceType: out.sourceType || (useZip ? 'zip' : 'ai'),
       });
       if (siteEntry) createdSites = await upsertCreatedSite(siteEntry);
     } catch (e) {
       sendLog(`[WARN] 생성 사이트 목록 저장 실패: ${e.message}`);
     }
-    return { ...out, ok: true, account: acc, createdSites };
+    return { ...out, ok: true, account: acc, createdSites, deploySources: dh.deploySources || [] };
   } catch (e) {
     sendLog(`[ERROR] ${e.message}`);
     return { ok: false, error: e.message };

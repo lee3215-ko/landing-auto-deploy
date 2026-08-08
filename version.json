@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.63",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/505017615",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.63/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/505017615",
-    "asset_id":  505017615,
-    "notes":  "닷홈 탭에 메일용 아이디·비번 분리 — 인증코드는 닷홈 메일 창만, 서치어드바이저는 설정 계정",
+    "version":  "3.8.64",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.64/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.64/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "닷홈 탭 ZIP 다중 선택 배포 지원 (미선택 시 기존 AI SEO 생성)",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/505017615",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.63/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.64/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }

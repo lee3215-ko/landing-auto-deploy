@@ -642,6 +642,7 @@ function collectConfig() {
       imageDir: ($('dhImageDir')?.value || '').trim(),
       googleVerifyFile: ($('dhGoogleVerifyFile')?.value || '').trim(),
       ftpHost: ($('dhFtpHost')?.value || '').trim(),
+      deploySources: Array.isArray(dhDeploySources) ? [...dhDeploySources] : [],
       usedIds: Array.isArray(config.dothome?.usedIds) ? config.dothome.usedIds : [],
       usedFtpIds: Array.isArray(config.dothome?.usedFtpIds) ? config.dothome.usedFtpIds : [],
       accounts: Array.isArray(config.dothome?.accounts) ? config.dothome.accounts : [],
@@ -2863,6 +2864,14 @@ async function load() {
     const h = dh.ftpHost || '';
     $('dhFtpHost').value = h === 'ftp.dothome.co.kr' ? '' : h;
   }
+  dhDeploySources = Array.isArray(dh.deploySources)
+    ? dh.deploySources.filter((s) => s?.path && s.type === 'zip').map((s) => ({
+      type: 'zip',
+      path: String(s.path),
+      name: s.name || String(s.path).split(/[\\/]/).pop(),
+    }))
+    : [];
+  updateDhZipUi();
   updateDhPreviewUrl();
   renderDhAccounts();
 
@@ -3026,6 +3035,8 @@ function setupEvents() {
     const mailEl = $('dhMailNaverId');
     if (local && mailEl && !String(mailEl.value || '').trim()) mailEl.value = local;
   });
+  $('dhSelectZipsBtn')?.addEventListener('click', selectDhZips);
+  $('dhClearZipsBtn')?.addEventListener('click', clearDhZips);
   $('dhMailLoginBtn')?.addEventListener('click', () => startDhMailLogin(false));
   $('dhMailReloginBtn')?.addEventListener('click', () => startDhMailLogin(true));
   $('dhMailCloseBtn')?.addEventListener('click', closeDhMailSession);
@@ -3758,6 +3769,8 @@ async function stopCfGenerate() {
 
 /* ── 닷홈 호스팅 회원가입 ── */
 let dhBusy = false;
+/** 닷홈 탭 전용 ZIP 소스 (설정 탭 deploySources 와 분리) */
+let dhDeploySources = [];
 let dhStopRequested = false;
 
 function dhLog(line) {
@@ -3776,21 +3789,130 @@ function dhSiteUrlForAccount(a) {
   return (a?.url || '').trim();
 }
 
-function dhSeoInputsOrAlert() {
+function dhZipSources() {
+  return (dhDeploySources || []).filter((s) => s?.type === 'zip' && s?.path);
+}
+
+function updateDhZipUi() {
+  const zips = dhZipSources();
+  const label = $('dhZipLabel');
+  const info = $('dhZipInfo');
+  if (label) {
+    label.textContent = zips.length
+      ? `ZIP ${zips.length}개 선택됨`
+      : 'ZIP 없음 → AI SEO 생성';
+  }
+  if (info) {
+    if (!zips.length) {
+      info.style.display = 'none';
+      info.textContent = '';
+    } else {
+      const names = zips.slice(0, 6).map((s) => s.name || s.path).join(', ');
+      const more = zips.length > 6 ? ` 외 ${zips.length - 6}개` : '';
+      info.style.display = 'block';
+      info.textContent = `${names}${more}`;
+    }
+  }
+  const btn = $('dhFullPipelineBtn');
+  if (btn) {
+    btn.textContent = zips.length
+      ? `▶ 회원가입 → ZIP 배포 (한번에 · ${zips.length}개)`
+      : '▶ 회원가입 → 생성 → 배포 (한번에)';
+  }
+}
+
+async function selectDhZips() {
+  if (!window.electronAPI?.selectFiles) {
+    alert('ZIP 선택 기능을 사용할 수 없습니다. 앱을 최신 버전으로 업데이트하세요.');
+    return;
+  }
+  const paths = await window.electronAPI.selectFiles({
+    title: '닷홈에 배포할 ZIP 선택 (여러 개 가능)',
+    filters: [
+      { name: 'ZIP 파일', extensions: ['zip'] },
+      { name: '모든 파일', extensions: ['*'] },
+    ],
+  });
+  if (!paths?.length) return;
+
+  const seen = new Set(dhDeploySources.map((s) => String(s.path || '').toLowerCase()));
+  let added = 0;
+  const skipped = [];
+  for (const filePath of paths) {
+    const p = String(filePath || '').trim();
+    if (!p || !p.toLowerCase().endsWith('.zip')) continue;
+    const key = p.toLowerCase();
+    if (seen.has(key)) continue;
+    const name = p.split(/[\\/]/).pop() || p;
+    if (window.electronAPI?.validateZipIndex) {
+      try {
+        const check = await window.electronAPI.validateZipIndex(p);
+        if (!check?.ok) {
+          skipped.push(`${name}: ${check?.error || 'index.html 없음'}`);
+          continue;
+        }
+      } catch (e) {
+        skipped.push(`${name}: ${e.message || '검사 실패'}`);
+        continue;
+      }
+    }
+    seen.add(key);
+    dhDeploySources.push({ type: 'zip', path: p, name });
+    added += 1;
+  }
+  if (skipped.length) {
+    alert(`index.html이 없는 ZIP ${skipped.length}개 제외:\n\n${skipped.slice(0, 8).join('\n')}${skipped.length > 8 ? `\n…외 ${skipped.length - 8}개` : ''}`);
+  }
+  if (!added) {
+    alert(skipped.length
+      ? '추가된 ZIP이 없습니다. (index.html 없는 파일만 선택됨)'
+      : '새로 추가할 ZIP이 없습니다. (이미 선택된 파일일 수 있습니다)');
+    return;
+  }
+  updateDhZipUi();
+  await window.electronAPI.saveConfig(collectConfig());
+  dhLog(`📦 닷홈 ZIP ${added}개 추가 (총 ${dhZipSources().length}개)`);
+}
+
+function clearDhZips() {
+  dhDeploySources = [];
+  updateDhZipUi();
+  window.electronAPI.saveConfig(collectConfig()).catch(() => {});
+}
+
+function takeNextDhZip() {
+  const zips = dhZipSources();
+  if (!zips.length) return null;
+  const next = zips[0];
+  return next;
+}
+
+function removeDhZipPath(zipPath) {
+  const key = String(zipPath || '').toLowerCase();
+  if (!key) return;
+  dhDeploySources = dhDeploySources.filter((s) => String(s.path || '').toLowerCase() !== key);
+  updateDhZipUi();
+}
+
+function dhSeoInputsOrAlert({ allowZipOnly = false } = {}) {
+  const zips = dhZipSources();
+  const useZip = allowZipOnly && zips.length > 0;
   const keyword = ($('dhKeyword')?.value || '').trim();
   const imageDir = ($('dhImageDir')?.value || '').trim();
   const cursorApiKey = ($('cursorApiKey')?.value || config.cursorApiKey || '').trim();
-  if (!keyword) {
-    alert('핵심키워드를 입력하세요.');
-    return null;
-  }
-  if (!imageDir) {
-    alert('이미지 폴더(PNG/JPG 8장 이상)를 지정하세요.');
-    return null;
-  }
-  if (!cursorApiKey) {
-    alert('Cursor API Key가 필요합니다.\n설정 탭 → Cursor API Key에 입력하세요.');
-    return null;
+  if (!useZip) {
+    if (!keyword) {
+      alert('핵심키워드를 입력하세요.\n(또는 위에서 배포용 ZIP을 선택하세요)');
+      return null;
+    }
+    if (!imageDir) {
+      alert('이미지 폴더(PNG/JPG 8장 이상)를 지정하세요.\n(또는 위에서 배포용 ZIP을 선택하세요)');
+      return null;
+    }
+    if (!cursorApiKey) {
+      alert('Cursor API Key가 필요합니다.\n설정 탭 → Cursor API Key에 입력하세요.\n(ZIP 배포 모드면 키워드·이미지·Cursor 키 없이 진행됩니다)');
+      return null;
+    }
   }
   return {
     keyword,
@@ -3800,6 +3922,7 @@ function dhSeoInputsOrAlert() {
     ftpHost: ($('dhFtpHost')?.value || '').trim(),
     googleVerifyFile: ($('dhGoogleVerifyFile')?.value || '').trim(),
     cursorApiKey,
+    useZip,
   };
 }
 
@@ -3807,7 +3930,12 @@ function renderDhAccounts() {
   const list = $('dhAccountsList');
   const hint = $('dhAccountsHint');
   const accounts = Array.isArray(config.dothome?.accounts) ? config.dothome.accounts : [];
-  if (hint) hint.textContent = `${accounts.length}개 · 사이트 생성 / 생성 후 배포`;
+  const zipN = dhZipSources().length;
+  if (hint) {
+    hint.textContent = zipN
+      ? `${accounts.length}개 · ZIP ${zipN}개 대기 / 배포`
+      : `${accounts.length}개 · 사이트 생성 / 생성 후 배포`;
+  }
   if (!list) return;
   if (!accounts.length) {
     list.innerHTML = '<p class="empty-hint">아직 생성된 계정이 없습니다.</p>';
@@ -3834,11 +3962,11 @@ function renderDhAccounts() {
       <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${escapeHtml(a.createdAt || '')}</div>
       ${generated}${deployed}
       <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">
-        <button type="button" class="btn btn-ghost btn-sm" data-dh-seo-gen="${escapeHtml(a.ftpId || '')}" ${canDeploy && !dhBusy ? '' : 'disabled'}>
+        <button type="button" class="btn btn-ghost btn-sm" data-dh-seo-gen="${escapeHtml(a.ftpId || '')}" ${canDeploy && !dhBusy && !dhZipSources().length ? '' : 'disabled'} title="${dhZipSources().length ? 'ZIP 모드에서는 AI 생성 생략' : 'AI SEO 사이트 생성'}">
           사이트 생성
         </button>
         <button type="button" class="btn btn-success btn-sm" data-dh-deploy="${escapeHtml(a.ftpId || '')}" ${canDeploy && !dhBusy ? '' : 'disabled'}>
-          생성 후 배포
+          ${dhZipSources().length ? 'ZIP 배포' : '생성 후 배포'}
         </button>
         ${siteUrl ? `<a class="btn btn-ghost btn-sm" href="${escapeHtml(siteUrl)}" target="_blank" rel="noopener">열기</a>` : ''}
       </div>
@@ -3977,7 +4105,10 @@ function ensureDhMailLoggedInOrAlert() {
 
 async function startDhSeoGenerate(ftpId) {
   if (dhBusy) return;
-  const inputs = dhSeoInputsOrAlert();
+  if (dhZipSources().length) {
+    return alert('ZIP이 선택되어 있습니다.\nAI 사이트 생성 대신 「ZIP 배포」를 사용하세요.\n(ZIP을 지우면 AI 생성 모드로 돌아갑니다)');
+  }
+  const inputs = dhSeoInputsOrAlert({ allowZipOnly: false });
   if (!inputs) return;
   const accounts = Array.isArray(config.dothome?.accounts) ? config.dothome.accounts : [];
   const account = accounts.find((a) => a?.ftpId === ftpId);
@@ -4014,7 +4145,8 @@ async function startDhSeoGenerate(ftpId) {
 
 async function startDhDeploy(ftpId, generate = true) {
   if (dhBusy) return;
-  const inputs = dhSeoInputsOrAlert();
+  const zip = takeNextDhZip();
+  const inputs = dhSeoInputsOrAlert({ allowZipOnly: !!zip });
   if (!inputs) return;
   const accounts = Array.isArray(config.dothome?.accounts) ? config.dothome.accounts : [];
   const account = accounts.find((a) => a?.ftpId === ftpId);
@@ -4022,19 +4154,32 @@ async function startDhDeploy(ftpId, generate = true) {
   if (!account.ftpId) return alert('FTP 아이디가 없습니다. 무료호스팅까지 완료된 계정인지 확인하세요.');
 
   setDhBusy(true);
-  dhLog(`🚀 정적 사이트 ${generate ? '생성 후 배포' : '배포'}: ${account.ftpId}`);
+  if (zip) {
+    dhLog(`🚀 ZIP 배포: ${account.ftpId} ← ${zip.name || zip.path}`);
+  } else {
+    dhLog(`🚀 정적 사이트 ${generate ? '생성 후 배포' : '배포'}: ${account.ftpId}`);
+  }
 
   try {
     await window.electronAPI.saveConfig(collectConfig());
     const out = await window.electronAPI.dothomeDeploy({
       ftpId: account.ftpId,
-      generate: !!generate,
-      siteDir: account.siteDir || '',
+      generate: zip ? false : !!generate,
+      zipPath: zip?.path || '',
+      sourcePath: zip?.path || '',
+      siteDir: zip ? '' : (account.siteDir || ''),
       ...inputs,
     });
 
     const fresh = await window.electronAPI.loadConfig();
     if (fresh) config = fresh;
+    if (Array.isArray(out?.deploySources)) {
+      dhDeploySources = out.deploySources;
+    } else if (zip?.path && out?.ok) {
+      removeDhZipPath(zip.path);
+      if (out.movedZip?.to) removeDhZipPath(out.movedZip.to);
+    }
+    updateDhZipUi();
     renderDhAccounts();
 
     if (out?.ok) {
@@ -4128,14 +4273,15 @@ async function startDhGenerate() {
   }
 }
 
-/** 회원가입 → SEO 생성 → FTP·네이버 배포 연속 */
+/** 회원가입 → (ZIP 또는 AI SEO) → FTP·네이버 배포 연속 */
 async function startDhFullPipeline() {
   if (dhBusy) return;
   const creds = dhMailCredsOrAlert();
   if (!creds) return;
   if (!creds.emailLocal) return alert('닷홈 가입용 네이버 이메일을 입력하세요.');
   if (!ensureDhMailLoggedInOrAlert()) return;
-  const inputs = dhSeoInputsOrAlert();
+  const zipMode = dhZipSources().length > 0;
+  const inputs = dhSeoInputsOrAlert({ allowZipOnly: zipMode });
   if (!inputs) return;
   if (!($('openaiApiKey')?.value || '').trim()) {
     return alert('설정 탭에 OpenAI API Key를 입력하세요.');
@@ -4144,11 +4290,16 @@ async function startDhFullPipeline() {
     return alert('설정 탭에 네이버 계정을 등록하세요. (서치어드바이저 등록용)');
   }
 
-  const count = Math.max(1, Math.min(30, parseInt($('dhSignupCount')?.value || '1', 10) || 1));
+  const zipCount = dhZipSources().length;
+  const count = zipCount > 0
+    ? Math.min(30, zipCount)
+    : Math.max(1, Math.min(30, parseInt($('dhSignupCount')?.value || '1', 10) || 1));
   setDhBusy(true);
   dhStopRequested = false;
   if ($('dhLog')) $('dhLog').textContent = '';
-  dhLog(`🚀 가입→생성→배포 시작 (${count}회)`);
+  dhLog(zipCount
+    ? `🚀 가입→ZIP 배포 시작 (${count}개 ZIP)`
+    : `🚀 가입→AI생성→배포 시작 (${count}회)`);
   dhLog(`이메일: ${creds.emailLocal}@naver.com · 메일계정: ${creds.mailNaverId}`);
 
   let okCount = 0;
@@ -4158,7 +4309,12 @@ async function startDhFullPipeline() {
         dhLog(`⏹ 중단 (${i}/${count})`);
         break;
       }
-      dhLog(`═══ 풀파이프라인 ${i + 1}/${count} ═══`);
+      const zip = zipMode ? takeNextDhZip() : null;
+      if (zipMode && !zip) {
+        dhLog('⏹ 남은 ZIP이 없습니다.');
+        break;
+      }
+      dhLog(`═══ 풀파이프라인 ${i + 1}/${count}${zip ? ` · ${zip.name}` : ''} ═══`);
       await window.electronAPI.saveConfig(collectConfig());
       const signup = await window.electronAPI.dothomeSignup({
         emailLocal: creds.emailLocal,
@@ -4180,11 +4336,19 @@ async function startDhFullPipeline() {
 
       const out = await window.electronAPI.dothomeDeploy({
         ftpId,
-        generate: true,
+        generate: !zip,
+        zipPath: zip?.path || '',
+        sourcePath: zip?.path || '',
         ...inputs,
       });
       fresh = await window.electronAPI.loadConfig();
       if (fresh) config = fresh;
+      if (Array.isArray(out?.deploySources)) {
+        dhDeploySources = out.deploySources;
+      } else if (zip?.path && out?.ok) {
+        removeDhZipPath(zip.path);
+      }
+      updateDhZipUi();
       renderDhAccounts();
       if (out?.createdSites) createdSites = out.createdSites;
       else await loadCreatedSites(true);
