@@ -25,8 +25,10 @@ let seoCounts = {};
 let seoSelected = new Set();
 let seoFolder = 'all';
 let seoKeywordsLoaded = false;
-/** 수동캡챠 진행 중 URL — 탭 전환·목록 리렌더 후에도 「새탭 진행중…」유지 */
+/** 수동캡챠 진행 중 URL — 탭 전환·목록 리렌더 후에도 「수동캡챠 진행중」유지 */
 const manualCaptchaBusyUrls = new Set();
+/** 닷홈 다시 배포 진행 중 사이트 id */
+const dothomeRedeployBusyIds = new Set();
 
 function normManualCaptchaUrl(url) {
   return String(url || '').replace(/\/$/, '').toLowerCase().trim();
@@ -44,13 +46,33 @@ function setManualCaptchaBusy(url, busy) {
   else manualCaptchaBusyUrls.delete(k);
 }
 
+function isDothomeRedeployBusy(id) {
+  return !!id && dothomeRedeployBusyIds.has(String(id));
+}
+
+function setDothomeRedeployBusy(id, busy) {
+  const k = String(id || '').trim();
+  if (!k) return;
+  if (busy) dothomeRedeployBusyIds.add(k);
+  else dothomeRedeployBusyIds.delete(k);
+}
+
 /** @param {{ attrs: string, url: string, cls?: string, title?: string }} opts */
 function manualCaptchaButtonHtml({ attrs, url, cls = 'btn btn-primary btn-sm', title = '' }) {
   const busy = isManualCaptchaBusy(url);
-  const label = busy ? '새탭 진행중…' : '수동캡챠';
+  const label = busy ? '수동캡챠 진행중…' : '수동캡챠';
   const disabled = busy ? ' disabled' : '';
   const tip = title || '네이버 창에서 캡챠 수동 입력 → 수집 자동 진행';
   return `<button class="${cls}" type="button" ${attrs}${disabled} title="${escapeHtml(tip)}">${label}</button>`;
+}
+
+function dothomeRedeployButtonHtml({
+  id, cls = 'btn btn-primary btn-sm', title = '', label = '다시 배포', forceDisabled = false,
+}) {
+  const busy = isDothomeRedeployBusy(id);
+  const text = busy ? '다시 배포중…' : label;
+  const disabled = (busy || forceDisabled) ? ' disabled' : '';
+  return `<button class="${cls}" type="button" data-sites-action="redeploy-dothome" data-id="${escapeHtml(id)}"${disabled} title="${escapeHtml(title || 'ZIP/로컬/AI로 FTP·네이버 다시 진행')}">${text}</button>`;
 }
 
 const PAGE_META = {
@@ -1721,7 +1743,10 @@ function renderCreatedSites() {
           })}`;
       } else if (needsDothomeContinue(s)) {
         const nextPillCls = dhNext.next === 'manual-captcha' ? 'manual' : 'indexed-fail';
-        const redeployCls = dhNext.next === 'redeploy' || dhNext.next === 'unknown'
+        const redeployBusy = isDothomeRedeployBusy(s.id);
+        const captchaBusy = isManualCaptchaBusy(s.url);
+        const anyBusy = redeployBusy || captchaBusy;
+        const redeployCls = (dhNext.next === 'redeploy' || dhNext.next === 'unknown')
           ? 'btn btn-primary btn-sm'
           : 'btn btn-ghost btn-sm';
         const captchaCls = dhNext.next === 'manual-captcha'
@@ -1736,14 +1761,24 @@ function renderCreatedSites() {
         const redeployTitle = dhNext.next === 'redeploy' || dhNext.next === 'unknown'
           ? dhNext.reason
           : '전체를 처음부터 다시 FTP·네이버 진행 (캡챠만 실패면 수동캡챠 권장)';
+        const busyHint = redeployBusy
+          ? '<div style="font-size:11px;color:var(--accent,#1976d2);">다시 배포 진행 중…</div>'
+          : (captchaBusy ? '<div style="font-size:11px;color:var(--accent,#1976d2);">수동캡챠 진행 중…</div>' : '');
         naverBtn = `
           <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;max-width:280px;">
             <span class="status-pill ${nextPillCls}" title="${escapeHtml(dhNext.reason)}">${escapeHtml(dhNext.label)}</span>
             <div style="font-size:11px;color:var(--text-muted);line-height:1.35;">${escapeHtml(dhNext.reason.split('\n')[0])}</div>
+            ${busyHint}
             <div style="display:flex;gap:4px;flex-wrap:wrap;">
-              ${dhNext.showRedeploy ? `<button class="${redeployCls}" type="button" data-sites-action="redeploy-dothome" data-id="${escapeHtml(s.id)}" title="${escapeHtml(redeployTitle)}">${redeployLabel}</button>` : ''}
+              ${dhNext.showRedeploy ? dothomeRedeployButtonHtml({
+                id: s.id,
+                cls: redeployCls,
+                title: anyBusy && !redeployBusy ? '다른 작업 진행 중' : redeployTitle,
+                label: redeployLabel,
+                forceDisabled: captchaBusy,
+              }) : ''}
               ${dhNext.showManual ? manualCaptchaButtonHtml({
-                attrs: `data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}"`,
+                attrs: `data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}"${redeployBusy ? ' disabled' : ''}`,
                 url: s.url,
                 cls: captchaCls,
                 title: captchaTitle,
@@ -1996,7 +2031,10 @@ async function siteManualCaptcha(id) {
   }
   if (!(site.url || '').trim()) return alert('사이트 URL이 없습니다.');
   if (isManualCaptchaBusy(site.url)) {
-    return alert('이미 이 사이트 수동캡챠가 진행 중입니다.\n다른 탭으로 다녀와도 버튼은 「새탭 진행중…」으로 유지됩니다.');
+    return alert('이미 이 사이트 수동캡챠가 진행 중입니다.\n버튼이 「수동캡챠 진행중…」으로 유지됩니다.');
+  }
+  if (site.provider === 'dothome' && isDothomeRedeployBusy(site.id)) {
+    return alert('이 사이트는 다시 배포 중입니다. 끝난 뒤 수동캡챠를 눌러 주세요.');
   }
   // 로그인 게이트 없음 — 백엔드가 포트 9334 Chrome에 바로 붙음
   if (!confirm(
@@ -2011,7 +2049,7 @@ async function siteManualCaptcha(id) {
 
   setManualCaptchaBusy(site.url, true);
   renderCreatedSites();
-  setSitesIndexProgress(`수동캡챠 새탭 진행: ${site.url || site.name}`, true);
+  setSitesIndexProgress(`수동캡챠 진행중: ${site.url || site.name}`, true);
   try {
     await window.electronAPI.saveConfig(collectConfig());
     logLine(`═══ 수동캡챠(생성사이트·${site.provider}): ${site.url} ═══`);
@@ -2121,13 +2159,21 @@ async function redeployDothomeCreatedSite(id) {
   const modeLabel = zipPath
     ? `ZIP 재배포\n${zipPath}`
     : (generate ? 'AI SEO 생성 후 배포' : `로컬 폴더 배포\n${siteDir}`);
+  if (isDothomeRedeployBusy(site.id)) {
+    return alert('이미 이 사이트 다시 배포가 진행 중입니다.');
+  }
+  if (isManualCaptchaBusy(site.url)) {
+    return alert('이 사이트는 수동캡챠 진행 중입니다. 끝난 뒤 다시 배포하세요.');
+  }
   if (!confirm(
     `닷홈 다시 배포할까요?\n\nFTP: ${ftpId}\nURL: ${site.url || ''}\n\n${modeLabel}\n\n`
     + 'FTP 업로드 후 네이버 서치어드바이저 등록까지 진행합니다.',
   )) return;
 
   setDhBusy(true);
-  setSitesIndexProgress(`닷홈 다시 배포: ${ftpId}`, true);
+  setDothomeRedeployBusy(site.id, true);
+  renderCreatedSites();
+  setSitesIndexProgress(`다시 배포중: ${ftpId}`, true);
   dhLog(`═══ 생성사이트 다시 배포: ${ftpId} ═══`);
   try {
     await window.electronAPI.saveConfig(collectConfig());
@@ -2172,7 +2218,9 @@ async function redeployDothomeCreatedSite(id) {
     dhLog(`✖ ${e.message}`);
     alert(e.message || String(e));
   } finally {
+    setDothomeRedeployBusy(site.id, false);
     setDhBusy(false);
+    renderCreatedSites();
   }
 }
 

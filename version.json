@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.66",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/506403054",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.66/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/506403054",
-    "asset_id":  506403054,
-    "notes":  "닷홈 실패 건 다음 단계(다시 배포/수동캡챠) 안내 표시",
+    "version":  "3.8.67",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.67/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.67/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "소유확인 다른사이트 오인식 수정 + 다시배포중/수동캡챠진행중 버튼 표시",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/506403054",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.66/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.67/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
