@@ -1,11 +1,12 @@
 {
     "version":  "3.8.68",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.68/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/506448562",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.68/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/506448562",
+    "asset_id":  506448562,
     "notes":  "닷홈 호스팅 DNS 자동검사 — 미개통 시 재가입 안내, 다시배포 차단",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/506448562",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.68/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
