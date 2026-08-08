@@ -1467,17 +1467,87 @@ function needsDothomeContinue(site) {
   return true;
 }
 
-function needsDothomeManualCaptcha(site) {
-  if (!needsDothomeContinue(site)) return false;
-  if (!(site.url || '').trim()) return false;
-  if (isSiteNaverDone(site)) return false;
+/**
+ * 닷홈 실패 건 — 다음에 뭘 눌러야 하는지 판별
+ * @returns {{ next:'done'|'redeploy'|'manual-captcha'|'unknown', label:string, reason:string, showRedeploy:boolean, showManual:boolean }}
+ */
+function resolveDothomeNextAction(site) {
+  if (site?.provider !== 'dothome') {
+    return { next: 'done', label: '', reason: '', showRedeploy: false, showManual: false };
+  }
+  if (site.status === 'deployed' && isSiteNaverDone(site)) {
+    return {
+      next: 'done',
+      label: '네이버 완료',
+      reason: '배포·네이버 등록이 끝났습니다.',
+      showRedeploy: false,
+      showManual: true,
+    };
+  }
+
   const d = site.detail || {};
+  const err = String(d.naverError || d.popupMessage || '').trim();
   const st = String(d.naverStatus || '').toLowerCase();
-  if (st === 'captcha' || /캡챠|captcha|보안절차/i.test(String(d.naverError || ''))) return true;
-  // FTP까지 간 흔적(siteDir/배포실패)이 있으면 수동캡챠 가능
-  if (d.siteDir || d.naverError || site.status === 'generated' || site.status === 'deployed') return true;
-  // 계정만이어도 URL이 있으면 시도 가능 (사이트 개통 여부는 실행 시 확인)
-  return site.status === 'account';
+  const hasUrl = !!(site.url || '').trim();
+  const captchaFail = st === 'captcha'
+    || /캡챠|captcha|보안절차|수동캡챠/i.test(err);
+  const ftpOrHostFail = /FTP|업로드|index\.html|ZIP|호스팅|DNS|연결|ECONN|타임아웃|timeout|로컬 사이트/i.test(err);
+  const reachedNaver = captchaFail
+    || !!d.naverMeta
+    || /네이버|서치|소유확인|메타/i.test(err)
+    || (String(d.from || '').includes('deploy-fail') && !!err && !ftpOrHostFail);
+  const hasLocalSite = !!(d.siteDir || d.output);
+
+  // 1) 캡챠/소유확인만 실패 → 사이트는 이미 올라간 상태 → 수동캡챠
+  if (hasUrl && captchaFail) {
+    return {
+      next: 'manual-captcha',
+      label: '다음: 수동캡챠',
+      reason: 'FTP·사이트 업로드까지는 됐고, 네이버 소유확인 캡챠에서 실패했습니다. 「수동캡챠」만 하면 됩니다.',
+      showRedeploy: true,
+      showManual: true,
+    };
+  }
+
+  // 2) 네이버 단계까지 갔거나 로컬 사이트가 있음 → 수동캡챠 우선
+  if (hasUrl && (reachedNaver || (hasLocalSite && err && !ftpOrHostFail))) {
+    return {
+      next: 'manual-captcha',
+      label: '다음: 수동캡챠',
+      reason: err
+        ? `네이버 단계에서 실패했습니다. 「수동캡챠」로 이어가세요.\n${err.slice(0, 120)}`
+        : '사이트가 준비된 상태로 보입니다. 「수동캡챠」로 네이버 소유확인을 이어가세요.',
+      showRedeploy: true,
+      showManual: true,
+    };
+  }
+
+  // 3) FTP/ZIP/호스팅 실패 또는 계정만 → 다시 배포
+  if (ftpOrHostFail || site.status === 'account' || site.status === 'generated' || !hasUrl) {
+    const reason = ftpOrHostFail
+      ? `사이트 업로드 전·도중에 실패했습니다. 「다시 배포」부터 하세요.\n${err.slice(0, 120)}`
+      : site.status === 'account'
+        ? '닷홈 계정(무료호스팅)만 만든 상태입니다. ZIP/AI 「다시 배포」로 FTP·네이버까지 진행하세요.'
+        : '사이트 배포가 끝나지 않았습니다. 「다시 배포」부터 하세요.';
+    return {
+      next: 'redeploy',
+      label: '다음: 다시 배포',
+      reason,
+      showRedeploy: true,
+      showManual: hasUrl, // URL 있으면 보조로 수동캡챠 노출(사이트 열린 경우)
+    };
+  }
+
+  // 4) 정보 부족
+  return {
+    next: 'unknown',
+    label: '다음: 다시 배포 권장',
+    reason: err
+      ? `실패 기록이 불명확합니다. 우선 「다시 배포」를 권장합니다.\n${err.slice(0, 120)}`
+      : '실패 단계 기록이 없습니다. 사이트가 안 열리면 「다시 배포」, 열리면 「수동캡챠」를 쓰세요.',
+    showRedeploy: true,
+    showManual: hasUrl,
+  };
 }
 
 function siteDetailHtml(site) {
@@ -1502,17 +1572,17 @@ function siteDetailHtml(site) {
   }
   if (site.provider === 'dothome') {
     const bits = [];
+    const next = resolveDothomeNextAction(site);
+    if (next.next !== 'done' && next.label) bits.push(next.label);
     if (d.hostId) bits.push(`회원 ${d.hostId}`);
     if (d.ftpId) bits.push(`FTP ${d.ftpId}`);
     if (d.keyword) bits.push(d.keyword);
-    if (d.email) bits.push(d.email);
     if (d.sourceType) bits.push(d.sourceType === 'zip' ? 'ZIP' : d.sourceType);
     if (isSiteNaverDone(site)) bits.push('네이버 완료');
-    else if (d.naverError) bits.push(`네이버 실패: ${String(d.naverError).slice(0, 40)}`);
+    else if (d.naverError) bits.push(`원인: ${String(d.naverError).slice(0, 48)}`);
     else if (d.naverStatus) bits.push(`네이버 ${d.naverStatus}`);
     if (d.deployedAt) bits.push(`배포 ${formatDate(d.deployedAt)}`);
-    else if (d.generatedAt) bits.push(`생성 ${formatDate(d.generatedAt)}`);
-    else if (site.status === 'account') bits.push('계정만 · 배포 필요');
+    else if (site.status === 'account') bits.push('계정만');
     return bits.join(' · ') || '닷홈 호스팅';
   }
   return '-';
@@ -1640,11 +1710,8 @@ function renderCreatedSites() {
         naverBtn = `<button class="btn btn-primary btn-sm" type="button" data-sites-action="retry-naver" data-id="${escapeHtml(s.id)}" title="네이버 HTML 인증 추출 → head 삽입 → Netlify 재배포">네이버 인증</button>`;
       }
     } else if (s.provider === 'dothome') {
-      const dhDone = s.status === 'deployed' && isSiteNaverDone(s);
-      const dhContinue = needsDothomeContinue(s);
-      const dhCaptcha = needsDothomeManualCaptcha(s);
-      const failHint = escapeHtml(s.detail?.naverError || s.detail?.naverStatus || '');
-      if (dhDone) {
+      const dhNext = resolveDothomeNextAction(s);
+      if (dhNext.next === 'done') {
         naverBtn = `
           <span class="status-pill success" title="닷홈 배포·네이버 완료${accounts.naverId ? ` · ${accounts.naverId}` : ''}">네이버 완료</span>
           ${manualCaptchaButtonHtml({
@@ -1652,24 +1719,58 @@ function renderCreatedSites() {
             url: s.url,
             cls: 'btn btn-ghost btn-sm',
           })}`;
-      } else if (dhContinue) {
-        const statusLabel = s.status === 'account'
-          ? '계정만'
-          : (isSiteNaverDone(s) ? '배포 미완료' : '네이버 미완료');
+      } else if (needsDothomeContinue(s)) {
+        const nextPillCls = dhNext.next === 'manual-captcha' ? 'manual' : 'indexed-fail';
+        const redeployCls = dhNext.next === 'redeploy' || dhNext.next === 'unknown'
+          ? 'btn btn-primary btn-sm'
+          : 'btn btn-ghost btn-sm';
+        const captchaCls = dhNext.next === 'manual-captcha'
+          ? 'btn btn-warning btn-sm'
+          : 'btn btn-ghost btn-sm';
+        const redeployLabel = dhNext.next === 'redeploy' || dhNext.next === 'unknown'
+          ? '▶ 다시 배포'
+          : '다시 배포';
+        const captchaTitle = dhNext.next === 'manual-captcha'
+          ? dhNext.reason
+          : '사이트가 이미 열려 있을 때만 사용 (업로드가 안 됐으면 다시 배포 먼저)';
+        const redeployTitle = dhNext.next === 'redeploy' || dhNext.next === 'unknown'
+          ? dhNext.reason
+          : '전체를 처음부터 다시 FTP·네이버 진행 (캡챠만 실패면 수동캡챠 권장)';
         naverBtn = `
-          <span class="status-pill indexed-fail" title="${failHint || statusLabel}">${statusLabel}</span>
-          <button class="btn btn-primary btn-sm" type="button" data-sites-action="redeploy-dothome" data-id="${escapeHtml(s.id)}" title="ZIP/로컬/AI로 FTP·네이버 다시 진행">다시 배포</button>
-          ${dhCaptcha ? manualCaptchaButtonHtml({
-            attrs: `data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}"`,
-            url: s.url,
-            cls: 'btn btn-warning btn-sm',
-            title: '서치어드바이저 창에서 캡챠 수동 입력 후 수집 자동 진행',
-          }) : ''}`;
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;max-width:280px;">
+            <span class="status-pill ${nextPillCls}" title="${escapeHtml(dhNext.reason)}">${escapeHtml(dhNext.label)}</span>
+            <div style="font-size:11px;color:var(--text-muted);line-height:1.35;">${escapeHtml(dhNext.reason.split('\n')[0])}</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+              ${dhNext.showRedeploy ? `<button class="${redeployCls}" type="button" data-sites-action="redeploy-dothome" data-id="${escapeHtml(s.id)}" title="${escapeHtml(redeployTitle)}">${redeployLabel}</button>` : ''}
+              ${dhNext.showManual ? manualCaptchaButtonHtml({
+                attrs: `data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}"`,
+                url: s.url,
+                cls: captchaCls,
+                title: captchaTitle,
+              }) : ''}
+            </div>
+          </div>`;
       }
     }
     const titleLine = s.detail?.title
       ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${escapeHtml(s.detail.title)}</div>`
       : '';
+    let statusCell = `<span class="status-pill ${st.cls}">${st.label}</span>`;
+    if (s.provider === 'dothome') {
+      const dhSt = resolveDothomeNextAction(s);
+      if (dhSt.next === 'done') {
+        statusCell = `<span class="status-pill success" title="${escapeHtml(dhSt.reason)}">배포됨</span>`;
+      } else if (dhSt.next === 'manual-captcha') {
+        statusCell = `<span class="status-pill manual" title="${escapeHtml(dhSt.reason)}">캡챠 대기</span>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">수동캡챠만</div>`;
+      } else if (dhSt.next === 'redeploy') {
+        statusCell = `<span class="status-pill ${st.cls}" title="${escapeHtml(dhSt.reason)}">${st.label}</span>
+          <div style="font-size:10px;color:var(--danger);margin-top:2px;">다시 배포 필요</div>`;
+      } else if (dhSt.next === 'unknown') {
+        statusCell = `<span class="status-pill ${st.cls}" title="${escapeHtml(dhSt.reason)}">${st.label}</span>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">다시 배포 권장</div>`;
+      }
+    }
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><span class="provider-pill ${prov.cls}">${prov.label}</span></td>
@@ -1687,7 +1788,7 @@ function renderCreatedSites() {
             <button class="btn btn-ghost btn-sm" type="button" data-sites-action="set-naver-id" data-id="${escapeHtml(s.id)}" title="네이버 아이디 수동 입력">수동입력</button>
           </div>`}</td>
       <td>${accounts.netlifyId ? escapeHtml(accounts.netlifyId) : '<span style="color:var(--text-dim)">-</span>'}</td>
-      <td><span class="status-pill ${st.cls}">${st.label}</span></td>
+      <td>${statusCell}</td>
       <td>${renderSiteIndexCell(s)}</td>
       <td>${formatDate(s.createdAt)}</td>
       <td><div class="sites-detail">${escapeHtml(siteDetailHtml(s))}</div></td>
