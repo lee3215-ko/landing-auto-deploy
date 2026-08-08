@@ -1491,7 +1491,7 @@ function needsDothomeContinue(site) {
 
 /**
  * 닷홈 실패 건 — 다음에 뭘 눌러야 하는지 판별
- * @returns {{ next:'done'|'redeploy'|'manual-captcha'|'unknown', label:string, reason:string, showRedeploy:boolean, showManual:boolean }}
+ * @returns {{ next:'done'|'redeploy'|'manual-captcha'|'rejoin'|'unknown', label:string, reason:string, showRedeploy:boolean, showManual:boolean, showCheckHosting?:boolean }}
  */
 function resolveDothomeNextAction(site) {
   if (site?.provider !== 'dothome') {
@@ -1508,9 +1508,26 @@ function resolveDothomeNextAction(site) {
   }
 
   const d = site.detail || {};
-  const err = String(d.naverError || d.popupMessage || '').trim();
+  const err = String(d.naverError || d.popupMessage || d.hostingError || '').trim();
   const st = String(d.naverStatus || '').toLowerCase();
   const hasUrl = !!(site.url || '').trim();
+  const hostingMissing = d.hostingStatus === 'dns_missing'
+    || d.hostingOk === false && d.hostingStatus === 'dns_missing'
+    || /ENOTFOUND|서브도메인 DNS|DNS 없음|Non-existent/i.test(err);
+
+  // 0) 호스팅 미개통 → 다시 배포 금지, 재가입 안내
+  if (hostingMissing) {
+    return {
+      next: 'rejoin',
+      label: '호스팅 미개통 → 재가입 필요',
+      reason: d.hostingTip
+        || '서브도메인 DNS가 없습니다. 다시 배포로는 불가합니다. 이 계정은 삭제하고 닷홈 탭에서 새로 가입하세요.',
+      showRedeploy: false,
+      showManual: false,
+      showCheckHosting: true,
+    };
+  }
+
   const captchaFail = st === 'captcha'
     || /캡챠|captcha|보안절차|수동캡챠/i.test(err);
   const ftpOrHostFail = /FTP|업로드|index\.html|ZIP|호스팅|DNS|연결|ECONN|타임아웃|timeout|로컬 사이트/i.test(err);
@@ -1557,6 +1574,7 @@ function resolveDothomeNextAction(site) {
       reason,
       showRedeploy: true,
       showManual: hasUrl, // URL 있으면 보조로 수동캡챠 노출(사이트 열린 경우)
+      showCheckHosting: true,
     };
   }
 
@@ -1569,6 +1587,7 @@ function resolveDothomeNextAction(site) {
       : '실패 단계 기록이 없습니다. 사이트가 안 열리면 「다시 배포」, 열리면 「수동캡챠」를 쓰세요.',
     showRedeploy: true,
     showManual: hasUrl,
+    showCheckHosting: true,
   };
 }
 
@@ -1742,7 +1761,9 @@ function renderCreatedSites() {
             cls: 'btn btn-ghost btn-sm',
           })}`;
       } else if (needsDothomeContinue(s)) {
-        const nextPillCls = dhNext.next === 'manual-captcha' ? 'manual' : 'indexed-fail';
+        const nextPillCls = dhNext.next === 'rejoin'
+          ? 'error'
+          : (dhNext.next === 'manual-captcha' ? 'manual' : 'indexed-fail');
         const redeployBusy = isDothomeRedeployBusy(s.id);
         const captchaBusy = isManualCaptchaBusy(s.url);
         const anyBusy = redeployBusy || captchaBusy;
@@ -1770,6 +1791,10 @@ function renderCreatedSites() {
             <div style="font-size:11px;color:var(--text-muted);line-height:1.35;">${escapeHtml(dhNext.reason.split('\n')[0])}</div>
             ${busyHint}
             <div style="display:flex;gap:4px;flex-wrap:wrap;">
+              ${dhNext.next === 'rejoin' ? `
+                <button class="btn btn-ghost btn-sm" type="button" data-sites-action="check-hosting" data-id="${escapeHtml(s.id)}" title="DNS로 호스팅 개통 여부 재확인">호스팅 재확인</button>
+                <button class="btn btn-danger btn-sm" type="button" data-sites-action="delete" data-id="${escapeHtml(s.id)}" title="목록에서 제거 후 닷홈 탭에서 새로 가입">목록에서 삭제</button>
+              ` : ''}
               ${dhNext.showRedeploy ? dothomeRedeployButtonHtml({
                 id: s.id,
                 cls: redeployCls,
@@ -1783,6 +1808,9 @@ function renderCreatedSites() {
                 cls: captchaCls,
                 title: captchaTitle,
               }) : ''}
+              ${dhNext.showCheckHosting && dhNext.next !== 'rejoin' ? `
+                <button class="btn btn-ghost btn-sm" type="button" data-sites-action="check-hosting" data-id="${escapeHtml(s.id)}">호스팅 확인</button>
+              ` : ''}
             </div>
           </div>`;
       }
@@ -1798,6 +1826,9 @@ function renderCreatedSites() {
       } else if (dhSt.next === 'manual-captcha') {
         statusCell = `<span class="status-pill manual" title="${escapeHtml(dhSt.reason)}">캡챠 대기</span>
           <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">수동캡챠만</div>`;
+      } else if (dhSt.next === 'rejoin') {
+        statusCell = `<span class="status-pill error" title="${escapeHtml(dhSt.reason)}">호스팅 미개통</span>
+          <div style="font-size:10px;color:var(--danger);margin-top:2px;">재가입 필요</div>`;
       } else if (dhSt.next === 'redeploy') {
         statusCell = `<span class="status-pill ${st.cls}" title="${escapeHtml(dhSt.reason)}">${st.label}</span>
           <div style="font-size:10px;color:var(--danger);margin-top:2px;">다시 배포 필요</div>`;
@@ -1837,6 +1868,85 @@ function renderCreatedSites() {
   list.appendChild(table);
 }
 
+async function refreshDothomeHostingChecks(sites = createdSites) {
+  const targets = (sites || []).filter((s) => {
+    if (s?.provider !== 'dothome') return false;
+    if (s.status === 'deployed' && isSiteNaverDone(s)) return false;
+    const ftpId = String(s.detail?.ftpId || s.name || '').trim();
+    if (!ftpId) return false;
+    // 이미 ready면 스킵, 미확인/미개통/에러는 재확인
+    return s.detail?.hostingStatus !== 'ready';
+  }).slice(0, 20);
+
+  if (!targets.length || !window.electronAPI?.dothomeCheckHosting) return false;
+
+  let changed = false;
+  await Promise.all(targets.map(async (s) => {
+    try {
+      const ftpId = String(s.detail?.ftpId || s.name || '').trim();
+      const out = await window.electronAPI.dothomeCheckHosting({
+        ftpId,
+        url: s.url || '',
+        createdSiteId: s.id,
+      });
+      if (out?.createdSites) {
+        createdSites = out.createdSites;
+        changed = true;
+      } else if (out?.status) {
+        const idx = createdSites.findIndex((x) => x.id === s.id);
+        if (idx >= 0) {
+          createdSites[idx] = {
+            ...createdSites[idx],
+            detail: {
+              ...(createdSites[idx].detail || {}),
+              hostingStatus: out.status,
+              hostingOk: !!out.ok,
+              hostingIp: out.ip || '',
+              hostingError: out.error || '',
+              hostingTip: out.tip || '',
+              hostingCheckedAt: new Date().toISOString(),
+            },
+          };
+          changed = true;
+        }
+      }
+    } catch { /* ignore one */ }
+  }));
+  return changed;
+}
+
+async function checkDothomeHostingForSite(id) {
+  const site = createdSites.find((s) => s.id === id);
+  if (!site) return alert('사이트를 찾을 수 없습니다.');
+  const ftpId = String(site.detail?.ftpId || site.name || '').trim();
+  if (!ftpId) return alert('FTP 아이디가 없습니다.');
+  setSitesIndexProgress(`호스팅 DNS 확인: ${ftpId}`, true);
+  try {
+    const out = await window.electronAPI.dothomeCheckHosting({
+      ftpId,
+      url: site.url || '',
+      createdSiteId: site.id,
+    });
+    if (out?.createdSites) createdSites = out.createdSites;
+    else await loadCreatedSites(false);
+    renderCreatedSites();
+    if (out?.ok) {
+      setSitesIndexProgress(`✔ 호스팅 개통됨: ${ftpId} (${out.ip || ''})`, true);
+      alert(`호스팅 개통 확인\n${out.host}\nIP: ${out.ip || '-'}\n\n「다시 배포」를 진행하세요.`);
+    } else {
+      setSitesIndexProgress('', false);
+      alert(
+        `호스팅 미개통\n${out?.host || ftpId}\n\n`
+        + `${out?.tip || out?.error || '서브도메인 DNS가 없습니다.'}\n\n`
+        + '다시 배포는 불가합니다. 목록에서 삭제 후 닷홈 탭에서 새로 가입하세요.',
+      );
+    }
+  } catch (e) {
+    setSitesIndexProgress('', false);
+    alert(e.message || String(e));
+  }
+}
+
 async function loadCreatedSites(forceSync = true) {
   try {
     createdSites = forceSync
@@ -1846,6 +1956,11 @@ async function loadCreatedSites(forceSync = true) {
     createdSites = [];
   }
   renderCreatedSites();
+  // 미완료 닷홈 건 DNS 자동 검사 → 호스팅 미개통이면 UI에 표시
+  try {
+    const changed = await refreshDothomeHostingChecks(createdSites);
+    if (changed) renderCreatedSites();
+  } catch { /* ignore */ }
 }
 
 function filterCreatedSites() {
@@ -2165,6 +2280,32 @@ async function redeployDothomeCreatedSite(id) {
   if (isManualCaptchaBusy(site.url)) {
     return alert('이 사이트는 수동캡챠 진행 중입니다. 끝난 뒤 다시 배포하세요.');
   }
+
+  // 다시 배포 전 DNS로 호스팅 개통 확인
+  try {
+    setSitesIndexProgress(`호스팅 DNS 확인: ${ftpId}`, true);
+    const hostCheck = await window.electronAPI.dothomeCheckHosting({
+      ftpId,
+      url: site.url || '',
+      createdSiteId: site.id,
+    });
+    if (hostCheck?.createdSites) {
+      createdSites = hostCheck.createdSites;
+      renderCreatedSites();
+    }
+    if (!hostCheck?.ok) {
+      setSitesIndexProgress('', false);
+      return alert(
+        `호스팅 미개통 — 다시 배포 불가\n\n${hostCheck?.host || ftpId}\n`
+        + `${hostCheck?.tip || hostCheck?.error || '서브도메인 DNS가 없습니다.'}\n\n`
+        + '이 계정은 삭제하고 닷홈 탭에서 새로 가입하세요.',
+      );
+    }
+  } catch (e) {
+    setSitesIndexProgress('', false);
+    if (!confirm(`호스팅 확인 실패: ${e.message}\n그래도 다시 배포를 시도할까요?`)) return;
+  }
+
   if (!confirm(
     `닷홈 다시 배포할까요?\n\nFTP: ${ftpId}\nURL: ${site.url || ''}\n\n${modeLabel}\n\n`
     + 'FTP 업로드 후 네이버 서치어드바이저 등록까지 진행합니다.',
@@ -3275,6 +3416,8 @@ function setupEvents() {
       await siteManualCaptcha(btn.dataset.id);
     } else if (action === 'redeploy-dothome') {
       await redeployDothomeCreatedSite(btn.dataset.id);
+    } else if (action === 'check-hosting') {
+      await checkDothomeHostingForSite(btn.dataset.id);
     } else if (action === 'set-naver-id') {
       await setManualNaverId(btn.dataset.id);
     }

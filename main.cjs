@@ -2280,6 +2280,52 @@ ipcMain.handle('dothome-seo-generate', async (event, options = {}) => {
   }
 });
 
+ipcMain.handle('dothome-check-hosting', async (_event, options = {}) => {
+  const { checkDothomeHostingReady } = await import('./lib/dothome-deploy.js');
+  const ftpId = String(options.ftpId || options.host || options.url || '').trim();
+  const result = await checkDothomeHostingReady(ftpId);
+  // 생성사이트 detail에 결과 반영
+  let createdSites = null;
+  try {
+    const createdId = String(options.createdSiteId || '').trim();
+    const { loadSitesRegistry } = await import('./lib/sites-registry.js');
+    const sites = loadSitesRegistry(CREATED_SITES_PATH);
+    const hostKey = String(result.host || '').toLowerCase();
+    const site = (createdId && sites.find((s) => s.id === createdId))
+      || sites.find((s) => s.provider === 'dothome' && (
+        String(s.detail?.ftpId || '').toLowerCase() === String(options.ftpId || '').toLowerCase()
+        || String(s.url || '').toLowerCase().includes(hostKey)
+        || String(s.name || '').toLowerCase() === String(options.ftpId || '').toLowerCase()
+      ));
+    if (site) {
+      createdSites = await upsertCreatedSite({
+        ...site,
+        detail: {
+          ...(site.detail || {}),
+          hostingStatus: result.status,
+          hostingOk: !!result.ok,
+          hostingIp: result.ip || '',
+          hostingError: result.error || '',
+          hostingTip: result.tip || '',
+          hostingCheckedAt: new Date().toISOString(),
+        },
+      });
+      const cfg = loadConfig();
+      const ftp = String(site.detail?.ftpId || options.ftpId || site.name || '').trim();
+      if (ftp) {
+        patchDothomeAccount(cfg, ftp, {
+          hostingStatus: result.status,
+          hostingOk: !!result.ok,
+          hostingIp: result.ip || '',
+          hostingError: result.error || '',
+          hostingCheckedAt: new Date().toISOString(),
+        });
+      }
+    }
+  } catch { /* ignore */ }
+  return { ...result, createdSites };
+});
+
 ipcMain.handle('dothome-deploy', async (event, options = {}) => {
   const config = loadConfig();
   const { deployDothomeSite, resolveSiteUrl } = await import('./lib/dothome-deploy.js');
@@ -2395,6 +2441,7 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
     sendLog(`[ERROR] ${e.message}`);
     const errMsg = e?.message || String(e);
     const captchaFail = /캡챠|captcha|보안절차|수동캡챠/i.test(errMsg);
+    const dnsMissing = /ENOTFOUND|서브도메인 DNS|DNS 없음|Non-existent/i.test(errMsg);
     let createdSites;
     try {
       const { entryFromDothomeAccount } = await import('./lib/sites-registry.js');
@@ -2408,6 +2455,8 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
         naverStatus: captchaFail ? 'captcha' : 'error',
         naverError: errMsg,
         naverAccountId: naverAccount?.id || account.naverAccountId || '',
+        hostingStatus: dnsMissing ? 'dns_missing' : (account.hostingStatus || ''),
+        hostingOk: dnsMissing ? false : account.hostingOk,
         from: 'dothome-deploy-fail',
       });
       if (siteEntry) {
@@ -2418,6 +2467,12 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
           naverAccountId: naverAccount?.id || account.naverAccountId || '',
           sourcePath: zipPath || account.sourcePath || '',
           sourceType: useZip ? 'zip' : (account.sourceType || 'ai'),
+          ...(dnsMissing ? {
+            hostingStatus: 'dns_missing',
+            hostingOk: false,
+            hostingError: errMsg.slice(0, 200),
+            hostingCheckedAt: new Date().toISOString(),
+          } : {}),
         });
       }
     } catch { /* ignore */ }
