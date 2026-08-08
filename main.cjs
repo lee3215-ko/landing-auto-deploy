@@ -687,6 +687,41 @@ ipcMain.handle('manual-captcha-collect', async (event, options = {}) => {
         if (!dir || !fs.existsSync(path.join(dir, 'index.html'))) {
           return { ok: false, error: '로컬 index.html 폴더 없음' };
         }
+        const tag = metaTag || (content
+          ? `<meta name="naver-site-verification" content="${content}" />`
+          : '');
+        if (!tag) return { ok: false, error: '메타 태그 없음' };
+
+        const { injectMetaAllHtml } = await import('./lib/naver-register.js');
+        sendLog('   메타 → 전체 HTML head 삽입…');
+        injectMetaAllHtml(dir, tag);
+
+        const host = (() => {
+          try { return new URL(siteUrl).hostname || ''; } catch { return ''; }
+        })();
+        const isDothome = /\.dothome\.co\.kr$/i.test(host)
+          || String(options.provider || '').toLowerCase() === 'dothome';
+
+        if (isDothome) {
+          const ftpId = String(options.ftpId || siteSlug || host.replace(/\.dothome\.co\.kr$/i, '') || '').trim();
+          const accounts = Array.isArray(config.dothome?.accounts) ? config.dothome.accounts : [];
+          const acc = accounts.find((a) => a?.ftpId === ftpId) || null;
+          const ftpPw = acc?.ftpPw || acc?.pw || acc?.dbPw || '';
+          if (!ftpId || !ftpPw) {
+            return { ok: false, error: '닷홈 FTP 계정/비밀번호를 찾을 수 없습니다.' };
+          }
+          const { uploadSiteViaFtp } = await import('./lib/dothome-deploy.js');
+          sendLog(`   닷홈 FTP 재업로드 중… (${ftpId})`);
+          await uploadSiteViaFtp({
+            siteDir: dir,
+            ftpHost: config.dothome?.ftpHost || '',
+            ftpUser: ftpId,
+            ftpPassword: ftpPw,
+            sendLog,
+          });
+          return { ok: true, url: siteUrl };
+        }
+
         const tokens = Array.isArray(config.netlifyTokens) ? config.netlifyTokens : [];
         const token = tokens
           .map((t) => (typeof t === 'string' ? t : (t?.token || '')))
@@ -701,15 +736,7 @@ ipcMain.handle('manual-captcha-collect', async (event, options = {}) => {
         }
         if (!slug) slug = 'site';
 
-        const { injectMetaAllHtml } = await import('./lib/naver-register.js');
         const { deploySite } = await import('./lib/deploy.js');
-        const tag = metaTag || (content
-          ? `<meta name="naver-site-verification" content="${content}" />`
-          : '');
-        if (!tag) return { ok: false, error: '메타 태그 없음' };
-
-        sendLog('   메타 → 전체 HTML head 삽입…');
-        injectMetaAllHtml(dir, tag);
         sendLog('   Netlify 재배포 중…');
         const deployInfo = await deploySite({
           netlifyToken: token,
@@ -890,6 +917,7 @@ ipcMain.handle('manual-captcha-collect', async (event, options = {}) => {
           detail: {
             ...(site.detail || {}),
             output: out?.siteDir || options.siteDir || site.detail?.output || '',
+            siteDir: out?.siteDir || options.siteDir || site.detail?.siteDir || site.detail?.output || '',
             naverAuto: !!out?.ok,
             naverStatus: out?.ok ? 'success' : (out?.status || 'captcha'),
             naverError: out?.ok ? '' : (out?.popupMessage || out?.message || out?.error || '수동캡챠 미완료'),
@@ -899,8 +927,26 @@ ipcMain.handle('manual-captcha-collect', async (event, options = {}) => {
             sourcePath: movedZip?.to || site.detail?.sourcePath || options.sourcePath || '',
             sourceType: options.sourceType || site.detail?.sourceType || '',
             manualCaptchaAt: new Date().toISOString(),
+            ...(out?.ok ? { deployedAt: site.detail?.deployedAt || new Date().toISOString() } : {}),
           },
         });
+        // 닷홈 계정 상태도 동기화 (수동캡챠 성공 → 배포 완료)
+        if (site.provider === 'dothome' && out?.ok) {
+          const ftpId = String(options.ftpId || site.detail?.ftpId || site.name || '').trim();
+          if (ftpId) {
+            const cfg = loadConfig();
+            patchDothomeAccount(cfg, ftpId, {
+              url: site.url || url,
+              deployedAt: new Date().toISOString(),
+              siteDir: out?.siteDir || options.siteDir || site.detail?.siteDir || '',
+              naverStatus: 'success',
+              naverError: '',
+              naverAccountId: naverAccount?.id || site.detail?.naverAccountId || '',
+              sourcePath: movedZip?.to || site.detail?.sourcePath || options.sourcePath || '',
+              sourceType: options.sourceType || site.detail?.sourceType || '',
+            });
+          }
+        }
       }
     } catch { /* ignore */ }
 
@@ -2319,6 +2365,7 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
       sourceType: out.sourceType || (useZip ? 'zip' : 'ai'),
       naverStatus: out.naver?.status || '',
       naverMeta: out.naver?.metaContent || '',
+      naverError: '',
       naverAccountId: out.naver?.naverAccountId || naverAccount?.id || '',
     });
     saveConfig(config);
@@ -2346,7 +2393,35 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
     return { ...out, ok: true, account: acc, createdSites, deploySources: dh.deploySources || [] };
   } catch (e) {
     sendLog(`[ERROR] ${e.message}`);
-    return { ok: false, error: e.message };
+    const errMsg = e?.message || String(e);
+    const captchaFail = /캡챠|captcha|보안절차|수동캡챠/i.test(errMsg);
+    let createdSites;
+    try {
+      const { entryFromDothomeAccount } = await import('./lib/sites-registry.js');
+      const failUrl = `${resolveSiteUrl(account, { https: true })}/`;
+      const siteEntry = entryFromDothomeAccount(account, {
+        url: failUrl,
+        siteDir: account.siteDir || options.siteDir || '',
+        keyword: keyword || account.keyword || '',
+        sourcePath: zipPath || account.sourcePath || '',
+        sourceType: useZip ? 'zip' : (account.sourceType || 'ai'),
+        naverStatus: captchaFail ? 'captcha' : 'error',
+        naverError: errMsg,
+        naverAccountId: naverAccount?.id || account.naverAccountId || '',
+        from: 'dothome-deploy-fail',
+      });
+      if (siteEntry) {
+        createdSites = await upsertCreatedSite(siteEntry);
+        patchDothomeAccount(config, account.ftpId, {
+          naverStatus: captchaFail ? 'captcha' : 'error',
+          naverError: errMsg,
+          naverAccountId: naverAccount?.id || account.naverAccountId || '',
+          sourcePath: zipPath || account.sourcePath || '',
+          sourceType: useZip ? 'zip' : (account.sourceType || 'ai'),
+        });
+      }
+    } catch { /* ignore */ }
+    return { ok: false, error: errMsg, createdSites };
   }
 });
 

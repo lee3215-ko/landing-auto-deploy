@@ -1458,6 +1458,28 @@ function needsNaverIndexRetry(site) {
   return false;
 }
 
+/** 닷홈: 가입만 됐거나 배포/네이버 미완료 → 이어서 처리 대상 */
+function needsDothomeContinue(site) {
+  if (site?.provider !== 'dothome') return false;
+  const ftpId = String(site.detail?.ftpId || site.name || '').trim();
+  if (!ftpId) return false;
+  if (site.status === 'deployed' && isSiteNaverDone(site)) return false;
+  return true;
+}
+
+function needsDothomeManualCaptcha(site) {
+  if (!needsDothomeContinue(site)) return false;
+  if (!(site.url || '').trim()) return false;
+  if (isSiteNaverDone(site)) return false;
+  const d = site.detail || {};
+  const st = String(d.naverStatus || '').toLowerCase();
+  if (st === 'captcha' || /캡챠|captcha|보안절차/i.test(String(d.naverError || ''))) return true;
+  // FTP까지 간 흔적(siteDir/배포실패)이 있으면 수동캡챠 가능
+  if (d.siteDir || d.naverError || site.status === 'generated' || site.status === 'deployed') return true;
+  // 계정만이어도 URL이 있으면 시도 가능 (사이트 개통 여부는 실행 시 확인)
+  return site.status === 'account';
+}
+
 function siteDetailHtml(site) {
   const d = site.detail || {};
   if (site.provider === 'netlify') {
@@ -1484,9 +1506,13 @@ function siteDetailHtml(site) {
     if (d.ftpId) bits.push(`FTP ${d.ftpId}`);
     if (d.keyword) bits.push(d.keyword);
     if (d.email) bits.push(d.email);
-    if (d.naverStatus) bits.push(`네이버 ${d.naverStatus}`);
+    if (d.sourceType) bits.push(d.sourceType === 'zip' ? 'ZIP' : d.sourceType);
+    if (isSiteNaverDone(site)) bits.push('네이버 완료');
+    else if (d.naverError) bits.push(`네이버 실패: ${String(d.naverError).slice(0, 40)}`);
+    else if (d.naverStatus) bits.push(`네이버 ${d.naverStatus}`);
     if (d.deployedAt) bits.push(`배포 ${formatDate(d.deployedAt)}`);
     else if (d.generatedAt) bits.push(`생성 ${formatDate(d.generatedAt)}`);
+    else if (site.status === 'account') bits.push('계정만 · 배포 필요');
     return bits.join(' · ') || '닷홈 호스팅';
   }
   return '-';
@@ -1612,6 +1638,33 @@ function renderCreatedSites() {
           <button class="btn btn-ghost btn-sm" type="button" data-sites-action="retry-naver" data-id="${escapeHtml(s.id)}" title="HTML 인증부터 다시">인증재시도</button>`;
       } else {
         naverBtn = `<button class="btn btn-primary btn-sm" type="button" data-sites-action="retry-naver" data-id="${escapeHtml(s.id)}" title="네이버 HTML 인증 추출 → head 삽입 → Netlify 재배포">네이버 인증</button>`;
+      }
+    } else if (s.provider === 'dothome') {
+      const dhDone = s.status === 'deployed' && isSiteNaverDone(s);
+      const dhContinue = needsDothomeContinue(s);
+      const dhCaptcha = needsDothomeManualCaptcha(s);
+      const failHint = escapeHtml(s.detail?.naverError || s.detail?.naverStatus || '');
+      if (dhDone) {
+        naverBtn = `
+          <span class="status-pill success" title="닷홈 배포·네이버 완료${accounts.naverId ? ` · ${accounts.naverId}` : ''}">네이버 완료</span>
+          ${manualCaptchaButtonHtml({
+            attrs: `data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}"`,
+            url: s.url,
+            cls: 'btn btn-ghost btn-sm',
+          })}`;
+      } else if (dhContinue) {
+        const statusLabel = s.status === 'account'
+          ? '계정만'
+          : (isSiteNaverDone(s) ? '배포 미완료' : '네이버 미완료');
+        naverBtn = `
+          <span class="status-pill indexed-fail" title="${failHint || statusLabel}">${statusLabel}</span>
+          <button class="btn btn-primary btn-sm" type="button" data-sites-action="redeploy-dothome" data-id="${escapeHtml(s.id)}" title="ZIP/로컬/AI로 FTP·네이버 다시 진행">다시 배포</button>
+          ${dhCaptcha ? manualCaptchaButtonHtml({
+            attrs: `data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}"`,
+            url: s.url,
+            cls: 'btn btn-warning btn-sm',
+            title: '서치어드바이저 창에서 캡챠 수동 입력 후 수집 자동 진행',
+          }) : ''}`;
       }
     }
     const titleLine = s.detail?.title
@@ -1837,7 +1890,9 @@ async function siteManualCaptcha(id) {
   if (!id) return;
   const site = createdSites.find((s) => s.id === id);
   if (!site) return alert('사이트를 찾을 수 없습니다.');
-  if (site.provider !== 'netlify') return alert('Netlify 사이트만 가능합니다.');
+  if (site.provider !== 'netlify' && site.provider !== 'dothome') {
+    return alert('Netlify / 닷홈 사이트만 가능합니다.');
+  }
   if (!(site.url || '').trim()) return alert('사이트 URL이 없습니다.');
   if (isManualCaptchaBusy(site.url)) {
     return alert('이미 이 사이트 수동캡챠가 진행 중입니다.\n다른 탭으로 다녀와도 버튼은 「새탭 진행중…」으로 유지됩니다.');
@@ -1847,6 +1902,9 @@ async function siteManualCaptcha(id) {
     `수동캡챠를 시작할까요?\n\n${site.url}\n\n`
     + '지금 열려 있는 서치어드바이저 창에서 (+)새 탭을 연 뒤\n'
     + 'HTML 태그 → 소유확인 캡챠를 진행합니다.\n'
+    + (site.provider === 'dothome'
+      ? '(닷홈: 메타 재반영 시 FTP로 업로드합니다)\n'
+      : '')
     + '(생성 중인 탭은 그대로 둡니다)',
   )) return;
 
@@ -1855,25 +1913,36 @@ async function siteManualCaptcha(id) {
   setSitesIndexProgress(`수동캡챠 새탭 진행: ${site.url || site.name}`, true);
   try {
     await window.electronAPI.saveConfig(collectConfig());
-    logLine(`═══ 수동캡챠(생성사이트): ${site.url} ═══`);
+    logLine(`═══ 수동캡챠(생성사이트·${site.provider}): ${site.url} ═══`);
+    if (site.provider === 'dothome') dhLog(`🔐 수동캡챠 시작: ${site.url}`);
     const out = await window.electronAPI.manualCaptchaCollect({
       siteUrl: site.url,
-      siteDir: site.detail?.output || '',
-      siteSlug: site.name || '',
+      siteDir: site.detail?.siteDir || site.detail?.output || '',
+      siteSlug: site.detail?.ftpId || site.name || '',
+      ftpId: site.detail?.ftpId || '',
+      provider: site.provider || '',
       naverAccountId: site.detail?.naverAccountId || '',
       createdSiteId: site.id,
       sourceType: site.detail?.sourceType || '',
       sourcePath: site.detail?.sourcePath || '',
     });
     if (out?.createdSites) createdSites = out.createdSites;
-    else await loadCreatedSites(false);
+    else await loadCreatedSites(true);
 
     if (out?.ok) {
       setSitesIndexProgress(`✔ 수동캡챠 완료: ${site.url}`, true);
       logLine(`✔ 수동캡챠 완료: ${out.message || site.url}`);
+      if (site.provider === 'dothome') {
+        dhLog(`✔ 수동캡챠 완료: ${site.url}`);
+        const fresh = await window.electronAPI.loadConfig();
+        if (fresh) config = fresh;
+        renderDhAccounts();
+      }
       if (out.movedZip?.from && !out.movedZip.skipped) {
         const fromKey = String(out.movedZip.from).toLowerCase();
         deploySources = deploySources.filter((s) => String(s.path || '').toLowerCase() !== fromKey);
+        removeDhZipPath(out.movedZip.from);
+        if (out.movedZip.to) removeDhZipPath(out.movedZip.to);
         updateDeploySourcesUI(
           deploySources.length
             ? `남은 소스 ${deploySources.length}개 (성공 ZIP 이동됨)`
@@ -1887,8 +1956,9 @@ async function siteManualCaptcha(id) {
       setSitesIndexProgress('', false);
       const failMsg = out?.popupMessage || out?.error || out?.message || '실패';
       logLine(`⚠ 수동캡챠: ${failMsg}`);
+      if (site.provider === 'dothome') dhLog(`⚠ 수동캡챠: ${failMsg}`);
       if (out?.status === 'meta_missing' || /메타미검출|메타\s*태그/i.test(failMsg)) {
-        alert(`메타미검출이 기록되었습니다.\n\n${failMsg}\n\n「인증재시도」·삭제 또는 다른 사이트 「수동캡챠」를 진행하세요.`);
+        alert(`메타미검출이 기록되었습니다.\n\n${failMsg}\n\n「다시 배포」·삭제 또는 다른 사이트 「수동캡챠」를 진행하세요.`);
       } else {
         alert(failMsg);
       }
@@ -1896,10 +1966,112 @@ async function siteManualCaptcha(id) {
   } catch (e) {
     setSitesIndexProgress('', false);
     logLine(`[ERROR] 수동캡챠: ${e.message}`);
+    if (site.provider === 'dothome') dhLog(`✖ 수동캡챠: ${e.message}`);
     alert(e.message || String(e));
   } finally {
     setManualCaptchaBusy(site.url, false);
     renderCreatedSites();
+  }
+}
+
+/** 생성사이트 탭 — 닷홈 실패 건 다시 배포 (ZIP/로컬/AI → FTP·네이버) */
+async function redeployDothomeCreatedSite(id) {
+  if (!id) return;
+  if (dhBusy) return alert('닷홈 작업이 진행 중입니다. 끝난 뒤 다시 시도하세요.');
+  const site = createdSites.find((s) => s.id === id);
+  if (!site) return alert('사이트를 찾을 수 없습니다.');
+  if (site.provider !== 'dothome') return alert('닷홈 사이트만 가능합니다.');
+
+  const ftpId = String(site.detail?.ftpId || site.name || '').trim();
+  if (!ftpId) return alert('FTP 아이디가 없습니다.');
+
+  const accounts = Array.isArray(config.dothome?.accounts) ? config.dothome.accounts : [];
+  const account = accounts.find((a) => a?.ftpId === ftpId);
+  if (!account) {
+    return alert(`닷홈 계정 목록에서 FTP ${ftpId} 를 찾을 수 없습니다.\n닷홈 탭 계정을 확인하세요.`);
+  }
+  if (!(config.naverAccounts || []).some((a) => a?.id && a?.pw)) {
+    return alert('설정 탭에 네이버 계정(서치어드바이저)을 등록하세요.');
+  }
+
+  const sourcePath = String(site.detail?.sourcePath || account.sourcePath || '').trim();
+  const sourceType = String(site.detail?.sourceType || account.sourceType || '').toLowerCase();
+  const siteDir = String(site.detail?.siteDir || account.siteDir || '').trim();
+  let zipPath = '';
+  let generate = false;
+
+  if (sourceType === 'zip' && sourcePath) {
+    zipPath = sourcePath;
+  } else if (sourcePath && /\.zip$/i.test(sourcePath)) {
+    zipPath = sourcePath;
+  }
+
+  if (zipPath) {
+    generate = false;
+  } else if (siteDir) {
+    generate = false;
+  } else {
+    generate = true;
+  }
+
+  const inputs = dhSeoInputsOrAlert({ allowZipOnly: !!zipPath });
+  if (!inputs) return;
+
+  const modeLabel = zipPath
+    ? `ZIP 재배포\n${zipPath}`
+    : (generate ? 'AI SEO 생성 후 배포' : `로컬 폴더 배포\n${siteDir}`);
+  if (!confirm(
+    `닷홈 다시 배포할까요?\n\nFTP: ${ftpId}\nURL: ${site.url || ''}\n\n${modeLabel}\n\n`
+    + 'FTP 업로드 후 네이버 서치어드바이저 등록까지 진행합니다.',
+  )) return;
+
+  setDhBusy(true);
+  setSitesIndexProgress(`닷홈 다시 배포: ${ftpId}`, true);
+  dhLog(`═══ 생성사이트 다시 배포: ${ftpId} ═══`);
+  try {
+    await window.electronAPI.saveConfig(collectConfig());
+    const out = await window.electronAPI.dothomeDeploy({
+      ftpId,
+      generate,
+      zipPath,
+      sourcePath: zipPath || sourcePath || '',
+      siteDir: (zipPath || generate) ? '' : siteDir,
+      ...inputs,
+    });
+    const fresh = await window.electronAPI.loadConfig();
+    if (fresh) config = fresh;
+    if (Array.isArray(out?.deploySources)) {
+      dhDeploySources = out.deploySources;
+      updateDhZipUi();
+    } else if (zipPath && out?.ok) {
+      removeDhZipPath(zipPath);
+      if (out.movedZip?.to) removeDhZipPath(out.movedZip.to);
+    }
+    renderDhAccounts();
+    if (out?.createdSites) createdSites = out.createdSites;
+    else await loadCreatedSites(true);
+    renderCreatedSites();
+
+    if (out?.ok) {
+      setSitesIndexProgress(`✔ 다시 배포 완료: ${out.siteUrl || ftpId}`, true);
+      dhLog(`✔ 다시 배포 완료: ${out.siteUrl || ftpId}`);
+      if (out.naver?.status) dhLog(`✔ 네이버: ${out.naver.status}`);
+      alert(`다시 배포 완료\n${out.siteUrl || ''}${out.naver?.status ? `\n네이버: ${out.naver.status}` : ''}`);
+    } else {
+      setSitesIndexProgress('', false);
+      dhLog(`✖ 다시 배포 실패: ${out?.error || ''}`);
+      if (out?.createdSites) {
+        createdSites = out.createdSites;
+        renderCreatedSites();
+      }
+      alert(out?.error || '다시 배포 실패\n캡챠 실패면 「수동캡챠」로 이어가세요.');
+    }
+  } catch (e) {
+    setSitesIndexProgress('', false);
+    dhLog(`✖ ${e.message}`);
+    alert(e.message || String(e));
+  } finally {
+    setDhBusy(false);
   }
 }
 
@@ -2952,6 +3124,8 @@ function setupEvents() {
       await retrySiteNaver(btn.dataset.id);
     } else if (action === 'manual-captcha' || action === 'retry-naver-index') {
       await siteManualCaptcha(btn.dataset.id);
+    } else if (action === 'redeploy-dothome') {
+      await redeployDothomeCreatedSite(btn.dataset.id);
     } else if (action === 'set-naver-id') {
       await setManualNaverId(btn.dataset.id);
     }
