@@ -3484,7 +3484,7 @@ function setupEvents() {
   $('seoBrowseBuilderBtn')?.addEventListener('click', browseSeoBuilderPath);
   $('seoSelectAllBtn')?.addEventListener('click', () => seoSelectVisible(true));
   $('seoClearKwBtn')?.addEventListener('click', () => seoSelectVisible(false));
-  $('seoRandomKwBtn')?.addEventListener('click', seoRandomSelect);
+  $('seoRandomKwBtn')?.addEventListener('click', () => seoRandomSelect({ updateSlug: true, updateBrand: true }));
   $('seoReloadKwBtn')?.addEventListener('click', () => loadSeoKeywords(true));
   $('seoDeleteKwBtn')?.addEventListener('click', deleteSelectedSeoKeywords);
   $('seoKwSearch')?.addEventListener('input', renderSeoKeywords);
@@ -3769,7 +3769,30 @@ function unlockSeoInputs() {
     if (!el) continue;
     el.readOnly = false;
     el.disabled = false;
+    el.removeAttribute('readonly');
+    el.removeAttribute('disabled');
   }
+}
+
+/** 생성 완료/알림 후 입력란이 먹통 되지 않도록 포커스·잠금 해제 재시도 */
+async function restoreSeoFormEditability(focusId = 'seoBrand') {
+  unlockSeoInputs();
+  try { await window.electronAPI.focusMainWindow?.(); } catch { /* ignore */ }
+  const focusTarget = () => {
+    unlockSeoInputs();
+    const el = $(focusId) || $('seoBrand') || $('seoSiteSlug');
+    if (!el) return;
+    try {
+      el.focus({ preventScroll: true });
+    } catch {
+      try { el.focus(); } catch { /* ignore */ }
+    }
+  };
+  focusTarget();
+  await new Promise((r) => setTimeout(r, 0));
+  focusTarget();
+  await new Promise((r) => setTimeout(r, 120));
+  focusTarget();
 }
 
 async function browseSeoOutputDir() {
@@ -3876,7 +3899,9 @@ function seoSelectVisible(on) {
   renderSeoKeywords();
 }
 
-function seoRandomSelect() {
+function seoRandomSelect(opts = {}) {
+  const updateSlug = opts.updateSlug !== false;
+  const updateBrand = opts.updateBrand === true; // 기본: 업체명 유지 (수동 수정 덮어쓰기 방지)
   const n = parseInt($('seoTopicCount')?.value || '12', 10) || 12;
   const pool = visibleSeoKeywords();
   if (!pool.length) return alert('현재 탭에 선택할 키워드가 없습니다.');
@@ -3885,17 +3910,23 @@ function seoRandomSelect() {
   for (const item of shuffled) seoSelected.add(item.kw);
   renderSeoKeywords();
   seoLog(`랜덤 선택: ${shuffled.length}개`);
-  // 선택한 키워드 슬러그 기반으로 사이트명 자동 설정
-  randomSeoSlug(true, shuffled);
-  // 업체명이 비어 있거나 기본값이면 대표 키워드로 제안
-  const brandEl = $('seoBrand');
-  if (brandEl) {
-    brandEl.readOnly = false;
-    brandEl.disabled = false;
-    const cur = (brandEl.value || '').trim();
-    if (!cur || cur === '카드깡전문') {
-      const primary = shuffled[0];
-      if (primary?.kw) brandEl.value = primary.kw;
+  if (updateSlug) {
+    // 선택한 키워드 슬러그 기반으로 사이트명 자동 설정
+    randomSeoSlug(true, shuffled);
+  }
+  // 업체명은 명시 요청 시에만, 그리고 비어 있거나 기본값일 때만 제안
+  if (updateBrand) {
+    const brandEl = $('seoBrand');
+    if (brandEl) {
+      brandEl.readOnly = false;
+      brandEl.disabled = false;
+      brandEl.removeAttribute('readonly');
+      brandEl.removeAttribute('disabled');
+      const cur = (brandEl.value || '').trim();
+      if (!cur || cur === '카드깡전문') {
+        const primary = shuffled[0];
+        if (primary?.kw) brandEl.value = primary.kw;
+      }
     }
   }
 }
@@ -4038,8 +4069,15 @@ async function startSeoGenerate() {
         label: `SEO 생성 ${i + 1}/${deployCount}`,
         percent: Math.round(((i) / deployCount) * 100),
       });
-      // 현재 태그 내에서 키워드·사이트명 랜덤 재선택
-      seoRandomSelect();
+      // 1개째: 화면에 입력한 업체명·사이트명·키워드 그대로 사용
+      // 2개째부터(배치): 키워드·사이트명만 랜덤 재선택 (업체명은 유지)
+      if (i > 0) {
+        seoRandomSelect({ updateSlug: true, updateBrand: false });
+      } else if (!seoSelected.size) {
+        // 키워드가 하나도 없을 때만 랜덤 선택 (사이트명·업체명은 건드리지 않음)
+        seoRandomSelect({ updateSlug: false, updateBrand: false });
+      }
+      unlockSeoInputs();
       const slug = sanitizeSeoSlug($('seoSiteSlug')?.value || '') || randomSeoSlug(true);
       if (!slug) {
         seoLog('✖ 사이트명 생성 실패');
@@ -4130,22 +4168,17 @@ async function startSeoGenerate() {
     try { await window.electronAPI.focusMainWindow?.(); } catch { /* ignore */ }
   }
 
+  // 알림 전에 입력 잠금 해제 (alert 후에도 업체명·사이트명 바로 수정 가능해야 함)
+  unlockSeoInputs();
   if (lastDoneMsg) {
     await new Promise((r) => setTimeout(r, 50));
     alert(lastDoneMsg);
   }
   if (okCount > 0) {
-    // 다음 생성용 미리보기 사이트명
+    // 다음 생성용 미리보기 사이트명만 갱신 (업체명은 사용자가 수정한 값 유지)
     randomSeoSlug(false);
   }
-  unlockSeoInputs();
-  try {
-    await window.electronAPI.focusMainWindow?.();
-    if (okCount > 0) {
-      $('seoSiteSlug')?.focus();
-      $('seoSiteSlug')?.select?.();
-    }
-  } catch { /* ignore */ }
+  await restoreSeoFormEditability(okCount > 0 ? 'seoBrand' : 'seoSiteSlug');
 }
 
 async function stopSeoGenerate() {

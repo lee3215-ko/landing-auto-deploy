@@ -1776,10 +1776,13 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
       label: result?.ok ? `완료 · ${result.domain || result.site_slug || ''}` : (result?.error || '실패'),
       url: result?.domain || '',
     });
+    // 네이버/크레딧 Chrome이 포커스를 가져간 뒤에도 앱에서 업체명·사이트명 바로 수정 가능하도록
+    try { focusMainWindow(); } catch { /* ignore */ }
     return result;
   } catch (e) {
     event.sender.send('kkang-log', `[ERROR] ${e.message}`);
     event.sender.send('job-progress', { job: 'kkang', phase: 'error', active: false, label: e.message });
+    try { focusMainWindow(); } catch { /* ignore */ }
     return { ok: false, error: e.message };
   }
 });
