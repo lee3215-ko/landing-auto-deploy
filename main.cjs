@@ -2212,6 +2212,37 @@ ipcMain.handle('dothome-mail-session-close', async () => {
   return { ok: true, ...st };
 });
 
+/** VPN IP 변경 후 네이버 메일 강제 재로그인 */
+ipcMain.handle('dothome-mail-session-relogin', async (event, options = {}) => {
+  const config = loadConfig();
+  const sendLog = (line) => event.sender.send('dothome-log', line);
+  const { naverAccount, error: mailErr } = resolveDothomeMailAccount(config, options);
+  if (!naverAccount?.id || !naverAccount?.pw) {
+    return { ok: false, error: mailErr || '닷홈 탭에 네이버 메일 아이디·비밀번호를 입력하세요.' };
+  }
+  const {
+    reloginDothomeMailAfterVpn,
+    setDothomeMailProfileDir,
+  } = await import('./lib/dothome-naver-mail-session.js');
+  setDothomeMailProfileDir(path.join(app.getPath('userData'), 'chrome-dothome-mail'));
+  try {
+    const st = await reloginDothomeMailAfterVpn({
+      naverId: naverAccount.id,
+      naverPw: naverAccount.pw,
+      openaiApiKey: config.openaiApiKey || '',
+      yesCaptchaClientKey: config.yesCaptchaClientKey || '',
+      scratchDir: path.join(OUTPUT_ROOT, 'dothome-mail-captcha'),
+      sendLog,
+      waitMs: Number(options.waitMs) > 0 ? Number(options.waitMs) : 4000,
+    });
+    broadcastDothomeMailSession(st);
+    return { ok: true, ...st };
+  } catch (e) {
+    sendLog(`[DOTHOME-MAIL][ERROR] VPN 후 재로그인 실패: ${e.message}`);
+    return { ok: false, error: e.message };
+  }
+});
+
 function findDothomeAccount(config, options = {}) {
   const accounts = Array.isArray(config.dothome?.accounts) ? config.dothome.accounts : [];
   let account = options.account || null;

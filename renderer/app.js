@@ -4537,8 +4537,8 @@ function updateDhMailSessionBadge(data) {
 
   if (hint) {
     hint.textContent = loggedIn
-      ? `메일 로그인 유지 중 (${id}). 메일 Chrome 창만 닫지 마세요. 앱이 잠깐 끊겨도 같은 창·쿠키로 자동 복구합니다.`
-      : '「네이버 메일 로그인」 1회 후 창을 유지하면 계속 사용됩니다. 창을 닫거나 앱을 종료하면 다시 로그인해야 할 수 있습니다.';
+      ? `메일 로그인 유지 중 (${id}). VPN으로 IP가 바뀌면 자동 재로그인합니다. 메일 Chrome 창은 닫지 마세요.`
+      : '「네이버 메일 로그인」 1회 후 사용. VPN IP 변경 시에도 자동 재로그인합니다.';
   }
 }
 
@@ -4826,6 +4826,7 @@ async function startDhFullPipeline() {
   dhLog(`이메일: ${creds.emailLocal}@naver.com · 메일계정: ${creds.mailNaverId}`);
 
   let okCount = 0;
+  let mailFailStreak = 0;
   try {
     for (let i = 0; i < count; i++) {
       if (dhStopRequested) {
@@ -4839,12 +4840,34 @@ async function startDhFullPipeline() {
       }
       dhLog(`═══ 풀파이프라인 ${i + 1}/${count}${zip ? ` · ${zip.name}` : ''} ═══`);
       await window.electronAPI.saveConfig(collectConfig());
-      const signup = await window.electronAPI.dothomeSignup({
+
+      let signup = await window.electronAPI.dothomeSignup({
         emailLocal: creds.emailLocal,
         mailNaverId: creds.mailNaverId,
         mailNaverPw: creds.mailNaverPw,
         headless: !!$('headlessMode')?.checked,
       });
+
+      // 메일 세션/IP보안 실패 시 1회 재로그인 후 같은 ZIP으로 재시도
+      if (!signup?.ok && isDhMailSessionError(signup?.error)) {
+        dhLog('⚠ 메일 세션 오류 — 재로그인 후 같은 ZIP 재시도…');
+        try {
+          const relog = await window.electronAPI.dothomeMailSessionRelogin?.({
+            emailLocal: creds.emailLocal,
+            mailNaverId: creds.mailNaverId,
+            mailNaverPw: creds.mailNaverPw,
+            waitMs: 1500,
+          });
+          updateDhMailSessionBadge(relog || {});
+        } catch { /* ignore */ }
+        signup = await window.electronAPI.dothomeSignup({
+          emailLocal: creds.emailLocal,
+          mailNaverId: creds.mailNaverId,
+          mailNaverPw: creds.mailNaverPw,
+          headless: !!$('headlessMode')?.checked,
+        });
+      }
+
       let fresh = await window.electronAPI.loadConfig();
       if (fresh) config = fresh;
       renderDhAccounts();
@@ -4852,8 +4875,23 @@ async function startDhFullPipeline() {
       const ftpId = signup?.account?.ftpId;
       if (!signup?.ok || !ftpId) {
         dhLog(`✖ 가입 실패: ${signup?.error || 'FTP 없음'}`);
+        if (isDhMailSessionError(signup?.error)) {
+          mailFailStreak += 1;
+          if (mailFailStreak >= 2) {
+            dhLog('⏹ 메일 세션 오류가 연속 2회 — 배치 중단. 「네이버 메일 다시 로그인」 후 재실행하세요.');
+            break;
+          }
+        } else {
+          mailFailStreak = 0;
+        }
+        // 연결 타임아웃 등은 잠깐 대기 후 다음 ZIP(같은 ZIP peek) 재시도
+        if (/TIMED_OUT|timeout|ECONN|ERR_CONNECTION/i.test(String(signup?.error || ''))) {
+          dhLog('⏳ 닷홈 접속 불안정 — 8초 대기 후 재시도…');
+          await new Promise((r) => setTimeout(r, 8000));
+        }
         continue;
       }
+      mailFailStreak = 0;
       dhLog(`✔ 가입 완료 · FTP ${ftpId}`);
       if ($('dhHostId')) $('dhHostId').value = signup.account.id || '';
 
@@ -4885,7 +4923,7 @@ async function startDhFullPipeline() {
         if (out.movedZip?.to && !out.movedZip.skipped) {
           dhLog(`📦 성공 ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
         }
-        await maybeSendVpnHotkey(okCount);
+        await maybeSendVpnHotkey(okCount, creds);
       } else {
         dhLog(`✖ 배포 실패: ${out?.error || ''}`);
         if (out?.movedZip?.to && !out.movedZip.skipped) {
@@ -4924,19 +4962,47 @@ function vpnEverySitesCount() {
   return Math.max(1, Math.min(50, parseInt($('vpnEverySites')?.value || '1', 10) || 1));
 }
 
-async function maybeSendVpnHotkey(okCount) {
+async function maybeSendVpnHotkey(okCount, mailCreds = null) {
   const every = vpnEverySitesCount();
-  if (!okCount || okCount % every !== 0) return;
+  if (!okCount || okCount % every !== 0) return false;
   const hk = readVpnHotkeyFromUi();
   if (!hk.key) {
     dhLog('⚠ VPN 단축키 키가 비어 있어 건너뜀');
-    return;
+    return false;
   }
   const label = [hk.ctrl && 'Ctrl', hk.alt && 'Alt', hk.shift && 'Shift', hk.key.toUpperCase()].filter(Boolean).join('+');
   dhLog(`VPN 단축키 전송 (${okCount}개마다) · ${label}`);
   const out = await window.electronAPI.sendHotkey?.(hk);
-  if (out && !out.ok) dhLog(`⚠ VPN 단축키 실패: ${out.error || ''}`);
-  else dhLog('✔ VPN 단축키 전송 완료');
+  if (out && !out.ok) {
+    dhLog(`⚠ VPN 단축키 실패: ${out.error || ''}`);
+    return false;
+  }
+  dhLog('✔ VPN 단축키 전송 완료 — IP 반영 대기 후 네이버 메일 재로그인');
+  // VPN으로 IP가 바뀌면 네이버 메일 IP보안이 세션을 끊음 → 즉시 재로그인
+  const creds = mailCreds || dhMailCredsOrAlert();
+  if (!creds) return true;
+  try {
+    const relog = await window.electronAPI.dothomeMailSessionRelogin?.({
+      emailLocal: creds.emailLocal,
+      mailNaverId: creds.mailNaverId,
+      mailNaverPw: creds.mailNaverPw,
+      waitMs: 4500,
+    });
+    updateDhMailSessionBadge(relog || {});
+    if (relog?.ok && relog.loggedIn) {
+      dhLog(`✔ VPN 후 메일 재로그인 완료: ${relog.accountId || creds.mailNaverId}`);
+    } else {
+      dhLog(`⚠ VPN 후 메일 재로그인 실패: ${relog?.error || 'unknown'} — 다음 가입에서 재시도`);
+    }
+  } catch (e) {
+    dhLog(`⚠ VPN 후 메일 재로그인 오류: ${e.message}`);
+  }
+  return true;
+}
+
+function isDhMailSessionError(err) {
+  const m = String(err || '');
+  return /메일\s*세션|메일\s*로그인|IP보안|IP\s*보안|네이버 메일 로그인/i.test(m);
 }
 
 async function testVpnHotkey() {

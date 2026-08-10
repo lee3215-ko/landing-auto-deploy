@@ -86,5 +86,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   dothomeMailSessionStatus: () => ipcRenderer.invoke('dothome-mail-session-status'),
   dothomeMailSessionLogin: (options) => ipcRenderer.invoke('dothome-mail-session-login', options || {}),
   dothomeMailSessionClose: () => ipcRenderer.invoke('dothome-mail-session-close'),
+  dothomeMailSessionRelogin: (options) => ipcRenderer.invoke('dothome-mail-session-relogin', options || {}),
   onDothomeMailSessionUpdate: (callback) => ipcRenderer.on('dothome-mail-session-update', (_, data) => callback(data)),
 });
