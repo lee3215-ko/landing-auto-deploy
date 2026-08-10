@@ -1,11 +1,12 @@
 {
     "version":  "3.8.73",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.73/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/508540708",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.73/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/508540708",
+    "asset_id":  508540708,
     "notes":  "닷홈 네이버 메일 세션 유지: 잘못 로그아웃 판정 수정 + 디버그포트 재연결/쿠키 복구",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/508540708",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.73/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
