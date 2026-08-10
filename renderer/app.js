@@ -4537,8 +4537,8 @@ function updateDhMailSessionBadge(data) {
 
   if (hint) {
     hint.textContent = loggedIn
-      ? `메일 창 유지 중 (${id}). 창을 닫지 마세요. 가입·풀파이프라인 시 이 창에서만 인증코드를 가져옵니다.`
-      : '닷홈 탭 아이디·비밀번호로 로그인한 뒤 창을 유지하세요. 인증코드만 이 창에서 읽습니다. (설정 탭 계정은 서치어드바이저용)';
+      ? `메일 로그인 유지 중 (${id}). 메일 Chrome 창만 닫지 마세요. 앱이 잠깐 끊겨도 같은 창·쿠키로 자동 복구합니다.`
+      : '「네이버 메일 로그인」 1회 후 창을 유지하면 계속 사용됩니다. 창을 닫거나 앱을 종료하면 다시 로그인해야 할 수 있습니다.';
   }
 }
 
@@ -4603,9 +4603,15 @@ async function closeDhMailSession() {
   }
 }
 
-function ensureDhMailLoggedInOrAlert() {
+async function ensureDhMailLoggedInOrAlert() {
   if (dhMailSessionState.loggedIn) return true;
-  alert('먼저 「네이버 메일 로그인」을 완료하세요.\n로그인된 메일 창을 유지한 뒤 가입/풀파이프라인을 실행합니다.');
+  // 연결만 끊긴 경우 — 상태 조회로 쿠키/포트 복구 시도
+  try {
+    const st = await window.electronAPI.dothomeMailSessionStatus?.();
+    if (st) updateDhMailSessionBadge(st);
+    if (st?.loggedIn) return true;
+  } catch { /* ignore */ }
+  alert('먼저 「네이버 메일 로그인」을 완료하세요.\n메일 Chrome 창을 닫지 않으면 한 번 로그인으로 계속 사용됩니다.');
   return false;
 }
 
@@ -4725,7 +4731,7 @@ async function startDhGenerate() {
   const creds = dhMailCredsOrAlert();
   if (!creds) return;
   if (!creds.emailLocal) return alert('닷홈 가입용 네이버 이메일을 입력하세요.');
-  if (!ensureDhMailLoggedInOrAlert()) return;
+  if (!(await ensureDhMailLoggedInOrAlert())) return;
   if (!($('openaiApiKey')?.value || '').trim()) {
     return alert('설정 탭에 OpenAI API Key를 입력하세요. (보안문자 인식용)');
   }
@@ -4796,7 +4802,7 @@ async function startDhFullPipeline() {
   const creds = dhMailCredsOrAlert();
   if (!creds) return;
   if (!creds.emailLocal) return alert('닷홈 가입용 네이버 이메일을 입력하세요.');
-  if (!ensureDhMailLoggedInOrAlert()) return;
+  if (!(await ensureDhMailLoggedInOrAlert())) return;
   const zipMode = dhZipSources().length > 0;
   const inputs = dhSeoInputsOrAlert({ allowZipOnly: zipMode });
   if (!inputs) return;

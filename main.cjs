@@ -2148,8 +2148,21 @@ function resolveDothomeNaverAccount(config, emailLocal = '') {
 }
 
 ipcMain.handle('dothome-mail-session-status', async () => {
-  const { getDothomeMailSessionStatus } = await import('./lib/dothome-naver-mail-session.js');
-  return getDothomeMailSessionStatus();
+  const {
+    getDothomeMailSessionStatus,
+    reviveDothomeMailSession,
+    setDothomeMailProfileDir,
+  } = await import('./lib/dothome-naver-mail-session.js');
+  setDothomeMailProfileDir(path.join(app.getPath('userData'), 'chrome-dothome-mail'));
+  const cur = getDothomeMailSessionStatus();
+  if (!cur.loggedIn) {
+    try {
+      await reviveDothomeMailSession({ headless: false });
+    } catch { /* ignore */ }
+  }
+  const st = getDothomeMailSessionStatus();
+  broadcastDothomeMailSession(st);
+  return st;
 });
 
 ipcMain.handle('dothome-mail-session-login', async (event, options = {}) => {
