@@ -1115,6 +1115,219 @@ textarea {
   max-width: 280px;
 }
 
+/* 생성사이트 · 배포결과 — 긴 글자도 깨지지 않는 카드 목록 */
+.site-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.site-card-list-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 2px 4px;
+}
+
+.site-card-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.site-card {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2, rgba(255, 255, 255, 0.02));
+  min-width: 0;
+}
+
+.site-card-check {
+  display: flex;
+  align-items: flex-start;
+  padding-top: 4px;
+  flex-shrink: 0;
+}
+
+.site-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.site-card-top {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.site-card-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+}
+
+.site-card-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: min(100%, 420px);
+}
+
+.site-card-subtitle,
+.site-card-detail,
+.site-card-hint,
+.site-card-error {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.site-card-error {
+  color: var(--danger);
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.site-card-status-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.site-card-url {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.site-card-url a {
+  flex: 1;
+  min-width: 0;
+  color: #818cf8;
+  text-decoration: none;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-card-url a:hover {
+  text-decoration: underline;
+}
+
+.site-card-url.muted {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.site-card-url .url-copy-btn {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.site-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.site-card-meta span {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-card-index {
+  font-size: 12px;
+}
+
+.site-card-actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: min(340px, 42%);
+}
+
+.site-card-actions .status-pill,
+.site-card-next .status-pill {
+  align-self: flex-end;
+}
+
+.site-card-next {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.site-card-actions-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.site-card-busy {
+  font-size: 11px;
+  color: var(--accent, #1976d2);
+}
+
+@media (max-width: 1100px) {
+  .site-card-body {
+    flex-direction: column;
+  }
+
+  .site-card-actions {
+    max-width: 100%;
+    width: 100%;
+    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .site-card-next,
+  .site-card-actions .status-pill {
+    align-self: flex-start;
+  }
+
+  .site-card-actions-inline {
+    justify-content: flex-start;
+  }
+}
+
 .token-grid,
 .bulk-pair-grid {
   display: grid;

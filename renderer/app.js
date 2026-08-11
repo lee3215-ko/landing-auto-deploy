@@ -794,26 +794,6 @@ function renderResultsTable(results) {
     return;
   }
 
-  const table = document.createElement('div');
-  table.className = 'table-wrap';
-  table.innerHTML = `
-    <table class="results-table">
-      <thead>
-        <tr>
-          <th class="col-check"><input type="checkbox" id="selectAllResultUrls" title="전체 선택"></th>
-          <th>서비스명</th>
-          <th>배포 URL</th>
-          <th>네이버 등록</th>
-          <th>인덱싱</th>
-          <th>등록 일시</th>
-          <th>네이버 계정</th>
-          <th>Netlify</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>`;
-  const tbody = table.querySelector('tbody');
   // 최신 등록이 위로 (registeredAt / createdAt 내림차순)
   const indexed = results.map((r, originalIndex) => ({ r, originalIndex }));
   indexed.sort((a, b) => {
@@ -822,10 +802,18 @@ function renderResultsTable(results) {
     if (tb !== ta) return tb - ta;
     return b.originalIndex - a.originalIndex;
   });
-  const rows = indexed;
 
-  for (let idx = 0; idx < rows.length; idx++) {
-    const { r, originalIndex } = rows[idx];
+  const wrap = document.createElement('div');
+  wrap.className = 'site-card-list';
+  wrap.innerHTML = `
+    <div class="site-card-list-toolbar">
+      <label class="site-card-select-all">
+        <input type="checkbox" id="selectAllResultUrls" title="전체 선택">
+        <span>전체 선택</span>
+      </label>
+    </div>`;
+
+  for (const { r, originalIndex } of indexed) {
     const st = STATUS_MAP[r.status] || { label: r.status || '-', cls: 'unknown' };
     const showManualCaptcha = r.status === 'captcha'
       || r.status === 'meta_missing'
@@ -838,27 +826,44 @@ function renderResultsTable(results) {
       })
       : '';
     const errHint = r.popupMessage || r.error || '';
+    const statusLabel = /메타미검출|메타\s*태그/i.test(errHint) ? '메타미검출' : st.label;
     const url = (r.url || '').trim();
-    const urlCell = url
-      ? `<div class="url-cell">
-          <a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(url)}</a>
-          <button class="btn btn-ghost btn-sm url-copy-btn" type="button" data-action="copy-url" data-url="${escapeHtml(url)}" title="URL 복사">복사</button>
-        </div>`
-      : '-';
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="col-check"><input type="checkbox" class="result-url-check" data-url="${escapeHtml(url)}" ${url ? '' : 'disabled'}></td>
-      <td>${escapeHtml(r.name || '-')}</td>
-      <td>${urlCell}</td>
-      <td><span class="status-pill ${st.cls}">${/메타미검출|메타\s*태그/i.test(errHint) ? '메타미검출' : st.label}</span>${manualBtn}${errHint ? `<br><span style="color:var(--danger);font-size:11px;">${escapeHtml(errHint)}</span>` : ''}</td>
-      <td>${renderIndexCell(r, originalIndex)}</td>
-      <td>${formatDate(r.registeredAt)}</td>
-      <td>${escapeHtml(r.naverAccountId || '-')}</td>
-      <td>${escapeHtml(r.netlifyAccountId || '-')}</td>
-      <td><button class="btn btn-danger btn-sm" type="button" data-action="delete-result" data-idx="${originalIndex}">삭제</button></td>`;
-    tbody.appendChild(tr);
+    const metaBits = [
+      r.naverAccountId ? `네이버 ${r.naverAccountId}` : '',
+      r.netlifyAccountId ? `Netlify ${r.netlifyAccountId}` : '',
+      r.registeredAt ? formatDate(r.registeredAt) : '',
+    ].filter(Boolean);
+
+    const card = document.createElement('article');
+    card.className = 'site-card';
+    card.innerHTML = `
+      <div class="site-card-check">
+        <input type="checkbox" class="result-url-check" data-url="${escapeHtml(url)}" ${url ? '' : 'disabled'} title="선택">
+      </div>
+      <div class="site-card-body">
+        <div class="site-card-top">
+          <div class="site-card-title-row">
+            <strong class="site-card-name" title="${escapeHtml(r.name || '')}">${escapeHtml(r.name || '-')}</strong>
+            <span class="status-pill ${st.cls}">${escapeHtml(statusLabel)}</span>
+          </div>
+          ${url ? `<div class="site-card-url">
+            <a href="${escapeHtml(url)}" target="_blank" rel="noopener" title="${escapeHtml(url)}">${escapeHtml(url)}</a>
+            <button class="btn btn-ghost btn-sm url-copy-btn" type="button" data-action="copy-url" data-url="${escapeHtml(url)}" title="URL 복사">복사</button>
+          </div>` : '<div class="site-card-url muted">URL 없음</div>'}
+          <div class="site-card-meta">
+            ${metaBits.map((b) => `<span title="${escapeHtml(b)}">${escapeHtml(b)}</span>`).join('')}
+          </div>
+          ${errHint ? `<div class="site-card-error" title="${escapeHtml(errHint)}">${escapeHtml(errHint)}</div>` : ''}
+          <div class="site-card-index">${renderIndexCell(r, originalIndex)}</div>
+        </div>
+        <div class="site-card-actions">
+          ${manualBtn}
+          <button class="btn btn-danger btn-sm" type="button" data-action="delete-result" data-idx="${originalIndex}">삭제</button>
+        </div>
+      </div>`;
+    wrap.appendChild(card);
   }
-  list.appendChild(table);
+  list.appendChild(wrap);
 
   const selectAll = $('selectAllResultUrls');
   if (selectAll) {
@@ -967,8 +972,9 @@ async function markManualCaptcha(index) {
   }
   if (!confirm(
     `수동캡챠를 시작할까요?\n\n${row.url}\n\n`
-    + '지금 열려 있는 서치어드바이저 창에서 (+)새 탭을 연 뒤\n'
+    + '서치어드바이저 창에 전용 새 탭을 연 뒤\n'
     + 'HTML 태그 → 소유확인 캡챠를 진행합니다.\n'
+    + '여러 사이트를 연속으로 눌러 동시에 진행할 수 있습니다.\n'
     + '(생성 중인 탭은 그대로 둡니다)',
   )) return;
 
@@ -1691,39 +1697,14 @@ function renderCreatedSites() {
     return;
   }
 
-  const table = document.createElement('div');
-  table.className = 'table-wrap';
-  table.innerHTML = `
-    <table class="results-table">
-      <thead>
-        <tr>
-          <th>유형</th>
-          <th>이름</th>
-          <th>URL</th>
-          <th>네이버 아이디</th>
-          <th>Netlify 아이디</th>
-          <th>상태</th>
-          <th>인덱싱</th>
-          <th>생성일</th>
-          <th>상세</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>`;
-  const tbody = table.querySelector('tbody');
+  const wrap = document.createElement('div');
+  wrap.className = 'site-card-list';
 
   for (const s of rows) {
     const prov = SITE_PROVIDER_META[s.provider] || { label: s.provider, cls: 'unknown' };
     const st = SITE_STATUS_META[s.status] || { label: s.status || '-', cls: 'unknown' };
     const url = (s.url || '').trim();
     const accounts = siteAccountIds(s);
-    const urlCell = url
-      ? `<div class="url-cell">
-          <a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(url)}</a>
-          <button class="btn btn-ghost btn-sm url-copy-btn" type="button" data-sites-action="copy" data-url-enc="${encodeURIComponent(url)}">복사</button>
-        </div>`
-      : '-';
     const canRetryNaver = s.provider === 'netlify' && !!(s.url || '').trim();
     const naverDone = canRetryNaver && isSiteNaverDone(s);
     const indexRetry = canRetryNaver && needsNaverIndexRetry(s);
@@ -1783,14 +1764,14 @@ function renderCreatedSites() {
           ? dhNext.reason
           : '전체를 처음부터 다시 FTP·네이버 진행 (캡챠만 실패면 수동캡챠 권장)';
         const busyHint = redeployBusy
-          ? '<div style="font-size:11px;color:var(--accent,#1976d2);">다시 배포 진행 중…</div>'
-          : (captchaBusy ? '<div style="font-size:11px;color:var(--accent,#1976d2);">수동캡챠 진행 중…</div>' : '');
+          ? '<div class="site-card-busy">다시 배포 진행 중…</div>'
+          : (captchaBusy ? '<div class="site-card-busy">수동캡챠 진행 중…</div>' : '');
         naverBtn = `
-          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;max-width:280px;">
+          <div class="site-card-next">
             <span class="status-pill ${nextPillCls}" title="${escapeHtml(dhNext.reason)}">${escapeHtml(dhNext.label)}</span>
-            <div style="font-size:11px;color:var(--text-muted);line-height:1.35;">${escapeHtml(dhNext.reason.split('\n')[0])}</div>
+            <div class="site-card-hint" title="${escapeHtml(dhNext.reason)}">${escapeHtml(dhNext.reason.split('\n')[0])}</div>
             ${busyHint}
-            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <div class="site-card-actions-inline">
               ${dhNext.next === 'rejoin' ? `
                 <button class="btn btn-ghost btn-sm" type="button" data-sites-action="check-hosting" data-id="${escapeHtml(s.id)}" title="DNS로 호스팅 개통 여부 재확인">호스팅 재확인</button>
                 <button class="btn btn-danger btn-sm" type="button" data-sites-action="delete" data-id="${escapeHtml(s.id)}" title="목록에서 제거 후 닷홈 탭에서 새로 가입">목록에서 삭제</button>
@@ -1815,57 +1796,66 @@ function renderCreatedSites() {
           </div>`;
       }
     }
-    const titleLine = s.detail?.title
-      ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${escapeHtml(s.detail.title)}</div>`
-      : '';
-    let statusCell = `<span class="status-pill ${st.cls}">${st.label}</span>`;
+    let statusPill = `<span class="status-pill ${st.cls}">${st.label}</span>`;
+    let statusHint = '';
     if (s.provider === 'dothome') {
       const dhSt = resolveDothomeNextAction(s);
       if (dhSt.next === 'done') {
-        statusCell = `<span class="status-pill success" title="${escapeHtml(dhSt.reason)}">배포됨</span>`;
+        statusPill = `<span class="status-pill success" title="${escapeHtml(dhSt.reason)}">배포됨</span>`;
       } else if (dhSt.next === 'manual-captcha') {
-        statusCell = `<span class="status-pill manual" title="${escapeHtml(dhSt.reason)}">캡챠 대기</span>
-          <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">수동캡챠만</div>`;
+        statusPill = `<span class="status-pill manual" title="${escapeHtml(dhSt.reason)}">캡챠 대기</span>`;
+        statusHint = '수동캡챠만';
       } else if (dhSt.next === 'rejoin') {
-        statusCell = `<span class="status-pill error" title="${escapeHtml(dhSt.reason)}">호스팅 미개통</span>
-          <div style="font-size:10px;color:var(--danger);margin-top:2px;">재가입 필요</div>`;
+        statusPill = `<span class="status-pill error" title="${escapeHtml(dhSt.reason)}">호스팅 미개통</span>`;
+        statusHint = '재가입 필요';
       } else if (dhSt.next === 'redeploy') {
-        statusCell = `<span class="status-pill ${st.cls}" title="${escapeHtml(dhSt.reason)}">${st.label}</span>
-          <div style="font-size:10px;color:var(--danger);margin-top:2px;">다시 배포 필요</div>`;
+        statusHint = '다시 배포 필요';
       } else if (dhSt.next === 'unknown') {
-        statusCell = `<span class="status-pill ${st.cls}" title="${escapeHtml(dhSt.reason)}">${st.label}</span>
-          <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">다시 배포 권장</div>`;
+        statusHint = '다시 배포 권장';
       }
     }
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><span class="provider-pill ${prov.cls}">${prov.label}</span></td>
-      <td><strong>${escapeHtml(s.name || '-')}</strong>${titleLine}</td>
-      <td>${urlCell}</td>
-      <td>${accounts.naverId
-        ? `<div class="naver-id-cell">
-            <span class="naver-id-value">${escapeHtml(accounts.naverId)}</span>
-            ${s.detail?.naverIdManual
-              ? `<button class="naver-id-manual-tag" type="button" data-sites-action="set-naver-id" data-id="${escapeHtml(s.id)}" title="다시 입력">수동입력완료</button>`
-              : `<button class="btn btn-ghost btn-sm" type="button" data-sites-action="set-naver-id" data-id="${escapeHtml(s.id)}" title="네이버 아이디 수정">수정</button>`}
-          </div>`
-        : `<div class="naver-id-empty-row">
-            <span style="color:var(--text-dim)">-</span>
-            <button class="btn btn-ghost btn-sm" type="button" data-sites-action="set-naver-id" data-id="${escapeHtml(s.id)}" title="네이버 아이디 수동 입력">수동입력</button>
-          </div>`}</td>
-      <td>${accounts.netlifyId ? escapeHtml(accounts.netlifyId) : '<span style="color:var(--text-dim)">-</span>'}</td>
-      <td>${statusCell}</td>
-      <td>${renderSiteIndexCell(s)}</td>
-      <td>${formatDate(s.createdAt)}</td>
-      <td><div class="sites-detail">${escapeHtml(siteDetailHtml(s))}</div></td>
-      <td style="white-space:nowrap;display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
-        ${naverBtn}
-        <button class="btn btn-danger btn-sm" type="button" data-sites-action="delete" data-id="${escapeHtml(s.id)}">삭제</button>
-      </td>`;
-    tbody.appendChild(tr);
+    const detailText = siteDetailHtml(s);
+    const metaBits = [
+      accounts.naverId ? `네이버 ${accounts.naverId}` : '',
+      accounts.netlifyId ? `Netlify ${accounts.netlifyId}` : '',
+      s.createdAt ? formatDate(s.createdAt) : '',
+    ].filter(Boolean);
+    const naverIdBtn = accounts.naverId
+      ? `<button class="btn btn-ghost btn-sm" type="button" data-sites-action="set-naver-id" data-id="${escapeHtml(s.id)}" title="네이버 아이디 수정">${s.detail?.naverIdManual ? '수동ID' : 'ID수정'}</button>`
+      : `<button class="btn btn-ghost btn-sm" type="button" data-sites-action="set-naver-id" data-id="${escapeHtml(s.id)}" title="네이버 아이디 수동 입력">ID입력</button>`;
+
+    const card = document.createElement('article');
+    card.className = 'site-card';
+    card.innerHTML = `
+      <div class="site-card-body">
+        <div class="site-card-top">
+          <div class="site-card-title-row">
+            <span class="provider-pill ${prov.cls}">${prov.label}</span>
+            <strong class="site-card-name" title="${escapeHtml(s.name || '')}">${escapeHtml(s.name || '-')}</strong>
+            ${statusPill}
+            ${statusHint ? `<span class="site-card-status-hint">${escapeHtml(statusHint)}</span>` : ''}
+          </div>
+          ${s.detail?.title ? `<div class="site-card-subtitle" title="${escapeHtml(s.detail.title)}">${escapeHtml(s.detail.title)}</div>` : ''}
+          ${url ? `<div class="site-card-url">
+            <a href="${escapeHtml(url)}" target="_blank" rel="noopener" title="${escapeHtml(url)}">${escapeHtml(url)}</a>
+            <button class="btn btn-ghost btn-sm url-copy-btn" type="button" data-sites-action="copy" data-url-enc="${encodeURIComponent(url)}">복사</button>
+          </div>` : '<div class="site-card-url muted">URL 없음</div>'}
+          <div class="site-card-meta">
+            ${metaBits.map((b) => `<span title="${escapeHtml(b)}">${escapeHtml(b)}</span>`).join('')}
+          </div>
+          ${detailText ? `<div class="site-card-detail" title="${escapeHtml(detailText)}">${escapeHtml(detailText)}</div>` : ''}
+          <div class="site-card-index">${renderSiteIndexCell(s)}</div>
+        </div>
+        <div class="site-card-actions">
+          ${naverBtn}
+          ${naverIdBtn}
+          <button class="btn btn-danger btn-sm" type="button" data-sites-action="delete" data-id="${escapeHtml(s.id)}">삭제</button>
+        </div>
+      </div>`;
+    wrap.appendChild(card);
   }
   list.innerHTML = '';
-  list.appendChild(table);
+  list.appendChild(wrap);
 }
 
 async function refreshDothomeHostingChecks(sites = createdSites) {
@@ -2154,8 +2144,9 @@ async function siteManualCaptcha(id) {
   // 로그인 게이트 없음 — 백엔드가 포트 9334 Chrome에 바로 붙음
   if (!confirm(
     `수동캡챠를 시작할까요?\n\n${site.url}\n\n`
-    + '지금 열려 있는 서치어드바이저 창에서 (+)새 탭을 연 뒤\n'
+    + '서치어드바이저 창에 전용 새 탭을 연 뒤\n'
     + 'HTML 태그 → 소유확인 캡챠를 진행합니다.\n'
+    + '여러 사이트를 연속으로 눌러 동시에 진행할 수 있습니다.\n'
     + (site.provider === 'dothome'
       ? '(닷홈: 메타 재반영 시 FTP로 업로드합니다)\n'
       : '')
