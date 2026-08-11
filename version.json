@@ -1,11 +1,12 @@
 {
     "version":  "3.8.80",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.80/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/509924651",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.80/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/509924651",
+    "asset_id":  509924651,
     "notes":  "생성 사이트 삭제 후 sync로 다시 나타나는 버그 수정",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/509924651",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.80/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
