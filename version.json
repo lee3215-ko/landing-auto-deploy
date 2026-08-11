@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.78",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/509554145",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.78/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/509554145",
-    "asset_id":  509554145,
-    "notes":  "OpenAI 크레딧 소진 시 즉시 중단 + YesCaptcha 보안문자 폴백",
+    "version":  "3.8.79",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.79/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.79/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "확인단어 성공오판 수정·신청직전 재인식·OCR교차검증·인증만료조기중단·DNS대기후FTP",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/509554145",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.78/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.79/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
