@@ -4975,13 +4975,13 @@ async function maybeSendVpnHotkey(okCount, mailCreds = null) {
     return false;
   }
   const label = [hk.ctrl && 'Ctrl', hk.alt && 'Alt', hk.shift && 'Shift', hk.key.toUpperCase()].filter(Boolean).join('+');
-  dhLog(`VPN 단축키 전송 (${okCount}개마다) · ${label}`);
+  dhLog(`VPN 단축키 전송 (설정 ${every}개마다 · 이번이 ${okCount}번째 성공) · ${label}`);
   const out = await window.electronAPI.sendHotkey?.(hk);
   if (out && !out.ok) {
     dhLog(`⚠ VPN 단축키 실패: ${out.error || ''}`);
     return false;
   }
-  dhLog('✔ VPN 단축키 전송 완료 — IP 반영 대기 후 네이버 메일 재로그인');
+  dhLog('✔ VPN 단축키 전송 완료 — IP 바뀌면 네이버 메일 IP보안으로 세션이 끊김 → 재로그인');
   // VPN으로 IP가 바뀌면 네이버 메일 IP보안이 세션을 끊음 → 즉시 재로그인
   const creds = mailCreds || dhMailCredsOrAlert();
   if (!creds) return true;
@@ -4990,13 +4990,13 @@ async function maybeSendVpnHotkey(okCount, mailCreds = null) {
       emailLocal: creds.emailLocal,
       mailNaverId: creds.mailNaverId,
       mailNaverPw: creds.mailNaverPw,
-      waitMs: 4500,
+      waitMs: 12000, // IP 반영 여유 (너무 짧으면 IP보안 팝업에 걸려 재로그인 실패)
     });
     updateDhMailSessionBadge(relog || {});
     if (relog?.ok && relog.loggedIn) {
       dhLog(`✔ VPN 후 메일 재로그인 완료: ${relog.accountId || creds.mailNaverId}`);
     } else {
-      dhLog(`⚠ VPN 후 메일 재로그인 실패: ${relog?.error || 'unknown'} — 다음 가입에서 재시도`);
+      dhLog(`⚠ VPN 후 메일 재로그인 실패: ${relog?.error || 'unknown'} — 다음 가입 시작 시 다시 로그인 시도`);
     }
   } catch (e) {
     dhLog(`⚠ VPN 후 메일 재로그인 오류: ${e.message}`);

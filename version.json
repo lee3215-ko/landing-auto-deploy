@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.79",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/509633209",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.79/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/509633209",
-    "asset_id":  509633209,
-    "notes":  "확인단어 성공오판 수정·신청직전 재인식·OCR교차검증·인증만료조기중단·DNS대기후FTP",
+    "version":  "3.8.80",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.80/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.80/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "생성 사이트 삭제 후 sync로 다시 나타나는 버그 수정",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/509633209",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.79/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.80/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }

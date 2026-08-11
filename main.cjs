@@ -248,47 +248,59 @@ function saveGeneratedTokens(tokens) {
 
 async function loadCreatedSites({ sync = true } = {}) {
   const {
-    loadSitesRegistry,
+    loadSitesRegistryMeta,
     saveSitesRegistry,
     mergeLegacySources,
     enrichSitesFromLocal,
     isCreatedSitesEntry,
+    filterOutDeletedSites,
   } = await import('./lib/sites-registry.js');
-  const current = loadSitesRegistry(CREATED_SITES_PATH).filter(isCreatedSitesEntry);
+  const meta = loadSitesRegistryMeta(CREATED_SITES_PATH);
+  const current = filterOutDeletedSites(
+    meta.sites.filter(isCreatedSitesEntry),
+    meta.deletedKeys,
+  );
   if (!sync) {
     return enrichSitesFromLocal(current, { kkangOutputRoot: path.join(OUTPUT_ROOT, 'kkang-sites') });
   }
   const config = loadConfig();
   // kkang 등 구 배포결과 백필용 — 파일 원본에서 settings 제외분만
   const rawResults = readJsonFile(RESULTS_PATH, []);
-  const merged = mergeLegacySources(current, {
-    results: Array.isArray(rawResults) ? rawResults : [],
-    dothomeAccounts: config.dothome?.accounts || [],
-    cloudflareSites: config.cloudflare?.sites || [],
-  }).filter(isCreatedSitesEntry);
+  const merged = filterOutDeletedSites(
+    mergeLegacySources(current, {
+      results: Array.isArray(rawResults) ? rawResults : [],
+      dothomeAccounts: config.dothome?.accounts || [],
+      cloudflareSites: config.cloudflare?.sites || [],
+    }).filter(isCreatedSitesEntry),
+    meta.deletedKeys,
+  );
   const enriched = enrichSitesFromLocal(merged, {
     kkangOutputRoot: path.join(OUTPUT_ROOT, 'kkang-sites'),
   }).filter(isCreatedSitesEntry);
-  return saveSitesRegistry(CREATED_SITES_PATH, enriched);
+  return saveSitesRegistry(CREATED_SITES_PATH, enriched, { deletedKeys: meta.deletedKeys });
 }
 
 async function upsertCreatedSite(entry) {
   const {
-    loadSitesRegistry,
+    loadSitesRegistryMeta,
     saveSitesRegistry,
     upsertSite,
     isCreatedSitesEntry,
     normalizeSiteEntry,
+    forgetDeletedSites,
   } = await import('./lib/sites-registry.js');
+  const meta = loadSitesRegistryMeta(CREATED_SITES_PATH);
   const normalized = normalizeSiteEntry(entry);
   if (!normalized || !isCreatedSitesEntry(normalized)) {
-    return loadSitesRegistry(CREATED_SITES_PATH).filter(isCreatedSitesEntry);
+    return meta.sites.filter(isCreatedSitesEntry);
   }
+  // 새로 생성/갱신된 사이트는 삭제 목록에서 해제 (다시 목록에 표시)
+  const deletedKeys = forgetDeletedSites(meta.deletedKeys, [normalized]);
   const sites = upsertSite(
-    loadSitesRegistry(CREATED_SITES_PATH).filter(isCreatedSitesEntry),
+    meta.sites.filter(isCreatedSitesEntry),
     normalized,
   ).filter(isCreatedSitesEntry);
-  return saveSitesRegistry(CREATED_SITES_PATH, sites);
+  return saveSitesRegistry(CREATED_SITES_PATH, sites, { deletedKeys });
 }
 
 let mainWindow = null;
@@ -958,14 +970,33 @@ ipcMain.handle('manual-captcha-collect', async (event, options = {}) => {
 });
 ipcMain.handle('load-created-sites', async (_, options = {}) => loadCreatedSites(options || {}));
 ipcMain.handle('save-created-sites', async (_, sites) => {
-  const { saveSitesRegistry } = await import('./lib/sites-registry.js');
-  return saveSitesRegistry(CREATED_SITES_PATH, sites || []);
+  const {
+    loadSitesRegistryMeta,
+    saveSitesRegistry,
+    rememberDeletedSites,
+    isCreatedSitesEntry,
+  } = await import('./lib/sites-registry.js');
+  const meta = loadSitesRegistryMeta(CREATED_SITES_PATH);
+  const next = Array.isArray(sites) ? sites : [];
+  // 전체 비우기(목록 초기화) 시 기존 항목을 삭제 목록에 남겨 sync로 되살아나지 않게 함
+  const deletedKeys = next.length === 0
+    ? rememberDeletedSites(meta.deletedKeys, meta.sites.filter(isCreatedSitesEntry))
+    : meta.deletedKeys;
+  return saveSitesRegistry(CREATED_SITES_PATH, next, { deletedKeys });
 });
 ipcMain.handle('upsert-created-site', async (_, entry) => upsertCreatedSite(entry));
 ipcMain.handle('delete-created-site', async (_, id) => {
-  const { loadSitesRegistry, saveSitesRegistry, removeSite } = await import('./lib/sites-registry.js');
-  const sites = removeSite(loadSitesRegistry(CREATED_SITES_PATH), id);
-  return saveSitesRegistry(CREATED_SITES_PATH, sites);
+  const {
+    loadSitesRegistryMeta,
+    saveSitesRegistry,
+    removeSite,
+    rememberDeletedSites,
+  } = await import('./lib/sites-registry.js');
+  const meta = loadSitesRegistryMeta(CREATED_SITES_PATH);
+  const target = meta.sites.find((s) => s.id === String(id || ''));
+  const deletedKeys = rememberDeletedSites(meta.deletedKeys, target ? [target] : [id]);
+  const sites = removeSite(meta.sites, id);
+  return saveSitesRegistry(CREATED_SITES_PATH, sites, { deletedKeys });
 });
 ipcMain.handle('sync-created-sites', async () => loadCreatedSites({ sync: true }));
 ipcMain.handle('load-generated-tokens', () => loadGeneratedTokens());
