@@ -1607,7 +1607,11 @@ function siteDetailHtml(site) {
     if (d.pages) bits.push(`${d.pages}페이지`);
     if (d.keywords) bits.push(`키워드 ${d.keywords}개`);
     if (isSiteNaverDone(site)) bits.push('네이버 완료');
-    else if (d.naverError) bits.push(`네이버 실패: ${String(d.naverError).slice(0, 40)}`);
+    else if (String(d.naverStatus || '').toLowerCase() === 'captcha') {
+      bits.push(d.naverMeta
+        ? '네이버: 캡챠 실패(메타 배포됨→수동캡챠)'
+        : '네이버: 캡챠 실패→수동캡챠');
+    } else if (d.naverError) bits.push(`네이버 실패: ${String(d.naverError).slice(0, 48)}`);
     if (d.theme) bits.push(d.theme);
     return bits.join(' · ') || 'Netlify SEO 사이트';
   }
@@ -4113,15 +4117,22 @@ async function startSeoGenerate() {
           seoBatchUsedSlugs.add(slug);
           lastOkDomain = result.domain || `https://${slug}.netlify.app`;
           seoLog(`✔ 완료 (${okCount}/${deployCount}): ${result.pages || '?'}페이지 · ${result.domain || ''}`);
-          const naverDone = !!(
-            result.naverAuto?.metaContent
-            || ['success', 'already', 'manual'].includes(String(result.naverAuto?.status || '').toLowerCase())
-          );
+          const naverSt = String(result.naverAuto?.status || '').toLowerCase();
+          const naverDone = ['success', 'already', 'manual'].includes(naverSt)
+            && !result.naverAuto?.partial
+            && !result.naverAutoError;
+          const metaDeployed = !!(result.naverAuto?.metaContent || result.naverAuto?.metaDeployed);
           if (naverDone) {
             const acct = result.naverAuto?.naverAccountId || result.naverAccountId || '';
-            seoLog(`✔ 네이버 등록 완료${acct ? ` · 계정 ${acct}` : ''}${result.title ? ` · ${result.title}` : ''}`);
+            seoLog(`✔ 네이버 소유확인 완료${acct ? ` · 계정 ${acct}` : ''}${result.title ? ` · ${result.title}` : ''}`);
+          } else if (naverSt === 'captcha' || /캡챠|captcha|보안절차/i.test(String(result.naverAutoError || ''))) {
+            seoLog(`⚠ 네이버 소유확인 캡챠 실패${metaDeployed ? ' · 메타는 이미 배포됨' : ''} → 「수동캡챠」로 이어가세요`);
+            if (result.naverAutoError) seoLog(`   ${String(result.naverAutoError).slice(0, 160)}`);
           } else if (result.naverAutoError) {
-            seoLog(`⚠ 네이버 인증 자동 삽입 실패: ${result.naverAutoError}`);
+            seoLog(`⚠ 네이버 소유확인 미완료: ${result.naverAutoError}`);
+            if (metaDeployed) seoLog('   (메타 태그는 사이트에 배포됨 — 수동캡챠/인증재시도 가능)');
+          } else if (metaDeployed) {
+            seoLog('⚠ 메타는 배포됐지만 네이버 소유확인이 끝나지 않았습니다 → 「수동캡챠」');
           }
           if ($('seoNaver') && (job.naver_code || naverDone)) $('seoNaver').value = '';
           if (result.results) savedResults = result.results;

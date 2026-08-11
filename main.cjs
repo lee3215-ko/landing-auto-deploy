@@ -1751,24 +1751,31 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
             naverAccountId: naverAccount.id,
           };
           result.naverAutoError = naverErr.message;
-          // 선수집 모드에서 네이버 실패 시에도 사이트는 배포 시도
+          // 선수집 모드: 메타 없이 배포하지 않음 (소유확인용 메타가 있어야만 공개 배포)
           if (deferDeployForNaver && !result.deployed) {
-            try {
-              const siteDir = result.output
-                || path.join(job.output_dir || config.kkangOutputDir || path.join(OUTPUT_ROOT, 'kkang-sites'), result.site_slug || job.site_slug);
-              const { deploySite } = await import('./lib/deploy.js');
-              sendLog('네이버 인증 실패 — 메타 없이 Netlify 배포 시도…');
-              const dep = await deploySite({
-                netlifyToken,
-                siteName: result.site_slug || job.site_slug,
-                dir: siteDir,
-                serviceName: result.site_slug || job.site_slug || 'kkang-site',
-              });
-              result.deployed = true;
-              if (dep?.url) result.domain = dep.url;
-            } catch (depErr) {
-              sendLog(`[ERROR] Netlify 배포 실패: ${depErr.message}`);
-              result.deployError = depErr.message;
+            const hasMeta = !!(result.naverAuto?.metaContent);
+            if (!hasMeta) {
+              sendLog('⚠ 네이버 메타를 받지 못해 Netlify 공개 배포를 건너뜁니다. (로컬 생성만 유지)');
+              sendLog('   → 「네이버 인증」으로 메타를 받은 뒤 배포하세요.');
+              result.deploySkippedNoMeta = true;
+            } else {
+              try {
+                const siteDir = result.output
+                  || path.join(job.output_dir || config.kkangOutputDir || path.join(OUTPUT_ROOT, 'kkang-sites'), result.site_slug || job.site_slug);
+                const { deploySite } = await import('./lib/deploy.js');
+                sendLog('네이버 인증 예외 — 확보된 메타로 Netlify 배포…');
+                const dep = await deploySite({
+                  netlifyToken,
+                  siteName: result.site_slug || job.site_slug,
+                  dir: siteDir,
+                  serviceName: result.site_slug || job.site_slug || 'kkang-site',
+                });
+                result.deployed = true;
+                if (dep?.url) result.domain = dep.url;
+              } catch (depErr) {
+                sendLog(`[ERROR] Netlify 배포 실패: ${depErr.message}`);
+                result.deployError = depErr.message;
+              }
             }
           }
         }
