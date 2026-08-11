@@ -1,11 +1,12 @@
 {
     "version":  "3.8.78",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.78/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/509554145",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.78/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/509554145",
+    "asset_id":  509554145,
     "notes":  "OpenAI 크레딧 소진 시 즉시 중단 + YesCaptcha 보안문자 폴백",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/509554145",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.78/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
