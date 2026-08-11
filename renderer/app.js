@@ -4875,6 +4875,10 @@ async function startDhFullPipeline() {
       const ftpId = signup?.account?.ftpId;
       if (!signup?.ok || !ftpId) {
         dhLog(`✖ 가입 실패: ${signup?.error || 'FTP 없음'}`);
+        if (isDhOpenAiCreditsError(signup?.error)) {
+          dhLog('⏹ OpenAI 크레딧 소진 — 배치 중단. platform.openai.com 에서 충전하거나 설정 탭 YesCaptcha 키를 확인하세요.');
+          break;
+        }
         if (isDhMailSessionError(signup?.error)) {
           mailFailStreak += 1;
           if (mailFailStreak >= 2) {
@@ -5003,6 +5007,11 @@ async function maybeSendVpnHotkey(okCount, mailCreds = null) {
 function isDhMailSessionError(err) {
   const m = String(err || '');
   return /메일\s*세션|메일\s*로그인|IP보안|IP\s*보안|네이버 메일 로그인/i.test(m);
+}
+
+function isDhOpenAiCreditsError(err) {
+  const m = String(err || '');
+  return /no credits remaining|OpenAI API 크레딧|insufficient[_ ]quota|exceeded.*quota|credit balance|platform\.openai\.com.*billing/i.test(m);
 }
 
 async function testVpnHotkey() {

@@ -1,4 +1,4 @@
-﻿:root{--ink:#143c38;--teal:#0c8f80;--mint:#bdebe1;--paper:#f7fbfa;--copper:#c96e48;--line:#dbe8e5}
+:root{--ink:#143c38;--teal:#0c8f80;--mint:#bdebe1;--paper:#f7fbfa;--copper:#c96e48;--line:#dbe8e5}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;background:#fff;color:#273532;font-family:Arial,"Noto Sans KR",sans-serif;line-height:1.72}

@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.76",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/508701014",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.76/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/508701014",
-    "asset_id":  508701014,
-    "notes":  "닷홈: VPN 후 메일 IP보안 자동 재로그인, 웹수집 중복(간단인덱싱+하위수집) 제거",
+    "version":  "3.8.78",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.78/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.78/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "OpenAI 크레딧 소진 시 즉시 중단 + YesCaptcha 보안문자 폴백",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/508701014",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.76/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.78/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
