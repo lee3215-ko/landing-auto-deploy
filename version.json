@@ -1,11 +1,12 @@
 {
     "version":  "3.8.81",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.81/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/509963198",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.81/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/509963198",
+    "asset_id":  509963198,
     "notes":  "수동캡챠 다중 탭 동시 진행 · 홈/사이트맵 웹수집 누락 수정 · 생성사이트/배포결과 카드형 목록 UI",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/509963198",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.81/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
