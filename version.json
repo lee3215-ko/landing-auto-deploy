@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.82",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/510408492",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.82/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/510408492",
-    "asset_id":  510408492,
-    "notes":  "메타 배포됐는데도 등록완료로 오표기 수정 · 메타없이 배포 금지 · 캡챠 스크린샷 타임아웃/오합산 수정",
+    "version":  "3.8.83",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.83/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.83/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "넷리파이 생성 후 업체명/사이트명 바로 수정 불가 버그 재수정 (alert 제거·포커스 복구 강화)",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/510408492",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.82/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.83/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }

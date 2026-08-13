@@ -636,6 +636,8 @@ function collectConfig() {
     kkangFastAi: $('seoFastAi') ? !!$('seoFastAi').checked : (config.kkangFastAi !== false),
     kkangOutputDir: ($('seoOutputDir')?.value || config.kkangOutputDir || '').trim(),
     kkangImageDir: ($('seoImageDir')?.value || config.kkangImageDir || '').trim(),
+    kkangBrand: ($('seoBrand')?.value || config.kkangBrand || '').trim(),
+    kkangPhone: ($('seoPhone')?.value || config.kkangPhone || '').trim(),
     kkangNetlifyToken: primaryNetlify.token,
     kkangNetlifyId: primaryNetlify.id,
     cloudflare: {
@@ -3286,8 +3288,11 @@ async function load() {
   if ($('seoFastAi')) $('seoFastAi').checked = config.kkangFastAi !== false;
   if ($('seoOutputDir')) $('seoOutputDir').value = config.kkangOutputDir || '';
   if ($('seoImageDir')) $('seoImageDir').value = config.kkangImageDir || '';
+  if ($('seoBrand') && config.kkangBrand) $('seoBrand').value = config.kkangBrand;
+  if ($('seoPhone') && config.kkangPhone) $('seoPhone').value = config.kkangPhone;
   randomSeoSlug(false);
   updateSeoPreviewUrl();
+  unlockSeoInputs();
   if (config.netlifyCreditsLast) {
     renderNetlifyCreditBadge({
       ok: config.netlifyCreditsLast.credits != null,
@@ -3460,6 +3465,7 @@ function setupEvents() {
   $('seoNetlifyCreditRefreshBtn')?.addEventListener('click', refreshNetlifyCreditsUi);
   $('seoRandomSlugBtn')?.addEventListener('click', () => randomSeoSlug(true));
   $('seoSiteSlug')?.addEventListener('input', updateSeoPreviewUrl);
+  bindSeoInputFocusGuards();
   $('seoBrowseOutBtn')?.addEventListener('click', browseSeoOutputDir);
   $('seoBrowseImageBtn')?.addEventListener('click', browseSeoImageDir);
   $('logChannelTabs')?.addEventListener('click', (e) => {
@@ -3769,6 +3775,32 @@ function unlockSeoInputs() {
   }
 }
 
+/** 생성 완료 배너 (alert 대신 — 네이티브 alert는 포커스를 깨뜨려 업체명 입력이 막힘) */
+function showSeoDoneBanner(message, { focusId = 'seoBrand' } = {}) {
+  const el = $('seoDoneBanner');
+  const text = $('seoDoneBannerText');
+  if (!el || !text) {
+    // 폴백: alert 없이 로그만
+    seoLog(String(message || '').replace(/\n/g, ' · '));
+    return;
+  }
+  text.textContent = String(message || '').trim();
+  el.hidden = false;
+  const hide = () => { el.hidden = true; };
+  const btn = $('seoDoneBannerOk');
+  if (btn) {
+    btn.onclick = async () => {
+      hide();
+      await restoreSeoFormEditability(focusId);
+    };
+  }
+}
+
+function hideSeoDoneBanner() {
+  const el = $('seoDoneBanner');
+  if (el) el.hidden = true;
+}
+
 /** 생성 완료/알림 후 입력란이 먹통 되지 않도록 포커스·잠금 해제 재시도 */
 async function restoreSeoFormEditability(focusId = 'seoBrand') {
   unlockSeoInputs();
@@ -3779,6 +3811,9 @@ async function restoreSeoFormEditability(focusId = 'seoBrand') {
     if (!el) return;
     try {
       el.focus({ preventScroll: true });
+      // 커서가 보이도록 끝으로
+      const v = el.value || '';
+      try { el.setSelectionRange(v.length, v.length); } catch { /* ignore */ }
     } catch {
       try { el.focus(); } catch { /* ignore */ }
     }
@@ -3786,8 +3821,33 @@ async function restoreSeoFormEditability(focusId = 'seoBrand') {
   focusTarget();
   await new Promise((r) => setTimeout(r, 0));
   focusTarget();
-  await new Promise((r) => setTimeout(r, 120));
+  await new Promise((r) => setTimeout(r, 80));
   focusTarget();
+  await new Promise((r) => setTimeout(r, 250));
+  try { await window.electronAPI.focusMainWindow?.(); } catch { /* ignore */ }
+  focusTarget();
+  await new Promise((r) => setTimeout(r, 500));
+  focusTarget();
+}
+
+/** 입력란 클릭 시 Chrome이 포커스를 가져가도 즉시 앱으로 복구 */
+function bindSeoInputFocusGuards() {
+  for (const id of ['seoSiteSlug', 'seoBrand', 'seoPhone', 'seoNaver']) {
+    const el = $(id);
+    if (!el || el.dataset.focusGuardBound === '1') continue;
+    el.dataset.focusGuardBound = '1';
+    const reclaim = async () => {
+      unlockSeoInputs();
+      try { await window.electronAPI.focusMainWindow?.(); } catch { /* ignore */ }
+      // disabled가 다시 붙는 레이스 방지
+      setTimeout(() => {
+        unlockSeoInputs();
+        try { el.focus({ preventScroll: true }); } catch { try { el.focus(); } catch { /* ignore */ } }
+      }, 30);
+    };
+    el.addEventListener('pointerdown', reclaim);
+    el.addEventListener('focus', () => unlockSeoInputs());
+  }
 }
 
 async function browseSeoOutputDir() {
@@ -4028,6 +4088,7 @@ async function startSeoGenerate() {
 
   setSeoBusy(true);
   seoStopRequested = false;
+  hideSeoDoneBanner();
   seoBatchUsedSlugs.clear();
   for (const s of collectUsedSeoSlugs()) seoBatchUsedSlugs.add(s);
   clearAppLogs('seo-gen');
@@ -4170,17 +4231,20 @@ async function startSeoGenerate() {
     try { await window.electronAPI.focusMainWindow?.(); } catch { /* ignore */ }
   }
 
-  // 알림 전에 입력 잠금 해제 (alert 후에도 업체명·사이트명 바로 수정 가능해야 함)
+  // alert() 사용 금지 — 네이티브 알림이 포커스를 깨서 업체명/사이트명 입력이 막힘
   unlockSeoInputs();
-  if (lastDoneMsg) {
-    await new Promise((r) => setTimeout(r, 50));
-    alert(lastDoneMsg);
-  }
   if (okCount > 0) {
     // 다음 생성용 미리보기 사이트명만 갱신 (업체명은 사용자가 수정한 값 유지)
     randomSeoSlug(false);
   }
   await restoreSeoFormEditability(okCount > 0 ? 'seoBrand' : 'seoSiteSlug');
+  try { await window.electronAPI.saveConfig(collectConfig()); } catch { /* ignore */ }
+  if (lastDoneMsg) {
+    showSeoDoneBanner(
+      `${lastDoneMsg}\n\n업체명·사이트명을 바로 수정한 뒤 다시 생성할 수 있습니다.`,
+      { focusId: okCount > 0 ? 'seoBrand' : 'seoSiteSlug' },
+    );
+  }
 }
 
 async function stopSeoGenerate() {

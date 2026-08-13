@@ -352,10 +352,26 @@ function focusMainWindow() {
     createWindow();
     return;
   }
-  if (mainWindow.isMinimized()) mainWindow.restore();
-  mainWindow.show();
-  mainWindow.focus();
-  try { mainWindow.webContents?.focus(); } catch { /* ignore */ }
+  try {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    // 네이버/Netlify Chrome이 포커스를 가져간 뒤에도 앱을 최상단으로 (업체명 입력 먹통 방지)
+    mainWindow.setAlwaysOnTop(true);
+    mainWindow.focus();
+    mainWindow.moveTop();
+    try { mainWindow.webContents?.focus(); } catch { /* ignore */ }
+    setTimeout(() => {
+      try {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.setAlwaysOnTop(false);
+          mainWindow.focus();
+          mainWindow.webContents?.focus();
+        }
+      } catch { /* ignore */ }
+    }, 200);
+  } catch (e) {
+    console.error('[main] focusMainWindow failed', e);
+  }
 }
 
 ipcMain.handle('focus-main-window', async () => {

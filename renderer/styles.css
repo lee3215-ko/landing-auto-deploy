@@ -1450,6 +1450,31 @@ textarea {
   align-items: start;
 }
 
+.seo-done-banner {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(52, 211, 168, 0.45);
+  background: rgba(52, 211, 168, 0.12);
+}
+
+.seo-done-banner-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.seo-done-banner-text {
+  flex: 1;
+  min-width: 200px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
 .seo-advanced,
 .settings-collapsible {
   margin-top: 10px;
