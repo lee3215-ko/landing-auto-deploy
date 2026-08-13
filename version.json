@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.83",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/512509041",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.83/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/512509041",
-    "asset_id":  512509041,
-    "notes":  "넷리파이 생성 후 업체명/사이트명 바로 수정 불가 버그 재수정 (alert 제거·포커스 복구 강화)",
+    "version":  "3.8.84",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.84/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.84/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "닷홈 인증메일 중복 발송 제거 · 수동캡챠 메타미검출 시 즉시 중단 후 삭제 확인",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/512509041",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.83/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.84/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }

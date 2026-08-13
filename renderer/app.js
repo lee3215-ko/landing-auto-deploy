@@ -1021,8 +1021,14 @@ async function markManualCaptcha(index) {
     } else {
       const failMsg = out?.popupMessage || out?.error || out?.message || '실패';
       logLine(`⚠ 수동캡챠: ${failMsg}`);
-      if (out?.status === 'meta_missing' || /메타미검출|메타\s*태그/i.test(failMsg)) {
-        alert(`메타미검출이 기록되었습니다.\n\n${failMsg}\n\n「인증재시도」·삭제 또는 다른 사이트 「수동캡챠」를 진행하세요.`);
+      if (out?.status === 'meta_missing' || out?.offerDelete || /메타미검출|메타\s*태그/i.test(failMsg)) {
+        setManualCaptchaBusy(row.url, false);
+        filterResults();
+        await promptDeleteAfterMetaMissing({
+          resultIndex: index,
+          url: row.url,
+          popupMessage: out?.popupMessage || failMsg,
+        });
       } else {
         alert(failMsg);
       }
@@ -1963,11 +1969,54 @@ function filterCreatedSites() {
   renderCreatedSites();
 }
 
-async function deleteCreatedSite(id) {
-  if (!id) return;
-  if (!confirm('이 사이트를 목록에서 삭제할까요?\n(실제 호스팅/배포는 삭제되지 않습니다)')) return;
+async function deleteCreatedSite(id, { skipConfirm = false } = {}) {
+  if (!id) return false;
+  if (!skipConfirm) {
+    if (!confirm('이 사이트를 목록에서 삭제할까요?\n(실제 호스팅/배포는 삭제되지 않습니다)')) return false;
+  }
   createdSites = (await window.electronAPI.deleteCreatedSite(id)) || [];
   renderCreatedSites();
+  return true;
+}
+
+/** 수동캡챠 중 메타미검출 → 즉시 중단 후 삭제 확인 */
+async function promptDeleteAfterMetaMissing({
+  siteId = '',
+  resultIndex = -1,
+  url = '',
+  popupMessage = '',
+} = {}) {
+  const msg = String(popupMessage || '메타태그를 찾을 수 없습니다.').replace(/\s+/g, ' ').trim();
+  const del = confirm(
+    `메타태그를 찾을 수 없습니다.\n\n${msg.slice(0, 200)}\n\n`
+    + `수동캡챠를 중단했습니다.\n이 사이트를 목록에서 삭제할까요?\n`
+    + `(실제 호스팅/배포는 삭제되지 않습니다)\n\n${url || ''}`,
+  );
+  if (!del) return false;
+  let deleted = false;
+  if (siteId) {
+    deleted = await deleteCreatedSite(siteId, { skipConfirm: true });
+  }
+  if (resultIndex >= 0 && savedResults[resultIndex]) {
+    savedResults.splice(resultIndex, 1);
+    await window.electronAPI.saveResults(savedResults);
+    filterResults();
+    deleted = true;
+  } else if (url) {
+    const key = String(url).replace(/\/$/, '').toLowerCase();
+    const before = savedResults.length;
+    savedResults = savedResults.filter((r) => String(r?.url || '').replace(/\/$/, '').toLowerCase() !== key);
+    if (savedResults.length !== before) {
+      await window.electronAPI.saveResults(savedResults);
+      filterResults();
+      deleted = true;
+    }
+  }
+  if (deleted) {
+    logLine(`🗑 메타미검출로 목록에서 삭제: ${url || siteId}`);
+    setSitesIndexProgress('', false);
+  }
+  return deleted;
 }
 
 async function clearCreatedSites() {
@@ -2208,8 +2257,14 @@ async function siteManualCaptcha(id) {
       const failMsg = out?.popupMessage || out?.error || out?.message || '실패';
       logLine(`⚠ 수동캡챠: ${failMsg}`);
       if (site.provider === 'dothome') dhLog(`⚠ 수동캡챠: ${failMsg}`);
-      if (out?.status === 'meta_missing' || /메타미검출|메타\s*태그/i.test(failMsg)) {
-        alert(`메타미검출이 기록되었습니다.\n\n${failMsg}\n\n「다시 배포」·삭제 또는 다른 사이트 「수동캡챠」를 진행하세요.`);
+      if (out?.status === 'meta_missing' || out?.offerDelete || /메타미검출|메타\s*태그/i.test(failMsg)) {
+        setManualCaptchaBusy(site.url, false);
+        renderCreatedSites();
+        await promptDeleteAfterMetaMissing({
+          siteId: site.id,
+          url: site.url,
+          popupMessage: out?.popupMessage || failMsg,
+        });
       } else {
         alert(failMsg);
       }
