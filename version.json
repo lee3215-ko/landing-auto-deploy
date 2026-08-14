@@ -1,12 +1,12 @@
 {
-    "version":  "3.8.86",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.86/LandingAutoDeploy.zip",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.86/LandingAutoDeploy.zip",
+    "version":  "3.8.88",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.88/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.88/LandingAutoDeploy.zip",
     "api_download_url":  null,
     "asset_id":  null,
     "notes":  "캡챠 새로고침 OCR 수정 · 닷홈 중복로그/reCAPTCHA 재통과 · 스크린샷 타임아웃",
     "download_urls":  [
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.86/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.88/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
