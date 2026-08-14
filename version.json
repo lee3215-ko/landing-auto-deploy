@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.84",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/512675618",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.84/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/512675618",
-    "asset_id":  512675618,
-    "notes":  "닷홈 인증메일 중복 발송 제거 · 수동캡챠 메타미검출 시 즉시 중단 후 삭제 확인",
+    "version":  "3.8.86",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.86/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.86/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "캡챠 새로고침 OCR 수정 · 닷홈 중복로그/reCAPTCHA 재통과 · 스크린샷 타임아웃",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/512675618",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.84/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.86/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
