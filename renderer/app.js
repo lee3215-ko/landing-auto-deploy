@@ -1529,16 +1529,17 @@ function resolveDothomeNextAction(site) {
     || d.hostingOk === false && d.hostingStatus === 'dns_missing'
     || /ENOTFOUND|서브도메인 DNS|DNS 없음|Non-existent/i.test(err);
 
-  // 0) 호스팅 미개통 → 다시 배포 금지, 재가입 안내
+  // 0) 호스팅 미개통 → 다시 배포 금지, 계정 폐기 후 재가입
   if (hostingMissing) {
     return {
       next: 'rejoin',
-      label: '호스팅 미개통 → 재가입 필요',
+      label: '호스팅 미개통 → 계정 삭제 후 재가입',
       reason: d.hostingTip
         || '서브도메인 DNS가 없습니다. 다시 배포로는 불가합니다. 이 계정은 삭제하고 닷홈 탭에서 새로 가입하세요.',
       showRedeploy: false,
       showManual: false,
-      showCheckHosting: true,
+      showCheckHosting: false,
+      showDiscard: true,
     };
   }
 
@@ -1784,9 +1785,8 @@ function renderCreatedSites() {
             <div class="site-card-hint" title="${escapeHtml(dhNext.reason)}">${escapeHtml(dhNext.reason.split('\n')[0])}</div>
             ${busyHint}
             <div class="site-card-actions-inline">
-              ${dhNext.next === 'rejoin' ? `
-                <button class="btn btn-ghost btn-sm" type="button" data-sites-action="check-hosting" data-id="${escapeHtml(s.id)}" title="DNS로 호스팅 개통 여부 재확인">호스팅 재확인</button>
-                <button class="btn btn-danger btn-sm" type="button" data-sites-action="delete" data-id="${escapeHtml(s.id)}" title="목록에서 제거 후 닷홈 탭에서 새로 가입">목록에서 삭제</button>
+              ${dhNext.next === 'rejoin' || dhNext.showDiscard ? `
+                <button class="btn btn-danger btn-sm" type="button" data-sites-action="discard-dead" data-id="${escapeHtml(s.id)}" title="미개통 계정·목록 삭제 후 닷홈에서 새로 가입">계정 삭제</button>
               ` : ''}
               ${dhNext.showRedeploy ? dothomeRedeployButtonHtml({
                 id: s.id,
@@ -1819,7 +1819,7 @@ function renderCreatedSites() {
         statusHint = '수동캡챠만';
       } else if (dhSt.next === 'rejoin') {
         statusPill = `<span class="status-pill error" title="${escapeHtml(dhSt.reason)}">호스팅 미개통</span>`;
-        statusHint = '재가입 필요';
+        statusHint = '계정 삭제 후 재가입';
       } else if (dhSt.next === 'redeploy') {
         statusHint = '다시 배포 필요';
       } else if (dhSt.next === 'unknown') {
@@ -1940,7 +1940,7 @@ async function checkDothomeHostingForSite(id) {
       alert(
         `호스팅 미개통\n${out?.host || ftpId}\n\n`
         + `${out?.tip || out?.error || '서브도메인 DNS가 없습니다.'}\n\n`
-        + '다시 배포는 불가합니다. 목록에서 삭제 후 닷홈 탭에서 새로 가입하세요.',
+        + '「계정 삭제」로 이 계정을 버리고 닷홈 탭에서 새로 가입하세요. (다시 배포 불가)',
       );
     }
   } catch (e) {
@@ -1977,6 +1977,35 @@ async function deleteCreatedSite(id, { skipConfirm = false } = {}) {
   createdSites = (await window.electronAPI.deleteCreatedSite(id)) || [];
   renderCreatedSites();
   return true;
+}
+
+/** 호스팅 미개통 계정 폐기 (생성사이트 + 닷홈 계정 목록) */
+async function discardDeadDothomeSite(siteOrId, { skipConfirm = false } = {}) {
+  const site = typeof siteOrId === 'object'
+    ? siteOrId
+    : createdSites.find((s) => s.id === siteOrId);
+  if (!site) return false;
+  const ftpId = String(site.detail?.ftpId || site.name || '').trim();
+  if (!skipConfirm) {
+    if (!confirm(
+      `호스팅 미개통 계정을 삭제할까요?\n\n`
+      + `FTP: ${ftpId || '-'}\nURL: ${site.url || '-'}\n\n`
+      + '목록·계정에서 제거하고, 닷홈 탭에서 새로 가입하세요.\n(다시 배포로는 개통되지 않습니다)',
+    )) return false;
+  }
+  const out = await window.electronAPI.dothomeDiscardAccount({
+    ftpId,
+    siteId: site.id,
+    url: site.url || '',
+  });
+  if (out?.createdSites) createdSites = out.createdSites;
+  else await loadCreatedSites(true);
+  const fresh = await window.electronAPI.loadConfig();
+  if (fresh) config = fresh;
+  renderDhAccounts();
+  renderCreatedSites();
+  dhLog(`🗑 미개통 계정 폐기: ${ftpId || site.id}`);
+  return !!out?.ok;
 }
 
 /** 수동캡챠 중 메타미검출 → 즉시 중단 후 삭제 확인 */
@@ -2350,7 +2379,7 @@ async function redeployDothomeCreatedSite(id) {
       return alert(
         `호스팅 미개통 — 다시 배포 불가\n\n${hostCheck?.host || ftpId}\n`
         + `${hostCheck?.tip || hostCheck?.error || '서브도메인 DNS가 없습니다.'}\n\n`
-        + '이 계정은 삭제하고 닷홈 탭에서 새로 가입하세요.',
+        + '「계정 삭제」로 이 계정을 버리고 닷홈 탭에서 새로 가입하세요.',
       );
     }
   } catch (e) {
@@ -3470,6 +3499,8 @@ function setupEvents() {
       await copyToClipboard(url, '📋 URL 복사됨', { sitesTab: true });
     } else if (action === 'delete') {
       await deleteCreatedSite(btn.dataset.id);
+    } else if (action === 'discard-dead') {
+      await discardDeadDothomeSite(btn.dataset.id);
     } else if (action === 'check-index') {
       await checkSiteIndexOne(btn.dataset.id);
     } else if (action === 'retry-naver') {
@@ -4948,6 +4979,7 @@ async function startDhFullPipeline() {
 
   let okCount = 0;
   let mailFailStreak = 0;
+  let dnsAbandonLeft = Math.max(count * 2, 3);
   try {
     for (let i = 0; i < count; i++) {
       if (dhStopRequested) {
@@ -5049,6 +5081,28 @@ async function startDhFullPipeline() {
           dhLog(`📦 성공 ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
         }
         await maybeSendVpnHotkey(okCount, creds);
+      } else if (out?.dnsMissing || /호스팅 미개통|서브도메인 DNS|DNS 없음/i.test(String(out?.error || ''))) {
+        dhLog(`🛑 호스팅 미개통(DNS 없음) — ${ftpId} 계정 폐기, 같은 ZIP으로 재가입`);
+        try {
+          const disc = await window.electronAPI.dothomeDiscardAccount({
+            ftpId: out.ftpId || ftpId,
+            url: `http://${ftpId}.dothome.co.kr/`,
+          });
+          if (disc?.createdSites) createdSites = disc.createdSites;
+          if (disc?.dothomeAccounts && config.dothome) {
+            config.dothome.accounts = disc.dothomeAccounts;
+          }
+          renderDhAccounts();
+          renderCreatedSites();
+        } catch { /* ignore */ }
+        if (dnsAbandonLeft > 0) {
+          dnsAbandonLeft -= 1;
+          i -= 1; // 같은 슬롯·같은 ZIP으로 재시도 (ZIP은 성공 시에만 제거됨)
+          dhLog(`↻ 재가입 재시도 남음 ${dnsAbandonLeft}`);
+        } else {
+          dhLog('⏹ DNS 미개통 재시도 한도 초과 — 배치 중단');
+          break;
+        }
       } else {
         dhLog(`✖ 배포 실패: ${out?.error || ''}`);
         if (out?.movedZip?.to && !out.movedZip.skipped) {

@@ -83,6 +83,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   dothomeSeoGenerate: (options) => ipcRenderer.invoke('dothome-seo-generate', options || {}),
   dothomeDeploy: (options) => ipcRenderer.invoke('dothome-deploy', options || {}),
   dothomeCheckHosting: (options) => ipcRenderer.invoke('dothome-check-hosting', options || {}),
+  dothomeDiscardAccount: (options) => ipcRenderer.invoke('dothome-discard-account', options || {}),
   onDothomeLog: (callback) => {
     ipcRenderer.removeAllListeners('dothome-log');
     ipcRenderer.on('dothome-log', (_, line) => callback(line));

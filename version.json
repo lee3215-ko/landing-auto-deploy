@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.90",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/519011435",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.90/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/519011435",
-    "asset_id":  519011435,
-    "notes":  "넷리파이 Cursor AI 생성 시 H1을 업체명 기준으로 적용",
+    "version":  "3.8.91",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.91/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.91/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "닷홈 FTP: 서브도메인({id}.dothome.co.kr) 우선 접속 + 업로드 ECONNRESET 재시도",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/519011435",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.90/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.91/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }

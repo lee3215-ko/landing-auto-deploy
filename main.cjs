@@ -2340,6 +2340,61 @@ function patchDothomeAccount(config, ftpId, patch) {
   return dh.accounts.find((a) => a.ftpId === ftpId) || null;
 }
 
+/** 호스팅 미개통 계정 폐기 — 계정 목록·생성사이트에서 제거 */
+async function discardDothomeDeadAccount({ ftpId = '', siteId = '', url = '' } = {}) {
+  const ftp = String(ftpId || '').trim();
+  const cfg = loadConfig();
+  const dh = { ...(cfg.dothome || {}) };
+  const before = (dh.accounts || []).length;
+  if (ftp) {
+    dh.accounts = (dh.accounts || []).filter((a) => String(a?.ftpId || '') !== ftp);
+  }
+  cfg.dothome = dh;
+  saveConfig(cfg);
+
+  const {
+    loadSitesRegistryMeta,
+    saveSitesRegistry,
+    removeSite,
+    rememberDeletedSites,
+  } = await import('./lib/sites-registry.js');
+  const meta = loadSitesRegistryMeta(CREATED_SITES_PATH);
+  let sites = [...(meta.sites || [])];
+  const urlKey = String(url || '').replace(/\/$/, '').toLowerCase();
+  const hostKey = ftp ? `${ftp.toLowerCase()}.dothome.co.kr` : '';
+  const toRemove = sites.filter((s) => {
+    if (s.provider !== 'dothome') return false;
+    if (siteId && s.id === String(siteId)) return true;
+    if (ftp && String(s.detail?.ftpId || '') === ftp) return true;
+    if (ftp && String(s.name || '') === ftp) return true;
+    if (hostKey && String(s.url || '').toLowerCase().includes(hostKey)) return true;
+    if (urlKey && String(s.url || '').replace(/\/$/, '').toLowerCase() === urlKey) return true;
+    return false;
+  });
+  let deletedKeys = meta.deletedKeys;
+  for (const t of toRemove) {
+    deletedKeys = rememberDeletedSites(deletedKeys, [t]);
+    sites = removeSite(sites, t.id);
+  }
+  const createdSites = saveSitesRegistry(CREATED_SITES_PATH, sites, { deletedKeys });
+  return {
+    ok: true,
+    ftpId: ftp,
+    removedAccounts: Math.max(0, before - (dh.accounts || []).length),
+    removedSites: toRemove.length,
+    createdSites,
+    dothomeAccounts: dh.accounts || [],
+  };
+}
+
+ipcMain.handle('dothome-discard-account', async (_event, options = {}) => {
+  try {
+    return await discardDothomeDeadAccount(options || {});
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+});
+
 ipcMain.handle('dothome-seo-generate', async (event, options = {}) => {
   const config = loadConfig();
   const { generateDothomeSeoSite } = await import('./lib/dothome-seo-site.js');
@@ -2562,7 +2617,8 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
     sendLog(`[ERROR] ${e.message}`);
     const errMsg = e?.message || String(e);
     const captchaFail = /캡챠|captcha|보안절차|수동캡챠/i.test(errMsg);
-    const dnsMissing = /ENOTFOUND|서브도메인 DNS|DNS 없음|Non-existent/i.test(errMsg);
+    const dnsMissing = !!(e?.dnsMissing || e?.code === 'DOTHOME_DNS_MISSING')
+      || /ENOTFOUND|서브도메인 DNS|DNS 없음|Non-existent|호스팅 미개통/i.test(errMsg);
     const movedZip = e?.movedZip || null;
     const ftpOk = !!e?.ftpOk;
     // FTP까지 성공해 ZIP이 「성공」으로 옮겨진 경우 — 대기열에서 제거
@@ -2585,41 +2641,56 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
       }
     }
     let createdSites;
+    let discarded = null;
     try {
       const { entryFromDothomeAccount } = await import('./lib/sites-registry.js');
-      const failUrl = String(e?.siteUrl || `${resolveSiteUrl(account, { https: true })}/`).trim();
-      const siteEntry = entryFromDothomeAccount(account, {
-        url: failUrl,
-        siteDir: e?.siteDir || account.siteDir || options.siteDir || '',
-        keyword: keyword || account.keyword || '',
-        sourcePath: e?.sourcePath || movedZip?.to || zipPath || account.sourcePath || '',
-        sourceType: useZip ? 'zip' : (account.sourceType || 'ai'),
-        naverStatus: captchaFail ? 'captcha' : 'error',
-        naverError: errMsg,
-        naverAccountId: naverAccount?.id || account.naverAccountId || '',
-        hostingStatus: dnsMissing ? 'dns_missing' : (account.hostingStatus || ''),
-        hostingOk: dnsMissing ? false : account.hostingOk,
-        from: 'dothome-deploy-fail',
-      });
-      if (siteEntry) {
-        createdSites = await upsertCreatedSite(siteEntry);
-        patchDothomeAccount(config, account.ftpId, {
+      const failUrl = String(e?.siteUrl || `${resolveSiteUrl(account, { https: false })}/`).trim();
+      if (dnsMissing) {
+        // 미개통 계정은 목록에 남기지 않고 즉시 폐기
+        sendLog(`🗑 호스팅 미개통 — 계정 폐기: ${account.ftpId} (새로 가입하세요)`);
+        discarded = await discardDothomeDeadAccount({
+          ftpId: account.ftpId,
+          url: failUrl,
+        });
+        createdSites = discarded?.createdSites;
+      } else {
+        const siteEntry = entryFromDothomeAccount(account, {
+          url: failUrl,
+          siteDir: e?.siteDir || account.siteDir || options.siteDir || '',
+          keyword: keyword || account.keyword || '',
+          sourcePath: e?.sourcePath || movedZip?.to || zipPath || account.sourcePath || '',
+          sourceType: useZip ? 'zip' : (account.sourceType || 'ai'),
           naverStatus: captchaFail ? 'captcha' : 'error',
           naverError: errMsg,
           naverAccountId: naverAccount?.id || account.naverAccountId || '',
-          siteDir: e?.siteDir || account.siteDir || '',
-          sourcePath: e?.sourcePath || movedZip?.to || zipPath || account.sourcePath || '',
-          sourceType: useZip ? 'zip' : (account.sourceType || 'ai'),
-          ...(dnsMissing ? {
-            hostingStatus: 'dns_missing',
-            hostingOk: false,
-            hostingError: errMsg.slice(0, 200),
-            hostingCheckedAt: new Date().toISOString(),
-          } : {}),
+          hostingStatus: account.hostingStatus || '',
+          hostingOk: account.hostingOk,
+          from: 'dothome-deploy-fail',
         });
+        if (siteEntry) {
+          createdSites = await upsertCreatedSite(siteEntry);
+          patchDothomeAccount(config, account.ftpId, {
+            naverStatus: captchaFail ? 'captcha' : 'error',
+            naverError: errMsg,
+            naverAccountId: naverAccount?.id || account.naverAccountId || '',
+            siteDir: e?.siteDir || account.siteDir || '',
+            sourcePath: e?.sourcePath || movedZip?.to || zipPath || account.sourcePath || '',
+            sourceType: useZip ? 'zip' : (account.sourceType || 'ai'),
+          });
+        }
       }
     } catch { /* ignore */ }
-    return { ok: false, error: errMsg, createdSites, movedZip, deploySources, ftpOk };
+    return {
+      ok: false,
+      error: errMsg,
+      createdSites,
+      movedZip,
+      deploySources,
+      ftpOk,
+      dnsMissing,
+      discarded,
+      ftpId: account.ftpId,
+    };
   }
 });
 
