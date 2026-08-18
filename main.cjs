@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, clipboard } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, clipboard, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { execFile } = require('child_process');
@@ -343,6 +343,16 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    } catch (e) {
+      console.error('[main] openExternal failed', e);
+    }
+    return { action: 'deny' };
+  });
+
   return mainWindow;
 }
 
@@ -655,6 +665,16 @@ app.on('activate', () => {
 
 // IPC handlers
 ipcMain.handle('load-config', () => loadConfig());
+ipcMain.handle('open-external', async (_, url) => {
+  const u = String(url || '').trim();
+  if (!/^https?:\/\//i.test(u)) return { ok: false, error: 'invalid url' };
+  try {
+    await shell.openExternal(u);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+});
 ipcMain.handle('save-config', async (_, config) => {
   saveConfig(config);
   // 저장 시 계정별 siteCount·비번을 세션 헬퍼에 동기화

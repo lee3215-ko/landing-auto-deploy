@@ -107,7 +107,12 @@ function Get-ReleaseAssetId($cfg, [string]$Tag) {
             if (-not $json) { continue }
             $rel = $json | ConvertFrom-Json
             foreach ($a in $rel.assets) {
-                if ($a.name -eq $cfg.release_asset) { return [int64]$a.id }
+                if ($a.name -ne $cfg.release_asset) { continue }
+                # gh가 숫자 id 대신 node id 문자열을 줄 수 있음 → url에서 추출
+                if ($a.id -match '^\d+$') { return [int64]$a.id }
+                foreach ($u in @($a.url, $a.browser_download_url)) {
+                    if ($u -match '/releases/assets/(\d+)') { return [int64]$Matches[1] }
+                }
             }
         } catch { }
     }

@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   loadConfig: () => ipcRenderer.invoke('load-config'),
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
   saveConfig: (config) => ipcRenderer.invoke('save-config', config),
   loadResults: () => ipcRenderer.invoke('load-results'),
   saveResults: (results) => ipcRenderer.invoke('save-results', results),
@@ -82,7 +83,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   dothomeSeoGenerate: (options) => ipcRenderer.invoke('dothome-seo-generate', options || {}),
   dothomeDeploy: (options) => ipcRenderer.invoke('dothome-deploy', options || {}),
   dothomeCheckHosting: (options) => ipcRenderer.invoke('dothome-check-hosting', options || {}),
-  onDothomeLog: (callback) => ipcRenderer.on('dothome-log', (_, line) => callback(line)),
+  onDothomeLog: (callback) => {
+    ipcRenderer.removeAllListeners('dothome-log');
+    ipcRenderer.on('dothome-log', (_, line) => callback(line));
+  },
   dothomeMailSessionStatus: () => ipcRenderer.invoke('dothome-mail-session-status'),
   dothomeMailSessionLogin: (options) => ipcRenderer.invoke('dothome-mail-session-login', options || {}),
   dothomeMailSessionClose: () => ipcRenderer.invoke('dothome-mail-session-close'),

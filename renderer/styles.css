@@ -395,6 +395,32 @@ label {
   letter-spacing: 0.04em;
 }
 
+.label-with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.label-with-action label {
+  margin-bottom: 0;
+}
+
+.api-topup-btn {
+  flex-shrink: 0;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  color: var(--accent, #60a5fa);
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+.api-topup-btn:hover {
+  background: rgba(96, 165, 250, 0.12);
+  border-color: rgba(96, 165, 250, 0.55);
+}
+
 input[type="text"],
 input[type="password"],
 input[type="number"],
@@ -1437,12 +1463,14 @@ textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   margin-bottom: 12px;
 }
 
 .divider-header h3 {
   font-size: 13px;
   font-weight: 700;
+  margin: 0;
 }
 
 /* 넷리파이 / Cloudflare Pages 생성 */

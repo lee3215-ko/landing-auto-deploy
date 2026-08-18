@@ -5251,3 +5251,18 @@ window.electronAPI.onTokenGenProgress((data) => {
   }
 });
 load();
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest?.('[data-topup-url]');
+  if (!btn) return;
+  const url = String(btn.getAttribute('data-topup-url') || '').trim();
+  if (!url) return;
+  e.preventDefault();
+  if (window.electronAPI?.openExternal) {
+    window.electronAPI.openExternal(url).catch(() => {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    });
+  } else {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+});

@@ -90,22 +90,31 @@
               </div>
 
               <div class="form-group">
-                <label for="openaiApiKey">OpenAI API Key</label>
+                <div class="label-with-action">
+                  <label for="openaiApiKey">OpenAI API Key</label>
+                  <button type="button" class="btn btn-ghost btn-sm api-topup-btn" data-topup-url="https://platform.openai.com/settings/organization/billing" title="OpenAI 결제·크레딧 충전">💳 충전</button>
+                </div>
                 <input type="password" id="openaiApiKey" placeholder="sk-..." autocomplete="off">
                 <p class="bulk-hint">랜딩 자동 생성·보안문자 OCR에 사용됩니다.</p>
               </div>
 
               <div class="form-group">
-                <label for="yesCaptchaClientKey">YesCaptcha Client Key</label>
+                <div class="label-with-action">
+                  <label for="yesCaptchaClientKey">YesCaptcha Client Key</label>
+                  <button type="button" class="btn btn-ghost btn-sm api-topup-btn" data-topup-url="https://yescaptcha.com" title="YesCaptcha 로그인 후 온라인 충전">💳 충전</button>
+                </div>
                 <input type="password" id="yesCaptchaClientKey" placeholder="eec1… (sk- 로 시작하면 안 됨)" autocomplete="off">
-                <p class="bulk-hint">닷홈 reCAPTCHA + 네이버 이미지 캡챠(ImageToText)용. OpenAI 키(sk-…)가 아니라 YesCaptcha 클라이언트 키를 넣으세요. <a href="https://yescaptcha.com" target="_blank" rel="noreferrer">yescaptcha.com</a></p>
+                <p class="bulk-hint">닷홈 reCAPTCHA + 네이버 이미지 캡챠(ImageToText)용. OpenAI 키(sk-…)가 아니라 YesCaptcha 클라이언트 키를 넣으세요.</p>
               </div>
 
               <details class="settings-collapsible" id="cursorApiDetails">
                 <summary>Cursor API Key (열고 닫기)</summary>
                 <div class="settings-collapsible-body">
                   <div class="form-group">
-                    <label for="cursorApiKey">Cursor API Key</label>
+                    <div class="label-with-action">
+                      <label for="cursorApiKey">Cursor API Key</label>
+                      <button type="button" class="btn btn-ghost btn-sm api-topup-btn" data-topup-url="https://cursor.com/dashboard?tab=billing" title="Cursor 대시보드·결제">💳 충전</button>
+                    </div>
                     <input type="password" id="cursorApiKey" placeholder="key_..." autocomplete="off">
                     <p class="bulk-hint">넷리파이 생성·닷홈 SEO(AI) 등에서 공동으로 사용합니다.</p>
                   </div>
@@ -115,6 +124,7 @@
               <div class="section-divider">
                 <div class="divider-header">
                   <h3>Netlify Tokens</h3>
+                  <button type="button" class="btn btn-ghost btn-sm api-topup-btn" data-topup-url="https://app.netlify.com/" title="Netlify 계정·크레딧/청구">💳 충전</button>
                 </div>
                 <p class="bulk-hint">토큰을 한 개씩 추가합니다. 아이디는 목록 표시용입니다.</p>
                 <div id="netlifyTokens" class="item-list"></div>
@@ -465,11 +475,17 @@
               <details class="seo-advanced">
                 <summary>고급 설정 (계정 · 토큰 · 저장 폴더)</summary>
                 <div class="form-group">
-                  <label for="cfAccountId">Cloudflare Account ID</label>
+                  <div class="label-with-action">
+                    <label for="cfAccountId">Cloudflare Account ID</label>
+                    <button type="button" class="btn btn-ghost btn-sm api-topup-btn" data-topup-url="https://dash.cloudflare.com/" title="Cloudflare 대시보드">대시보드</button>
+                  </div>
                   <input type="text" id="cfAccountId" placeholder="계정 ID" autocomplete="off">
                 </div>
                 <div class="form-group">
-                  <label for="cfApiToken">Cloudflare API Token</label>
+                  <div class="label-with-action">
+                    <label for="cfApiToken">Cloudflare API Token</label>
+                    <button type="button" class="btn btn-ghost btn-sm api-topup-btn" data-topup-url="https://dash.cloudflare.com/profile/api-tokens" title="API 토큰 발급">토큰 발급</button>
+                  </div>
                   <input type="password" id="cfApiToken" placeholder="API Token" autocomplete="off">
                 </div>
                 <div class="form-group">
