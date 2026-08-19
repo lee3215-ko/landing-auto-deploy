@@ -706,6 +706,7 @@ const STATUS_MAP = {
   error: { label: '오류', cls: 'error' },
   captcha: { label: '캡챠', cls: 'captcha' },
   meta_missing: { label: '메타미검출', cls: 'error' },
+  access_fail: { label: '접근실패', cls: 'error' },
   unknown: { label: '미확인', cls: 'unknown' },
   manual: { label: '수동캡챠완료', cls: 'manual' },
 };
@@ -819,7 +820,8 @@ function renderResultsTable(results) {
     const st = STATUS_MAP[r.status] || { label: r.status || '-', cls: 'unknown' };
     const showManualCaptcha = r.status === 'captcha'
       || r.status === 'meta_missing'
-      || /메타\s*태그|메타미검출|찾을\s*수\s*없/i.test(String(r.error || r.popupMessage || ''));
+      || r.status === 'access_fail'
+      || /메타\s*태그|메타미검출|찾을\s*수\s*없|접근\s*실패|access_fail/i.test(String(r.error || r.popupMessage || ''));
     const manualBtn = showManualCaptcha
       ? manualCaptchaButtonHtml({
         attrs: `data-action="manual-captcha" data-idx="${originalIndex}"`,
@@ -1544,20 +1546,24 @@ function resolveDothomeNextAction(site) {
   }
 
   const captchaFail = st === 'captcha'
-    || /캡챠|captcha|보안절차|수동캡챠/i.test(err);
+    || (/캡챠|captcha|보안절차|수동캡챠/i.test(err) && !/meta_missing|메타태그|접근\s*실패|access_fail/i.test(err));
+  const metaOrAccessFail = st === 'meta_missing' || st === 'access_fail'
+    || /meta_missing|메타태그|접근\s*실패|access_fail/i.test(err);
   const ftpOrHostFail = /FTP|업로드|index\.html|ZIP|호스팅|DNS|연결|ECONN|타임아웃|timeout|로컬 사이트/i.test(err);
-  const reachedNaver = captchaFail
+  const reachedNaver = captchaFail || metaOrAccessFail
     || !!d.naverMeta
     || /네이버|서치|소유확인|메타/i.test(err)
     || (String(d.from || '').includes('deploy-fail') && !!err && !ftpOrHostFail);
   const hasLocalSite = !!(d.siteDir || d.output);
 
   // 1) 캡챠/소유확인만 실패 → 사이트는 이미 올라간 상태 → 수동캡챠
-  if (hasUrl && captchaFail) {
+  if (hasUrl && (captchaFail || metaOrAccessFail)) {
     return {
       next: 'manual-captcha',
       label: '다음: 수동캡챠',
-      reason: 'FTP·사이트 업로드까지는 됐고, 네이버 소유확인 캡챠에서 실패했습니다. 「수동캡챠」만 하면 됩니다.',
+      reason: metaOrAccessFail
+        ? 'FTP·업로드는 됐고, 네이버가 메타/사이트 접근에 실패했습니다. 「수동캡챠」로 이어가세요. (캡챠 오답과 별개)'
+        : 'FTP·사이트 업로드까지는 됐고, 네이버 소유확인 캡챠에서 실패했습니다. 「수동캡챠」만 하면 됩니다.',
       showRedeploy: true,
       showManual: true,
     };
@@ -1935,6 +1941,13 @@ async function checkDothomeHostingForSite(id) {
     if (out?.ok) {
       setSitesIndexProgress(`✔ 호스팅 개통됨: ${ftpId} (${out.ip || ''})`, true);
       alert(`호스팅 개통 확인\n${out.host}\nIP: ${out.ip || '-'}\n\n「다시 배포」를 진행하세요.`);
+    } else if (out?.status === 'dns_error') {
+      setSitesIndexProgress('', false);
+      alert(
+        `DNS 일시 조회 실패\n${out?.host || ftpId}\n\n`
+        + `${out?.tip || out?.error || ''}\n\n`
+        + '미개통으로 확정되지 않았습니다. 잠시 후 다시 확인하거나 배포를 시도해 보세요.',
+      );
     } else {
       setSitesIndexProgress('', false);
       alert(
@@ -2376,11 +2389,18 @@ async function redeployDothomeCreatedSite(id) {
     }
     if (!hostCheck?.ok) {
       setSitesIndexProgress('', false);
-      return alert(
-        `호스팅 미개통 — 다시 배포 불가\n\n${hostCheck?.host || ftpId}\n`
-        + `${hostCheck?.tip || hostCheck?.error || '서브도메인 DNS가 없습니다.'}\n\n`
-        + '「계정 삭제」로 이 계정을 버리고 닷홈 탭에서 새로 가입하세요.',
-      );
+      if (hostCheck?.status === 'dns_error') {
+        if (!confirm(
+          `DNS 일시 조회 실패\n${hostCheck?.host || ftpId}\n${hostCheck?.error || ''}\n\n`
+          + '미개통으로 확정되지 않았습니다. 그래도 다시 배포를 시도할까요?',
+        )) return;
+      } else {
+        return alert(
+          `호스팅 미개통 — 다시 배포 불가\n\n${hostCheck?.host || ftpId}\n`
+          + `${hostCheck?.tip || hostCheck?.error || '서브도메인 DNS가 없습니다.'}\n\n`
+          + '「계정 삭제」로 이 계정을 버리고 닷홈 탭에서 새로 가입하세요.',
+        );
+      }
     }
   } catch (e) {
     setSitesIndexProgress('', false);
@@ -5081,8 +5101,8 @@ async function startDhFullPipeline() {
           dhLog(`📦 성공 ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
         }
         await maybeSendVpnHotkey(okCount, creds);
-      } else if (out?.dnsMissing || /호스팅 미개통|서브도메인 DNS|DNS 없음/i.test(String(out?.error || ''))) {
-        dhLog(`🛑 호스팅 미개통(DNS 없음) — ${ftpId} 계정 폐기, 같은 ZIP으로 재가입`);
+      } else if (out?.dnsMissing === true) {
+        dhLog(`🛑 호스팅 미개통(DNS·FTP 모두 실패) — ${ftpId} 계정 폐기, 같은 ZIP으로 재가입`);
         try {
           const disc = await window.electronAPI.dothomeDiscardAccount({
             ftpId: out.ftpId || ftpId,

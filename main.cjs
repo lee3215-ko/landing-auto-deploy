@@ -2616,9 +2616,21 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
   } catch (e) {
     sendLog(`[ERROR] ${e.message}`);
     const errMsg = e?.message || String(e);
-    const captchaFail = /캡챠|captcha|보안절차|수동캡챠/i.test(errMsg);
-    const dnsMissing = !!(e?.dnsMissing || e?.code === 'DOTHOME_DNS_MISSING')
-      || /ENOTFOUND|서브도메인 DNS|DNS 없음|Non-existent|호스팅 미개통/i.test(errMsg);
+    const failKind = String(e?.failKind || e?.naverStatus || '').toLowerCase();
+    const metaMissing = failKind === 'meta_missing'
+      || /meta_missing|메타태그|메타\s*태그|찾을\s*수\s*없/i.test(errMsg);
+    const accessFail = failKind === 'access_fail'
+      || /access_fail|접근\s*실패|응답을\s*받지|Status\s*0/i.test(errMsg);
+    const captchaFail = !metaMissing && !accessFail && (
+      failKind === 'captcha'
+      || /캡챠|captcha|보안절차|수동캡챠/i.test(errMsg)
+    );
+    const naverStatus = metaMissing ? 'meta_missing'
+      : accessFail ? 'access_fail'
+      : captchaFail ? 'captcha'
+      : 'error';
+    // 미개통 폐기는 명시 플래그만 — ENOTFOUND 문자열 매칭 시 FTP 가능 계정도 폐기되는 오판 방지
+    const dnsMissing = !!(e?.dnsMissing || e?.code === 'DOTHOME_DNS_MISSING');
     const movedZip = e?.movedZip || null;
     const ftpOk = !!e?.ftpOk;
     // FTP까지 성공해 ZIP이 「성공」으로 옮겨진 경우 — 대기열에서 제거
@@ -2660,7 +2672,7 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
           keyword: keyword || account.keyword || '',
           sourcePath: e?.sourcePath || movedZip?.to || zipPath || account.sourcePath || '',
           sourceType: useZip ? 'zip' : (account.sourceType || 'ai'),
-          naverStatus: captchaFail ? 'captcha' : 'error',
+          naverStatus,
           naverError: errMsg,
           naverAccountId: naverAccount?.id || account.naverAccountId || '',
           hostingStatus: account.hostingStatus || '',
@@ -2670,7 +2682,7 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
         if (siteEntry) {
           createdSites = await upsertCreatedSite(siteEntry);
           patchDothomeAccount(config, account.ftpId, {
-            naverStatus: captchaFail ? 'captcha' : 'error',
+            naverStatus,
             naverError: errMsg,
             naverAccountId: naverAccount?.id || account.naverAccountId || '',
             siteDir: e?.siteDir || account.siteDir || '',
@@ -2690,6 +2702,8 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
       dnsMissing,
       discarded,
       ftpId: account.ftpId,
+      naverStatus,
+      failKind: failKind || naverStatus,
     };
   }
 });

@@ -1,12 +1,12 @@
 {
-    "version":  "3.8.91",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.91/LandingAutoDeploy.zip",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.91/LandingAutoDeploy.zip",
+    "version":  "3.8.92",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.92/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.92/LandingAutoDeploy.zip",
     "api_download_url":  null,
     "asset_id":  null,
-    "notes":  "닷홈 FTP: 서브도메인({id}.dothome.co.kr) 우선 접속 + 업로드 ECONNRESET 재시도",
+    "notes":  "닷홈: http 우선 네이버등록, 메타 대기 강화, 캡챠/메타/접근실패 분리 + DNS FTP프로브 + 캡챠 대안시도",
     "download_urls":  [
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.91/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.92/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
