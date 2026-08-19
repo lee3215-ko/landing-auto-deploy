@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.94",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/520445883",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.94/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/520445883",
-    "asset_id":  520445883,
-    "notes":  "닷홈: 완료 후 15~20분 랜덤 대기 설정, 핵심키워드 입력란 제거",
+    "version":  "3.8.95",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.95/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.95/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "닷홈 FTP: 서브도메인 DNS 실패 시에도 112.175.185.136을 공용 211보다 먼저 시도",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/520445883",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.94/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.95/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }

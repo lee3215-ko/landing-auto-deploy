@@ -652,7 +652,8 @@
                 </div>
                 <div class="form-group">
                   <label for="dhFtpHost">FTP 호스트 (비우면 자동)</label>
-                  <input type="text" id="dhFtpHost" value="" placeholder="자동: {FTP아이디}.dothome.co.kr">
+                  <input type="text" id="dhFtpHost" value="" placeholder="자동: 서브도메인 → 112.175.185.136 → 공용FTP">
+                  <p class="bulk-hint">비우면 <code>{FTP아이디}.dothome.co.kr</code> → 호스팅 IP <code>112.175.185.136</code> → 공용 FTP 순으로 시도합니다. 공용(211…)은 마지막입니다.</p>
                 </div>
                 <p class="bulk-hint">저장: Documents\Codex\호스팅\YYYY-MM-DD\DD일_FTP아이디_seo_site<br>
                 <strong>생성 후 배포</strong>: FTP 업로드 → 네이버 서치어드바이저 등록 → HTML 인증 메타 주입 → 소유확인 → 인덱싱 (설정 탭 네이버 계정 필요)</p>
