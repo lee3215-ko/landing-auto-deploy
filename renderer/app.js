@@ -660,7 +660,10 @@ function collectConfig() {
       emailLocal: ($('dhEmailLocal')?.value || '').trim().replace(/@.*$/, ''),
       mailNaverId: ($('dhMailNaverId')?.value || '').trim().replace(/@.*$/, ''),
       mailNaverPw: ($('dhMailNaverPw')?.value || '').trim(),
-      keyword: ($('dhKeyword')?.value || '').trim(),
+      keyword: '',
+      gapAfterDone: !!$('dhGapAfterDone')?.checked,
+      gapMinMin: Math.max(1, parseInt($('dhGapMinMin')?.value || '15', 10) || 15),
+      gapMaxMin: Math.max(1, parseInt($('dhGapMaxMin')?.value || '20', 10) || 20),
       externalUrl: ($('dhExternalUrl')?.value || '').trim(),
       phone: ($('dhPhone')?.value || '010-6338-7124').trim() || '010-6338-7124',
       imageDir: ($('dhImageDir')?.value || '').trim(),
@@ -3428,11 +3431,13 @@ async function load() {
   if ($('dhMailNaverPw')) $('dhMailNaverPw').value = dh.mailNaverPw || '';
   if ($('dhFixedPw')) $('dhFixedPw').value = 'dlwkdrns12435!';
   if ($('dhHostId')) $('dhHostId').value = dh.hostId || '';
-  if ($('dhKeyword')) $('dhKeyword').value = dh.keyword || '';
   if ($('dhExternalUrl')) $('dhExternalUrl').value = dh.externalUrl || '';
   if ($('dhPhone')) $('dhPhone').value = dh.phone || '010-6338-7124';
   if ($('dhImageDir')) $('dhImageDir').value = dh.imageDir || '';
   if ($('dhGoogleVerifyFile')) $('dhGoogleVerifyFile').value = dh.googleVerifyFile || '';
+  if ($('dhGapAfterDone')) $('dhGapAfterDone').checked = dh.gapAfterDone !== false;
+  if ($('dhGapMinMin')) $('dhGapMinMin').value = String(dh.gapMinMin > 0 ? dh.gapMinMin : 15);
+  if ($('dhGapMaxMin')) $('dhGapMaxMin').value = String(dh.gapMaxMin > 0 ? dh.gapMaxMin : 20);
   if ($('dhFtpHost')) {
     const h = dh.ftpHost || '';
     $('dhFtpHost').value = h === 'ftp.dothome.co.kr' ? '' : h;
@@ -4575,20 +4580,24 @@ function removeDhZipPath(zipPath) {
 function dhSeoInputsOrAlert({ allowZipOnly = false } = {}) {
   const zips = dhZipSources();
   const useZip = allowZipOnly && zips.length > 0;
-  const keyword = ($('dhKeyword')?.value || '').trim();
   const imageDir = ($('dhImageDir')?.value || '').trim();
   const cursorApiKey = ($('cursorApiKey')?.value || config.cursorApiKey || '').trim();
+  // AI 모드: ZIP명·이미지 폴더명으로 키워드 대체 (핵심키워드 입력란 제거됨)
+  let keyword = '';
+  if (useZip && zips[0]?.name) {
+    keyword = String(zips[0].name).replace(/\.zip$/i, '').replace(/[_-]+/g, ' ').trim();
+  } else if (imageDir) {
+    keyword = String(imageDir).split(/[/\\]/).filter(Boolean).pop() || '';
+  }
+  if (!keyword) keyword = '닷홈사이트';
+
   if (!useZip) {
-    if (!keyword) {
-      alert('핵심키워드를 입력하세요.\n(또는 위에서 배포용 ZIP을 선택하세요)');
-      return null;
-    }
     if (!imageDir) {
       alert('이미지 폴더(PNG/JPG 8장 이상)를 지정하세요.\n(또는 위에서 배포용 ZIP을 선택하세요)');
       return null;
     }
     if (!cursorApiKey) {
-      alert('Cursor API Key가 필요합니다.\n설정 탭 → Cursor API Key에 입력하세요.\n(ZIP 배포 모드면 키워드·이미지·Cursor 키 없이 진행됩니다)');
+      alert('Cursor API Key가 필요합니다.\n설정 탭 → Cursor API Key에 입력하세요.\n(ZIP 배포 모드면 이미지·Cursor 키 없이 진행됩니다)');
       return null;
     }
   }
@@ -4602,6 +4611,44 @@ function dhSeoInputsOrAlert({ allowZipOnly = false } = {}) {
     cursorApiKey,
     useZip,
   };
+}
+
+/** 호스팅 1건 완료 후 다음 건까지 랜덤 대기 설정 */
+function dhGapConfig() {
+  const enabled = !!$('dhGapAfterDone')?.checked;
+  let minM = Math.max(1, parseInt($('dhGapMinMin')?.value || '15', 10) || 15);
+  let maxM = Math.max(1, parseInt($('dhGapMaxMin')?.value || '20', 10) || 20);
+  if (maxM < minM) {
+    const t = minM;
+    minM = maxM;
+    maxM = t;
+  }
+  return { enabled, minM, maxM };
+}
+
+/** 정지 가능하도록 쪼개서 대기. 다음 건이 없으면 스킵 */
+async function waitDhGapAfterHostingDone({ hasMore = true } = {}) {
+  const gap = dhGapConfig();
+  if (!gap.enabled || !hasMore) return;
+  if (dhStopRequested) return;
+  const minutes = gap.minM + Math.random() * (gap.maxM - gap.minM);
+  const totalMs = Math.round(minutes * 60_000);
+  const endAt = Date.now() + totalMs;
+  dhLog(`⏳ 호스팅 1건 완료 — 다음까지 약 ${minutes.toFixed(1)}분 대기 (${gap.minM}~${gap.maxM}분 랜덤)`);
+  let lastLogAt = Date.now();
+  while (Date.now() < endAt) {
+    if (dhStopRequested) {
+      dhLog('⏹ 대기 중 정지 요청');
+      return;
+    }
+    if (Date.now() - lastLogAt >= 60_000) {
+      lastLogAt = Date.now();
+      const leftSec = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+      dhLog(`⏳ 대기 남음 약 ${Math.ceil(leftSec / 60)}분…`);
+    }
+    await new Promise((r) => setTimeout(r, Math.min(5000, Math.max(0, endAt - Date.now()))));
+  }
+  dhLog('▶ 대기 종료 — 다음 호스팅 진행');
 }
 
 function renderDhAccounts() {
@@ -4954,6 +5001,8 @@ async function startDhGenerate() {
       if (out?.ok) {
         okCount += 1;
         dhLog(`✔ 가입 ${i + 1} 완료`);
+        const hasMore = i + 1 < count && !dhStopRequested;
+        await waitDhGapAfterHostingDone({ hasMore });
       } else {
         dhLog(`✖ ${out?.error || '가입 실패'}`);
         if (count === 1) alert(out?.error || '가입 실패');
@@ -5101,6 +5150,10 @@ async function startDhFullPipeline() {
           dhLog(`📦 성공 ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
         }
         await maybeSendVpnHotkey(okCount, creds);
+        const hasMore = zipMode
+          ? dhZipSources().length > 0
+          : (i + 1 < count);
+        await waitDhGapAfterHostingDone({ hasMore: hasMore && !dhStopRequested });
       } else if (out?.dnsMissing === true) {
         dhLog(`🛑 호스팅 미개통(DNS·FTP 모두 실패) — ${ftpId} 계정 폐기, 같은 ZIP으로 재가입`);
         try {

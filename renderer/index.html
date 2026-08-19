@@ -548,7 +548,7 @@
                   <span id="dhZipLabel" style="font-size:13px;color:var(--text-muted);"></span>
                 </div>
                 <p class="bulk-hint" id="dhZipInfo" style="display:none;"></p>
-                <p class="bulk-hint">설정 탭과 동일하게 ZIP을 고르면 그 사이트를 FTP로 올립니다. <strong>ZIP을 비우면</strong> 아래 키워드·이미지로 AI SEO 사이트를 생성합니다.</p>
+                <p class="bulk-hint">설정 탭과 동일하게 ZIP을 고르면 그 사이트를 FTP로 올립니다. <strong>ZIP을 비우면</strong> 아래 이미지·Cursor로 AI SEO 사이트를 생성합니다.</p>
               </div>
 
               <div class="form-group">
@@ -576,12 +576,6 @@
               </div>
 
               <div class="form-group">
-                <label for="dhKeyword">핵심키워드</label>
-                <input type="text" id="dhKeyword" placeholder="예: 신용카드현금화">
-                <p class="bulk-hint">Cursor API로 관련키워드 5개 + 페이지 본문을 매번 새로 작성합니다.</p>
-              </div>
-
-              <div class="form-group">
                 <label for="dhPhone">전화번호</label>
                 <input type="text" id="dhPhone" value="010-6338-7124" placeholder="010-6338-7124">
               </div>
@@ -590,6 +584,20 @@
                 <label for="dhSignupCount">회원가입 / 풀파이프라인 개수</label>
                 <input type="number" id="dhSignupCount" min="1" max="30" value="1">
                 <p class="bulk-hint">지정한 횟수만큼 반복합니다. (가입만 / 가입→생성→배포)</p>
+              </div>
+
+              <div class="form-group">
+                <label class="check-row" style="display:flex;align-items:center;gap:8px;font-weight:600;">
+                  <input type="checkbox" id="dhGapAfterDone" checked>
+                  호스팅 1건 완료 후 대기
+                </label>
+                <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;">
+                  <input type="number" id="dhGapMinMin" min="1" max="180" value="15" style="width:72px;" title="최소(분)">
+                  <span style="color:var(--text-muted);">~</span>
+                  <input type="number" id="dhGapMaxMin" min="1" max="180" value="20" style="width:72px;" title="최대(분)">
+                  <span style="color:var(--text-muted);font-size:13px;">분 랜덤</span>
+                </div>
+                <p class="bulk-hint">한 건이 끝나면 다음 건 전에 15~20분(설정값) 사이 랜덤으로 쉽니다. 정지 버튼으로 대기 중에도 중단할 수 있습니다.</p>
               </div>
 
               <div class="form-group">
