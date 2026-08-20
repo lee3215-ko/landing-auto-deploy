@@ -2631,6 +2631,8 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
       : 'error';
     // 미개통 폐기는 명시 플래그만 — ENOTFOUND 문자열 매칭 시 FTP 가능 계정도 폐기되는 오판 방지
     const dnsMissing = !!(e?.dnsMissing || e?.code === 'DOTHOME_DNS_MISSING');
+    const zipMissing = !!(e?.zipMissing || e?.code === 'ZIP_MISSING'
+      || /ZIP 파일이 없습니다/i.test(errMsg));
     const movedZip = e?.movedZip || null;
     const ftpOk = !!e?.ftpOk;
     // FTP까지 성공해 ZIP이 「성공」으로 옮겨진 경우 — 대기열에서 제거
@@ -2700,6 +2702,7 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
       deploySources,
       ftpOk,
       dnsMissing,
+      zipMissing,
       discarded,
       ftpId: account.ftpId,
       naverStatus,

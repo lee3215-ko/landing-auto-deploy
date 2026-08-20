@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.95",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/520550827",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.95/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/520550827",
-    "asset_id":  520550827,
-    "notes":  "닷홈 FTP: 서브도메인 DNS 실패 시에도 112.175.185.136을 공용 211보다 먼저 시도",
+    "version":  "3.8.96",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.96/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.96/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "닷홈 ZIP: 메타선수집+FTP1회 · sitemap/canonical URL반영 · 없는ZIP가입낭비방지",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/520550827",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.95/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.96/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }

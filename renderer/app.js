@@ -4566,8 +4566,8 @@ function clearDhZips() {
 function takeNextDhZip() {
   const zips = dhZipSources();
   if (!zips.length) return null;
-  const next = zips[0];
-  return next;
+  // peek only — 성공/실패(ZIP없음) 시 removeDhZipPath로 제거
+  return zips[0];
 }
 
 function removeDhZipPath(zipPath) {
@@ -4575,6 +4575,33 @@ function removeDhZipPath(zipPath) {
   if (!key) return;
   dhDeploySources = dhDeploySources.filter((s) => String(s.path || '').toLowerCase() !== key);
   updateDhZipUi();
+}
+
+/** 디스크에 없는 ZIP은 큐에서 빼고 null. 가입 전에 호출해 계정 낭비 방지 */
+async function peekValidDhZipOrDrop() {
+  while (true) {
+    const zip = takeNextDhZip();
+    if (!zip?.path) return null;
+    let exists = false;
+    try {
+      const st = await window.electronAPI.getFileStat(zip.path);
+      exists = !!(st && st.isFile);
+    } catch {
+      exists = false;
+    }
+    if (exists) return zip;
+    dhLog(`⚠ ZIP 없음(대기열 제거): ${zip.name || zip.path}`);
+    removeDhZipPath(zip.path);
+    try {
+      const cfg = collectConfig();
+      if (Array.isArray(cfg?.dothome?.deploySources)) {
+        cfg.dothome.deploySources = cfg.dothome.deploySources.filter(
+          (s) => String(s?.path || '').toLowerCase() !== String(zip.path).toLowerCase(),
+        );
+        await window.electronAPI.saveConfig(cfg);
+      }
+    } catch { /* ignore */ }
+  }
 }
 
 function dhSeoInputsOrAlert({ allowZipOnly = false } = {}) {
@@ -4876,7 +4903,7 @@ async function startDhSeoGenerate(ftpId) {
 
 async function startDhDeploy(ftpId, generate = true) {
   if (dhBusy) return;
-  const zip = takeNextDhZip();
+  const zip = await peekValidDhZipOrDrop();
   const inputs = dhSeoInputsOrAlert({ allowZipOnly: !!zip });
   if (!inputs) return;
   const accounts = Array.isArray(config.dothome?.accounts) ? config.dothome.accounts : [];
@@ -4928,6 +4955,10 @@ async function startDhDeploy(ftpId, generate = true) {
       alert(`배포 완료\n${out.siteUrl || ''}${naverLine}`);
     } else {
       dhLog(`✖ ${out?.error || '배포 실패'}`);
+      if (out?.zipMissing || /ZIP 파일이 없습니다/i.test(String(out?.error || ''))) {
+        dhLog('🗑 없는 ZIP — 대기열에서 제거');
+        if (zip?.path) removeDhZipPath(zip.path);
+      }
       if (out?.movedZip?.to && !out.movedZip.skipped) {
         dhLog(`📦 FTP는 성공 — ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
       }
@@ -5055,12 +5086,13 @@ async function startDhFullPipeline() {
         dhLog(`⏹ 중단 (${i}/${count})`);
         break;
       }
-      const zip = zipMode ? takeNextDhZip() : null;
+      const zip = zipMode ? await peekValidDhZipOrDrop() : null;
       if (zipMode && !zip) {
-        dhLog('⏹ 남은 ZIP이 없습니다.');
+        dhLog('⏹ 남은 ZIP이 없습니다. (없거나 경로 무효)');
         break;
       }
       dhLog(`═══ 풀파이프라인 ${i + 1}/${count}${zip ? ` · ${zip.name}` : ''} ═══`);
+      if (zip?.path) dhLog(`ZIP 경로 확인 OK: ${zip.path}`);
       await window.electronAPI.saveConfig(collectConfig());
 
       let signup = await window.electronAPI.dothomeSignup({
@@ -5178,6 +5210,10 @@ async function startDhFullPipeline() {
         }
       } else {
         dhLog(`✖ 배포 실패: ${out?.error || ''}`);
+        if (out?.zipMissing || /ZIP 파일이 없습니다/i.test(String(out?.error || ''))) {
+          dhLog('🗑 없는 ZIP — 대기열에서 제거 (같은 파일로 재가입하지 않음)');
+          if (zip?.path) removeDhZipPath(zip.path);
+        }
         if (out?.movedZip?.to && !out.movedZip.skipped) {
           dhLog(`📦 FTP는 성공 — ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
         }
