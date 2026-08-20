@@ -1,11 +1,12 @@
 {
     "version":  "3.8.97",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.97/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/521872875",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.97/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/521872875",
+    "asset_id":  521872875,
     "notes":  "ZIP __SITE_URL__ 플레이스홀더→닷홈주소 치환 · 수집 URL 오경로 방지",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/521872875",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.97/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
