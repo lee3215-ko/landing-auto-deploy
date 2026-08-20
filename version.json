@@ -1,11 +1,12 @@
 {
     "version":  "3.8.98",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.98/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/521885386",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.98/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/521885386",
+    "asset_id":  521885386,
     "notes":  "성공폴더 ZIP=업로드본(주소치환) 저장 · Netlify URL도 닷홈으로 치환",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/521885386",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.98/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
