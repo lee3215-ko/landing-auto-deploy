@@ -82,6 +82,7 @@ const PAGE_META = {
   dothome: { title: '닷홈 호스팅 생성', subtitle: '닷홈 회원가입 자동화 · 이후 FTP/사이트 배포' },
   'url-crawl': { title: 'URL 수집', subtitle: '하위 URL 수집 후 네이버 웹페이지 수집 일괄 신청' },
   sites: { title: '생성 사이트', subtitle: 'Netlify · Cloudflare Pages · 닷홈 생성 목록 (생성일 포함)' },
+  keywords: { title: '통합키워드결과', subtitle: '날짜별 타이틀·H1 키워드 · 제작 방식(ZIP/AI) · 생성 건수' },
   results: { title: '배포/등록 결과', subtitle: '저장된 배포 URL 및 네이버 등록 현황' },
   logs: { title: '로그', subtitle: '탭별 실행 로그 · 필터로 구분해서 보기' },
 };
@@ -789,6 +790,74 @@ function updateResultsBadge(results) {
   badge.textContent = String(n);
 }
 
+function pathBasename(p) {
+  const s = String(p || '').trim();
+  if (!s) return '';
+  return s.split(/[/\\]/).pop() || '';
+}
+
+/** 설정에 저장된 네이버 계정에서 ID·비밀번호 조회 */
+function lookupNaverCredentials(naverAccountId) {
+  const id = String(naverAccountId || '').trim();
+  if (!id) return { id: '', pw: '' };
+  const acc = (config.naverAccounts || []).find((a) => String(a?.id || '').trim() === id);
+  return { id, pw: String(acc?.pw || '') };
+}
+
+function siteSourceInfo(siteOrRow) {
+  const d = siteOrRow?.detail || siteOrRow || {};
+  const zipName = pathBasename(d.sourcePath);
+  const t = String(d.sourceType || '').toLowerCase();
+  const from = String(d.from || '').toLowerCase();
+  if (t === 'zip' || zipName) {
+    return { kind: 'zip', label: 'ZIP', zipName };
+  }
+  if (/^(ai|seo|kkang|generate|generated)$/i.test(t) || /kkang|seo|ai/.test(from)) {
+    return { kind: 'ai', label: 'AI 생성', zipName: '' };
+  }
+  if (t) return { kind: 'other', label: t, zipName };
+  return { kind: 'unknown', label: '', zipName };
+}
+
+/** 네이버 ID/PW · ZIP명 강조 블록 (복사 버튼 포함) */
+function deployCredsHtml({ naverId = '', naverPw = '', zipName = '', sourceLabel = '' } = {}) {
+  const id = String(naverId || '').trim();
+  const pw = String(naverPw || '').trim();
+  const zip = String(zipName || '').trim();
+  const src = String(sourceLabel || '').trim();
+  if (!id && !pw && !zip && !src) {
+    return '<div class="deploy-creds deploy-creds-empty">네이버 계정 · ZIP 정보 없음</div>';
+  }
+  const copyBtn = (text, tip) => {
+    const t = String(text || '').trim();
+    if (!t) return '';
+    return `<button type="button" class="deploy-cred-copy" data-copy-enc="${encodeURIComponent(t)}" title="${escapeHtml(tip || '복사')}">복사</button>`;
+  };
+  const rows = [];
+  rows.push(`
+    <div class="deploy-cred-row deploy-cred-naver">
+      <span class="deploy-cred-label">네이버</span>
+      <span class="deploy-cred-value">
+        <span class="deploy-cred-id" title="${escapeHtml(id || '-')}">${escapeHtml(id || '(아이디 없음)')}</span>
+        <span class="deploy-cred-sep">/</span>
+        <span class="deploy-cred-pw" title="${escapeHtml(pw || '-')}">${escapeHtml(pw || '(비밀번호 미등록)')}</span>
+        ${copyBtn(id && pw ? `${id} / ${pw}` : (id || pw), '아이디·비밀번호 복사')}
+      </span>
+    </div>`);
+  {
+    const zipDisplay = zip
+      || (src && /ai|생성/i.test(src) ? '(AI 생성 · ZIP 없음)' : (src ? `(${src})` : '(파일명 없음)'));
+    rows.push(`
+    <div class="deploy-cred-row deploy-cred-zip">
+      <span class="deploy-cred-label">${escapeHtml(src || 'ZIP')}</span>
+      <span class="deploy-cred-value deploy-cred-zipname" title="${escapeHtml(zip || zipDisplay)}">${escapeHtml(zipDisplay)}
+        ${copyBtn(zip || zipDisplay, 'ZIP명 복사')}
+      </span>
+    </div>`);
+  }
+  return `<div class="deploy-creds">${rows.join('')}</div>`;
+}
+
 function renderResultsTable(results) {
   const list = $('resultsList');
   list.innerHTML = '';
@@ -835,8 +904,12 @@ function renderResultsTable(results) {
     const errHint = r.popupMessage || r.error || '';
     const statusLabel = /메타미검출|메타\s*태그/i.test(errHint) ? '메타미검출' : st.label;
     const url = (r.url || '').trim();
+    const naverCred = lookupNaverCredentials(r.naverAccountId);
+    const zipName = pathBasename(r.sourcePath);
+    const sourceLabel = String(r.sourceType || '').toLowerCase() === 'zip' || zipName
+      ? 'ZIP'
+      : (r.sourceType ? String(r.sourceType) : '');
     const metaBits = [
-      r.naverAccountId ? `네이버 ${r.naverAccountId}` : '',
       r.netlifyAccountId ? `Netlify ${r.netlifyAccountId}` : '',
       r.registeredAt ? formatDate(r.registeredAt) : '',
     ].filter(Boolean);
@@ -857,6 +930,7 @@ function renderResultsTable(results) {
             <a href="${escapeHtml(url)}" target="_blank" rel="noopener" title="${escapeHtml(url)}">${escapeHtml(url)}</a>
             <button class="btn btn-ghost btn-sm url-copy-btn" type="button" data-action="copy-url" data-url="${escapeHtml(url)}" title="URL 복사">복사</button>
           </div>` : '<div class="site-card-url muted">URL 없음</div>'}
+          ${deployCredsHtml({ naverId: naverCred.id, naverPw: naverCred.pw, zipName, sourceLabel })}
           <div class="site-card-meta">
             ${metaBits.map((b) => `<span title="${escapeHtml(b)}">${escapeHtml(b)}</span>`).join('')}
           </div>
@@ -882,8 +956,19 @@ function renderResultsTable(results) {
   }
 }
 
-async function copyToClipboard(text, okMsg, { sitesTab = false } = {}) {
-  if (!text) return alert('복사할 URL이 없습니다.');
+async function copyDeployCredFromButton(btn, { sitesTab = false } = {}) {
+  if (!btn) return false;
+  let text = '';
+  try {
+    text = btn.dataset.copyEnc ? decodeURIComponent(btn.dataset.copyEnc) : (btn.dataset.copyText || '');
+  } catch {
+    text = btn.dataset.copyText || '';
+  }
+  return copyToClipboard(text, '📋 복사됨', { sitesTab, emptyMsg: '복사할 내용이 없습니다.' });
+}
+
+async function copyToClipboard(text, okMsg, { sitesTab = false, emptyMsg = '복사할 URL이 없습니다.' } = {}) {
+  if (!text) return alert(emptyMsg);
   try {
     if (window.electronAPI?.clipboardWrite) {
       await window.electronAPI.clipboardWrite(text);
@@ -955,12 +1040,17 @@ function filterResults() {
   }
   const filtered = savedResults
     .map((r, originalIndex) => ({ ...r, originalIndex }))
-    .filter(r =>
-      (r.url || '').toLowerCase().includes(q) ||
-      (r.name || '').toLowerCase().includes(q) ||
-      (r.netlifyAccountId || '').toLowerCase().includes(q) ||
-      (r.naverAccountId || '').toLowerCase().includes(q)
-    );
+    .filter((r) => {
+      const cred = lookupNaverCredentials(r.naverAccountId);
+      const zip = pathBasename(r.sourcePath);
+      return (r.url || '').toLowerCase().includes(q)
+        || (r.name || '').toLowerCase().includes(q)
+        || (r.netlifyAccountId || '').toLowerCase().includes(q)
+        || (r.naverAccountId || '').toLowerCase().includes(q)
+        || (cred.pw || '').toLowerCase().includes(q)
+        || zip.toLowerCase().includes(q)
+        || (r.sourceType || '').toLowerCase().includes(q);
+    });
   renderResultsTable(filtered);
 }
 
@@ -1162,6 +1252,7 @@ function switchTab(name) {
   $('dothomePanel')?.classList.toggle('active', name === 'dothome');
   $('urlCrawlPanel').classList.toggle('active', name === 'url-crawl');
   $('sitesPanel')?.classList.toggle('active', name === 'sites');
+  $('keywordsPanel')?.classList.toggle('active', name === 'keywords');
   $('resultsPanel').classList.toggle('active', name === 'results');
   $('logsPanel')?.classList.toggle('active', name === 'logs');
   $('nav-config').classList.toggle('active', name === 'config');
@@ -1170,6 +1261,7 @@ function switchTab(name) {
   $('nav-dothome')?.classList.toggle('active', name === 'dothome');
   $('nav-url-crawl').classList.toggle('active', name === 'url-crawl');
   $('nav-sites')?.classList.toggle('active', name === 'sites');
+  $('nav-keywords')?.classList.toggle('active', name === 'keywords');
   $('nav-results').classList.toggle('active', name === 'results');
   $('nav-logs')?.classList.toggle('active', name === 'logs');
   const meta = PAGE_META[name] || PAGE_META.config;
@@ -1187,6 +1279,13 @@ function switchTab(name) {
   updateNaverLoginButton();
   if (name === 'results') loadSavedResults();
   if (name === 'sites') loadCreatedSites();
+  if (name === 'keywords') {
+    if (!createdSites.length) {
+      loadCreatedSites(false).then(() => renderKeywordsResults());
+    } else {
+      renderKeywordsResults();
+    }
+  }
   if (name === 'seo-gen' && !seoKeywordsLoaded) loadSeoKeywords();
   if (name === 'logs') {
     const w = $('logsWindow');
@@ -1645,8 +1744,12 @@ function siteDetailHtml(site) {
     if (next.next !== 'done' && next.label) bits.push(next.label);
     if (d.hostId) bits.push(`회원 ${d.hostId}`);
     if (d.ftpId) bits.push(`FTP ${d.ftpId}`);
-    if (d.keyword) bits.push(d.keyword);
-    if (d.sourceType) bits.push(d.sourceType === 'zip' ? 'ZIP' : d.sourceType);
+    if (d.title) bits.push(`타이틀 ${d.title}`);
+    else if (d.keyword) bits.push(d.keyword);
+    if (d.h1) bits.push(`H1 ${d.h1}`);
+    const zipNm = pathBasename(d.sourcePath);
+    if (zipNm) bits.push(`ZIP ${zipNm}`);
+    else if (d.sourceType) bits.push(d.sourceType === 'zip' ? 'ZIP' : d.sourceType);
     if (isSiteNaverDone(site)) bits.push('네이버 완료');
     else if (d.naverError) bits.push(`원인: ${String(d.naverError).slice(0, 48)}`);
     else if (d.naverStatus) bits.push(`네이버 ${d.naverStatus}`);
@@ -1695,10 +1798,12 @@ function getFilteredCreatedSites() {
     .filter((s) => {
       if (!q) return true;
       const d = s.detail || {};
+      const cred = lookupNaverCredentials(d.naverAccountId);
+      const zip = pathBasename(d.sourcePath);
       const hay = [
         s.name, s.url, s.status, s.provider,
-        d.brand, d.keyword, d.ftpId, d.hostId, d.email, d.notes, d.phone,
-        d.naverAccountId, d.netlifyAccountId,
+        d.brand, d.keyword, d.title, d.h1, d.ftpId, d.hostId, d.email, d.notes, d.phone,
+        d.naverAccountId, d.netlifyAccountId, cred.pw, zip, d.sourceType, d.sourcePath,
       ].join(' ').toLowerCase();
       return hay.includes(q);
     })
@@ -1836,8 +1941,9 @@ function renderCreatedSites() {
       }
     }
     const detailText = siteDetailHtml(s);
+    const naverCred = lookupNaverCredentials(accounts.naverId || s.detail?.naverAccountId);
+    const srcInfo = siteSourceInfo(s);
     const metaBits = [
-      accounts.naverId ? `네이버 ${accounts.naverId}` : '',
       accounts.netlifyId ? `Netlify ${accounts.netlifyId}` : '',
       s.createdAt ? formatDate(s.createdAt) : '',
     ].filter(Boolean);
@@ -1861,6 +1967,12 @@ function renderCreatedSites() {
             <a href="${escapeHtml(url)}" target="_blank" rel="noopener" title="${escapeHtml(url)}">${escapeHtml(url)}</a>
             <button class="btn btn-ghost btn-sm url-copy-btn" type="button" data-sites-action="copy" data-url-enc="${encodeURIComponent(url)}">복사</button>
           </div>` : '<div class="site-card-url muted">URL 없음</div>'}
+          ${deployCredsHtml({
+            naverId: naverCred.id,
+            naverPw: naverCred.pw,
+            zipName: srcInfo.zipName,
+            sourceLabel: srcInfo.label,
+          })}
           <div class="site-card-meta">
             ${metaBits.map((b) => `<span title="${escapeHtml(b)}">${escapeHtml(b)}</span>`).join('')}
           </div>
@@ -1974,15 +2086,161 @@ async function loadCreatedSites(forceSync = true) {
     createdSites = [];
   }
   renderCreatedSites();
+  if (currentTabName === 'keywords') renderKeywordsResults();
   // 미완료 닷홈 건 DNS 자동 검사 → 호스팅 미개통이면 UI에 표시
   try {
     const changed = await refreshDothomeHostingChecks(createdSites);
-    if (changed) renderCreatedSites();
+    if (changed) {
+      renderCreatedSites();
+      if (currentTabName === 'keywords') renderKeywordsResults();
+    }
   } catch { /* ignore */ }
 }
 
 function filterCreatedSites() {
   renderCreatedSites();
+}
+
+function dateKeyLocal(iso) {
+  const d = new Date(iso || 0);
+  if (Number.isNaN(d.getTime()) || !iso) return '날짜 미상';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function collectKeywordEntries() {
+  return createdSites
+    .filter(isCreatedSitesRow)
+    .map((s) => {
+      const d = s.detail || {};
+      const src = siteSourceInfo(s);
+      const title = String(d.title || '').trim();
+      const h1 = String(d.h1 || '').trim();
+      const keyword = String(d.keyword || title || h1 || '').trim();
+      return {
+        id: s.id,
+        date: dateKeyLocal(s.createdAt || s.updatedAt || d.deployedAt),
+        createdAt: s.createdAt || s.updatedAt || d.deployedAt || '',
+        title,
+        h1,
+        keyword,
+        sourceLabel: src.label || (src.zipName ? 'ZIP' : '-'),
+        sourceKind: src.kind,
+        zipName: src.zipName,
+        provider: s.provider,
+        url: s.url || '',
+        name: s.name || '',
+      };
+    })
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+      const ta = new Date(a.createdAt || 0).getTime();
+      const tb = new Date(b.createdAt || 0).getTime();
+      return tb - ta;
+    });
+}
+
+function getFilteredKeywordEntries() {
+  const q = ($('keywordsSearch')?.value || '').trim().toLowerCase();
+  const rows = collectKeywordEntries();
+  if (!q) return rows;
+  return rows.filter((r) => {
+    const hay = [
+      r.title, r.h1, r.keyword, r.zipName, r.sourceLabel,
+      r.name, r.url, r.provider, r.date,
+    ].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+}
+
+function updateKeywordsStats(rows) {
+  const dates = new Set(rows.map((r) => r.date));
+  const zipN = rows.filter((r) => r.sourceKind === 'zip').length;
+  const aiN = rows.length - zipN;
+  if ($('kwStatTotal')) $('kwStatTotal').textContent = String(rows.length);
+  if ($('kwStatDays')) $('kwStatDays').textContent = String(dates.size);
+  if ($('kwStatZip')) $('kwStatZip').textContent = String(zipN);
+  if ($('kwStatAi')) $('kwStatAi').textContent = String(aiN);
+}
+
+function renderKeywordsResults() {
+  const list = $('keywordsList');
+  if (!list) return;
+  const rows = getFilteredKeywordEntries();
+  updateKeywordsStats(rows);
+  if (!rows.length) {
+    list.innerHTML = '<p class="empty-hint">표시할 키워드 결과가 없습니다. 생성 사이트에서 배포한 뒤 「새로고침」하세요.</p>';
+    return;
+  }
+
+  const byDate = new Map();
+  for (const r of rows) {
+    if (!byDate.has(r.date)) byDate.set(r.date, []);
+    byDate.get(r.date).push(r);
+  }
+
+  const frag = document.createDocumentFragment();
+  for (const [date, items] of byDate) {
+    const zipN = items.filter((r) => r.sourceKind === 'zip').length;
+    const aiN = items.length - zipN;
+    const section = document.createElement('section');
+    section.className = 'kw-day-group';
+    section.innerHTML = `
+      <div class="kw-day-header">
+        <strong class="kw-day-date">${escapeHtml(date)}</strong>
+        <span class="kw-day-count">총 <b>${items.length}</b>개</span>
+        <span class="kw-day-pill zip">ZIP ${zipN}</span>
+        <span class="kw-day-pill ai">AI/기타 ${aiN}</span>
+      </div>`;
+    const table = document.createElement('div');
+    table.className = 'kw-table';
+    table.innerHTML = `
+      <div class="kw-table-head">
+        <span>타이틀</span>
+        <span>H1</span>
+        <span>제작</span>
+        <span>ZIP / 출처</span>
+      </div>`;
+    for (const r of items) {
+      const row = document.createElement('div');
+      row.className = 'kw-table-row';
+      const titleShow = r.title || r.keyword || '(타이틀 없음)';
+      const h1Show = r.h1 || '(H1 없음)';
+      row.innerHTML = `
+        <span class="kw-col-title" title="${escapeHtml(titleShow)}">${escapeHtml(titleShow)}</span>
+        <span class="kw-col-h1" title="${escapeHtml(h1Show)}">${escapeHtml(h1Show)}</span>
+        <span class="kw-col-src"><span class="kw-src-pill ${escapeHtml(r.sourceKind)}">${escapeHtml(r.sourceLabel || '-')}</span></span>
+        <span class="kw-col-zip" title="${escapeHtml(r.zipName || r.name || '')}">${escapeHtml(r.zipName || r.name || '-')}</span>`;
+      table.appendChild(row);
+    }
+    section.appendChild(table);
+    frag.appendChild(section);
+  }
+  list.innerHTML = '';
+  list.appendChild(frag);
+}
+
+async function copyKeywordsSummary() {
+  const rows = getFilteredKeywordEntries();
+  if (!rows.length) return alert('복사할 키워드가 없습니다.');
+  const byDate = new Map();
+  for (const r of rows) {
+    if (!byDate.has(r.date)) byDate.set(r.date, []);
+    byDate.get(r.date).push(r);
+  }
+  const lines = [];
+  for (const [date, items] of byDate) {
+    lines.push(`# ${date} (${items.length}개)`);
+    for (const r of items) {
+      lines.push(`- 타이틀: ${r.title || r.keyword || '-'}`);
+      lines.push(`  H1: ${r.h1 || '-'}`);
+      lines.push(`  제작: ${r.sourceLabel || '-'}${r.zipName ? ` · ${r.zipName}` : ''}`);
+    }
+    lines.push('');
+  }
+  await copyToClipboard(lines.join('\n').trim(), `📋 키워드 ${rows.length}건 복사됨`, { sitesTab: true });
 }
 
 async function deleteCreatedSite(id, { skipConfirm = false } = {}) {
@@ -1992,6 +2250,7 @@ async function deleteCreatedSite(id, { skipConfirm = false } = {}) {
   }
   createdSites = (await window.electronAPI.deleteCreatedSite(id)) || [];
   renderCreatedSites();
+  if (currentTabName === 'keywords') renderKeywordsResults();
   return true;
 }
 
@@ -2069,6 +2328,7 @@ async function clearCreatedSites() {
   if (!confirm(`생성 사이트 ${createdSites.length}건을 목록에서 모두 삭제할까요?\n(실제 호스팅/배포는 삭제되지 않습니다)`)) return;
   createdSites = (await window.electronAPI.saveCreatedSites([])) || [];
   renderCreatedSites();
+  if (currentTabName === 'keywords') renderKeywordsResults();
 }
 
 async function copyCreatedSiteUrls() {
@@ -3510,7 +3770,19 @@ function setupEvents() {
     });
     renderCreatedSites();
   });
+  $('keywordsSearch')?.addEventListener('input', () => renderKeywordsResults());
+  $('keywordsRefreshBtn')?.addEventListener('click', async () => {
+    await loadCreatedSites(true);
+    renderKeywordsResults();
+  });
+  $('keywordsCopyBtn')?.addEventListener('click', () => copyKeywordsSummary());
   $('sitesList')?.addEventListener('click', async (e) => {
+    const credBtn = e.target.closest('.deploy-cred-copy');
+    if (credBtn) {
+      e.preventDefault();
+      await copyDeployCredFromButton(credBtn, { sitesTab: true });
+      return;
+    }
     const btn = e.target.closest('[data-sites-action]');
     if (!btn) return;
     const action = btn.dataset.sitesAction;
@@ -3708,6 +3980,12 @@ function setupEvents() {
   });
 
   $('resultsList').addEventListener('click', (e) => {
+    const credBtn = e.target.closest('.deploy-cred-copy');
+    if (credBtn) {
+      e.preventDefault();
+      copyDeployCredFromButton(credBtn);
+      return;
+    }
     const t = e.target.closest('[data-action]');
     if (!t) return;
     if (t.dataset.action === 'copy-url') {
