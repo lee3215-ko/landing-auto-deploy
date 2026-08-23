@@ -1330,48 +1330,42 @@ textarea {
   color: var(--accent, #1976d2);
 }
 
-/* 네이버 ID/PW · ZIP 강조 */
+/* 네이버 ID/PW · ZIP (컴팩트) */
 .deploy-creds {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 6px 0 8px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  border: 2px solid rgba(250, 204, 21, 0.45);
-  background: linear-gradient(145deg, rgba(250, 204, 21, 0.14), rgba(34, 197, 94, 0.1) 55%, rgba(14, 165, 233, 0.08));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  gap: 2px;
+  margin: 2px 0 4px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .deploy-creds-empty {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-dim);
   border-style: dashed;
-  border-color: var(--border);
-  border-width: 1px;
   background: transparent;
-  box-shadow: none;
 }
 
 .deploy-cred-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: baseline;
+  gap: 8px;
   min-width: 0;
 }
 
 .deploy-cred-label {
   flex-shrink: 0;
-  min-width: 52px;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: #fde047;
-  text-transform: uppercase;
+  min-width: 40px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
 }
 
 .deploy-cred-zip .deploy-cred-label {
-  color: #7dd3fc;
+  color: var(--text-dim);
 }
 
 .deploy-cred-value {
@@ -1379,19 +1373,18 @@ textarea {
   min-width: 0;
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 8px;
+  align-items: baseline;
+  gap: 4px;
   font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
-  font-size: 15px;
-  font-weight: 800;
-  line-height: 1.4;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
   color: var(--text);
   word-break: break-all;
 }
 
 .deploy-cred-id {
-  color: #fef08a;
-  font-size: 16px;
+  color: var(--text);
 }
 
 .deploy-cred-sep {
@@ -1400,33 +1393,12 @@ textarea {
 }
 
 .deploy-cred-pw {
-  color: #fb7185;
-  font-size: 16px;
+  color: var(--text);
 }
 
 .deploy-cred-zipname {
-  color: #bae6fd;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.deploy-cred-copy {
-  flex-shrink: 0;
-  margin-left: auto;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 700;
-  font-family: inherit;
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.deploy-cred-copy:hover {
-  background: rgba(250, 204, 21, 0.2);
-  border-color: rgba(250, 204, 21, 0.5);
+  color: var(--text-dim);
+  font-weight: 500;
 }
 
 /* 통합키워드결과 */

@@ -38,12 +38,12 @@
           <span class="icon">🗂️</span> 생성 사이트
           <span class="nav-badge" id="sitesBadge" hidden>0</span>
         </button>
-        <button class="nav-btn" id="nav-keywords" type="button" data-tab="keywords">
-          <span class="icon">📊</span> 통합키워드결과
-        </button>
         <button class="nav-btn" id="nav-results" type="button" data-tab="results">
           <span class="icon">📋</span> 배포 결과
           <span class="nav-badge" id="resultsBadge" hidden>0</span>
+        </button>
+        <button class="nav-btn" id="nav-keywords" type="button" data-tab="keywords">
+          <span class="icon">📊</span> 통합키워드결과
         </button>
         <button class="nav-btn" id="nav-logs" type="button" data-tab="logs">
           <span class="icon">📜</span> 로그
@@ -737,40 +737,6 @@
           </div>
         </div>
 
-        <!-- 통합 키워드 결과 -->
-        <div id="keywordsPanel" class="panel">
-          <div class="stats-row" id="keywordsStatsRow">
-            <div class="stat-card total">
-              <div class="value" id="kwStatTotal">0</div>
-              <div class="label">전체 사이트</div>
-            </div>
-            <div class="stat-card success">
-              <div class="value" id="kwStatDays">0</div>
-              <div class="label">날짜 수</div>
-            </div>
-            <div class="stat-card indexed">
-              <div class="value" id="kwStatZip">0</div>
-              <div class="label">ZIP</div>
-            </div>
-            <div class="stat-card manual">
-              <div class="value" id="kwStatAi">0</div>
-              <div class="label">AI/기타</div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="results-toolbar sites-toolbar">
-              <div class="form-group" style="margin:0;min-width:200px;flex:1;">
-                <label for="keywordsSearch">검색</label>
-                <input type="text" id="keywordsSearch" placeholder="타이틀, H1, 키워드, ZIP명…">
-              </div>
-              <button class="btn btn-ghost btn-sm" id="keywordsRefreshBtn" type="button">새로고침</button>
-              <button class="btn btn-ghost btn-sm" id="keywordsCopyBtn" type="button">키워드 복사</button>
-            </div>
-            <p class="bulk-hint">생성 사이트 기준으로 <strong>날짜별</strong> 타이틀·H1 키워드와 제작 방식(ZIP/AI)을 모읍니다.</p>
-            <div id="keywordsList"></div>
-          </div>
-        </div>
-
         <!-- 결과 패널 -->
         <div id="resultsPanel" class="panel">
           <div class="stats-row" id="statsRow">
@@ -810,6 +776,40 @@
             <p class="bulk-hint" id="indexCheckHint">배포 URL을 네이버 <code>site:URL</code> 검색으로 확인합니다. <strong>네이버 로그인·계정 불필요</strong> (공개 검색만 사용).</p>
             <div id="indexProgress" class="index-progress" hidden></div>
             <div id="resultsList"></div>
+          </div>
+        </div>
+
+        <!-- 통합 키워드 결과 -->
+        <div id="keywordsPanel" class="panel">
+          <div class="stats-row" id="keywordsStatsRow">
+            <div class="stat-card total">
+              <div class="value" id="kwStatTotal">0</div>
+              <div class="label">전체 사이트</div>
+            </div>
+            <div class="stat-card success">
+              <div class="value" id="kwStatDays">0</div>
+              <div class="label">날짜 수</div>
+            </div>
+            <div class="stat-card indexed">
+              <div class="value" id="kwStatZip">0</div>
+              <div class="label">ZIP</div>
+            </div>
+            <div class="stat-card manual">
+              <div class="value" id="kwStatAi">0</div>
+              <div class="label">AI/기타</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="results-toolbar sites-toolbar">
+              <div class="form-group" style="margin:0;min-width:200px;flex:1;">
+                <label for="keywordsSearch">검색</label>
+                <input type="text" id="keywordsSearch" placeholder="타이틀, H1, 키워드, ZIP명…">
+              </div>
+              <button class="btn btn-ghost btn-sm" id="keywordsRefreshBtn" type="button">새로고침</button>
+              <button class="btn btn-ghost btn-sm" id="keywordsCopyBtn" type="button">키워드 복사</button>
+            </div>
+            <p class="bulk-hint">생성 사이트 기준으로 <strong>날짜별</strong> 타이틀·H1 키워드와 제작 방식(ZIP/AI)을 모읍니다.</p>
+            <div id="keywordsList"></div>
           </div>
         </div>
 

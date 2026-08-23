@@ -819,7 +819,7 @@ function siteSourceInfo(siteOrRow) {
   return { kind: 'unknown', label: '', zipName };
 }
 
-/** 네이버 ID/PW · ZIP명 강조 블록 (복사 버튼 포함) */
+/** 네이버 ID/PW · ZIP명 (컴팩트) */
 function deployCredsHtml({ naverId = '', naverPw = '', zipName = '', sourceLabel = '' } = {}) {
   const id = String(naverId || '').trim();
   const pw = String(naverPw || '').trim();
@@ -828,34 +828,22 @@ function deployCredsHtml({ naverId = '', naverPw = '', zipName = '', sourceLabel
   if (!id && !pw && !zip && !src) {
     return '<div class="deploy-creds deploy-creds-empty">네이버 계정 · ZIP 정보 없음</div>';
   }
-  const copyBtn = (text, tip) => {
-    const t = String(text || '').trim();
-    if (!t) return '';
-    return `<button type="button" class="deploy-cred-copy" data-copy-enc="${encodeURIComponent(t)}" title="${escapeHtml(tip || '복사')}">복사</button>`;
-  };
-  const rows = [];
-  rows.push(`
-    <div class="deploy-cred-row deploy-cred-naver">
+  const zipDisplay = zip
+    || (src && /ai|생성/i.test(src) ? '(AI 생성 · ZIP 없음)' : (src ? `(${src})` : '(파일명 없음)'));
+  return `<div class="deploy-creds">
+    <div class="deploy-cred-row">
       <span class="deploy-cred-label">네이버</span>
       <span class="deploy-cred-value">
-        <span class="deploy-cred-id" title="${escapeHtml(id || '-')}">${escapeHtml(id || '(아이디 없음)')}</span>
+        <span class="deploy-cred-id">${escapeHtml(id || '(아이디 없음)')}</span>
         <span class="deploy-cred-sep">/</span>
-        <span class="deploy-cred-pw" title="${escapeHtml(pw || '-')}">${escapeHtml(pw || '(비밀번호 미등록)')}</span>
-        ${copyBtn(id && pw ? `${id} / ${pw}` : (id || pw), '아이디·비밀번호 복사')}
+        <span class="deploy-cred-pw">${escapeHtml(pw || '(비밀번호 미등록)')}</span>
       </span>
-    </div>`);
-  {
-    const zipDisplay = zip
-      || (src && /ai|생성/i.test(src) ? '(AI 생성 · ZIP 없음)' : (src ? `(${src})` : '(파일명 없음)'));
-    rows.push(`
+    </div>
     <div class="deploy-cred-row deploy-cred-zip">
       <span class="deploy-cred-label">${escapeHtml(src || 'ZIP')}</span>
-      <span class="deploy-cred-value deploy-cred-zipname" title="${escapeHtml(zip || zipDisplay)}">${escapeHtml(zipDisplay)}
-        ${copyBtn(zip || zipDisplay, 'ZIP명 복사')}
-      </span>
-    </div>`);
-  }
-  return `<div class="deploy-creds">${rows.join('')}</div>`;
+      <span class="deploy-cred-value deploy-cred-zipname" title="${escapeHtml(zip || zipDisplay)}">${escapeHtml(zipDisplay)}</span>
+    </div>
+  </div>`;
 }
 
 function renderResultsTable(results) {
@@ -954,17 +942,6 @@ function renderResultsTable(results) {
       });
     });
   }
-}
-
-async function copyDeployCredFromButton(btn, { sitesTab = false } = {}) {
-  if (!btn) return false;
-  let text = '';
-  try {
-    text = btn.dataset.copyEnc ? decodeURIComponent(btn.dataset.copyEnc) : (btn.dataset.copyText || '');
-  } catch {
-    text = btn.dataset.copyText || '';
-  }
-  return copyToClipboard(text, '📋 복사됨', { sitesTab, emptyMsg: '복사할 내용이 없습니다.' });
 }
 
 async function copyToClipboard(text, okMsg, { sitesTab = false, emptyMsg = '복사할 URL이 없습니다.' } = {}) {
@@ -3777,12 +3754,6 @@ function setupEvents() {
   });
   $('keywordsCopyBtn')?.addEventListener('click', () => copyKeywordsSummary());
   $('sitesList')?.addEventListener('click', async (e) => {
-    const credBtn = e.target.closest('.deploy-cred-copy');
-    if (credBtn) {
-      e.preventDefault();
-      await copyDeployCredFromButton(credBtn, { sitesTab: true });
-      return;
-    }
     const btn = e.target.closest('[data-sites-action]');
     if (!btn) return;
     const action = btn.dataset.sitesAction;
@@ -3980,12 +3951,6 @@ function setupEvents() {
   });
 
   $('resultsList').addEventListener('click', (e) => {
-    const credBtn = e.target.closest('.deploy-cred-copy');
-    if (credBtn) {
-      e.preventDefault();
-      copyDeployCredFromButton(credBtn);
-      return;
-    }
     const t = e.target.closest('[data-action]');
     if (!t) return;
     if (t.dataset.action === 'copy-url') {
