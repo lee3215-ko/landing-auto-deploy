@@ -448,48 +448,60 @@
             <div class="card">
               <div class="card-header">
                 <div>
-                  <div class="card-title"><span class="emoji">☁️</span> Cloudflare Pages 기본 설정</div>
-                  <div class="card-sub">사이트 생성 · Pages 배포 (틀만 준비 · 기능은 순차 업데이트)</div>
+                  <div class="card-title"><span class="emoji">☁️</span> Cloudflare Pages · ZIP 배포</div>
+                  <div class="card-sub">ZIP → 주소 치환 → 네이버 메타 → Pages 1회 배포 → 소유확인·사이트맵·웹수집</div>
                 </div>
               </div>
 
               <div class="form-group">
-                <label for="cfProjectName">프로젝트명</label>
+                <label>배포 소스 (ZIP)</label>
+                <div class="row" style="gap:8px;flex-wrap:wrap;">
+                  <button type="button" class="btn btn-ghost btn-sm" id="cfSelectZipsBtn">📦 ZIP 다중 선택</button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="cfClearZipsBtn">지우기</button>
+                  <span id="cfZipLabel" style="font-size:13px;color:var(--text-muted);"></span>
+                </div>
+                <p class="bulk-hint" id="cfZipInfo" style="display:none;"></p>
+                <p class="bulk-hint">ZIP 1개 = Pages 사이트 1개. 프로젝트명은 ZIP 파일명 기준(충돌 시 접미사). 수동 입력 시 그 이름을 우선합니다.</p>
+              </div>
+
+              <div class="form-group">
+                <div class="label-with-action">
+                  <label for="cfAccountId">Cloudflare Account ID <span style="color:var(--danger,#c44);">*</span></label>
+                  <button type="button" class="btn btn-ghost btn-sm api-topup-btn" data-topup-url="https://dash.cloudflare.com/" title="Cloudflare 대시보드">대시보드</button>
+                </div>
+                <input type="text" id="cfAccountId" placeholder="계정 ID" autocomplete="off">
+              </div>
+              <div class="form-group">
+                <div class="label-with-action">
+                  <label for="cfApiToken">Cloudflare API Token <span style="color:var(--danger,#c44);">*</span></label>
+                  <button type="button" class="btn btn-ghost btn-sm api-topup-btn" data-topup-url="https://dash.cloudflare.com/profile/api-tokens" title="API 토큰 발급">토큰 발급</button>
+                </div>
+                <input type="text" id="cfApiToken" placeholder="Account · Cloudflare Pages · Edit" autocomplete="off" spellcheck="false">
+                <p class="bulk-hint">토큰에 Account · Cloudflare Pages · Edit 권한이 필요합니다. (입력값이 그대로 보입니다)</p>
+              </div>
+
+              <div class="form-group">
+                <label for="cfProjectName">프로젝트명 (선택 · 비우면 ZIP 파일명)</label>
                 <div class="row" style="gap:8px;">
-                  <input type="text" id="cfProjectName" placeholder="my-landing-xxxxxx" style="flex:1;">
+                  <input type="text" id="cfProjectName" placeholder="비우면 ZIP 파일명 → slug" style="flex:1;">
                   <button type="button" class="btn btn-ghost btn-sm" id="cfRandomSlugBtn">랜덤</button>
                 </div>
-                <p class="bulk-hint" id="cfPreviewUrl">https://my-landing-xxxxxx.pages.dev</p>
-              </div>
-
-              <div class="form-group">
-                <label for="cfBrand">업체명</label>
-                <input type="text" id="cfBrand" placeholder="업체명">
-              </div>
-              <div class="form-group">
-                <label for="cfPhone">연락처</label>
-                <input type="text" id="cfPhone" placeholder="010-0000-0000">
-              </div>
-              <div class="form-group">
-                <label for="cfNaver">네이버 인증 코드</label>
-                <input type="text" id="cfNaver" placeholder="코드만 입력 (선택)">
+                <p class="bulk-hint" id="cfPreviewUrl">https://{zip-name}.pages.dev</p>
               </div>
 
               <details class="seo-advanced">
-                <summary>고급 설정 (계정 · 토큰 · 저장 폴더)</summary>
+                <summary>선택 항목 (업체명 · 연락처 · 메모)</summary>
                 <div class="form-group">
-                  <div class="label-with-action">
-                    <label for="cfAccountId">Cloudflare Account ID</label>
-                    <button type="button" class="btn btn-ghost btn-sm api-topup-btn" data-topup-url="https://dash.cloudflare.com/" title="Cloudflare 대시보드">대시보드</button>
-                  </div>
-                  <input type="text" id="cfAccountId" placeholder="계정 ID" autocomplete="off">
+                  <label for="cfBrand">업체명</label>
+                  <input type="text" id="cfBrand" placeholder="업체명 (비필수)">
                 </div>
                 <div class="form-group">
-                  <div class="label-with-action">
-                    <label for="cfApiToken">Cloudflare API Token</label>
-                    <button type="button" class="btn btn-ghost btn-sm api-topup-btn" data-topup-url="https://dash.cloudflare.com/profile/api-tokens" title="API 토큰 발급">토큰 발급</button>
-                  </div>
-                  <input type="password" id="cfApiToken" placeholder="API Token" autocomplete="off">
+                  <label for="cfPhone">연락처</label>
+                  <input type="text" id="cfPhone" placeholder="010-0000-0000 (비필수)">
+                </div>
+                <div class="form-group">
+                  <label for="cfNaver">네이버 인증 코드</label>
+                  <input type="text" id="cfNaver" placeholder="자동 수집 시 비워 두세요">
                 </div>
                 <div class="form-group">
                   <label for="cfOutputDir">저장 폴더</label>
@@ -498,36 +510,52 @@
                     <button type="button" class="btn btn-ghost btn-sm" id="cfBrowseOutBtn">찾기</button>
                   </div>
                 </div>
+                <div class="form-group">
+                  <label for="cfNotes">작업 메모</label>
+                  <textarea id="cfNotes" rows="3" placeholder="메모 (비필수)"></textarea>
+                </div>
               </details>
 
               <div class="checkbox-row" style="margin-top:14px;">
-                <label><input type="checkbox" id="cfDeploy" checked> 생성 후 Pages 배포</label>
-                <label><input type="checkbox" id="cfCreateProject" checked> 새 Pages 프로젝트 등록</label>
+                <label><input type="checkbox" id="cfDeploy" checked> Pages 배포</label>
+                <label><input type="checkbox" id="cfCreateProject" checked> 새 프로젝트 생성(충돌 시 접미사)</label>
+                <label><input type="checkbox" id="cfRegisterNaver" checked> 네이버 등록·수집</label>
               </div>
 
-              <div class="run-section" style="margin-top:16px;display:flex;gap:8px;">
-                <button class="btn btn-success" id="cfGenerateBtn" type="button" style="flex:1;">▶ 사이트 생성</button>
+              <div class="form-group" style="margin-top:12px;">
+                <label class="check-row" style="display:flex;align-items:center;gap:8px;font-weight:600;">
+                  <input type="checkbox" id="cfGapAfterDone" checked>
+                  배포 1건 완료 후 대기
+                </label>
+                <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;">
+                  <input type="number" id="cfGapMinSec" min="1" max="3600" value="100" style="width:88px;" title="최소(초)">
+                  <span style="color:var(--text-muted);">~</span>
+                  <input type="number" id="cfGapMaxSec" min="1" max="3600" value="300" style="width:88px;" title="최대(초)">
+                  <span style="color:var(--text-muted);font-size:13px;">초 랜덤</span>
+                </div>
+                <p class="bulk-hint">한 ZIP 배포가 끝나면 다음 ZIP 전에 설정 구간(기본 100~300초)에서 랜덤으로 쉽니다. 정지 버튼으로 대기 중에도 중단할 수 있습니다.</p>
+              </div>
+
+              <div class="run-section" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-success" id="cfGenerateBtn" type="button" style="flex:1;">▶ ZIP → Pages 배포 + 네이버</button>
                 <button class="btn btn-danger" id="cfStopBtn" type="button" disabled>⏹ 정지</button>
               </div>
-              <p class="bulk-hint" style="margin-top:10px;">지금은 기본 UI 틀만 있습니다. 사이트 생성·디자인·배포 로직은 이후 업데이트됩니다.</p>
+              <p class="bulk-hint" style="margin-top:10px;">네이버 계정·OpenAI·YesCaptcha는 <strong>설정</strong> 탭 값을 사용합니다. 로그는 「Cloudflare」필터.</p>
             </div>
 
             <div class="card">
               <div class="card-header">
                 <div>
-                  <div class="card-title"><span class="emoji">📝</span> 키워드 / 메모</div>
-                  <div class="card-sub">생성에 쓸 키워드·메모 (임시)</div>
+                  <div class="card-title"><span class="emoji">📋</span> 대기 ZIP / 안내</div>
+                  <div class="card-sub">선택된 ZIP 목록</div>
                 </div>
               </div>
               <div class="form-group">
-                <label for="cfKeywords">키워드 (한 줄에 하나)</label>
-                <textarea id="cfKeywords" rows="10" placeholder="키워드1&#10;키워드2&#10;키워드3"></textarea>
+                <label for="cfKeywords">키워드 메모 (비필수)</label>
+                <textarea id="cfKeywords" rows="6" placeholder="메모용 (ZIP 배포에는 필수 아님)"></textarea>
               </div>
-              <div class="form-group">
-                <label for="cfNotes">작업 메모</label>
-                <textarea id="cfNotes" rows="4" placeholder="디자인·생성 방식 등 메모"></textarea>
-              </div>
-              <p class="bulk-hint" style="margin-top:12px;">생성 로그는 <strong>로그</strong> 탭 · 「Cloudflare」필터에서 확인하세요.</p>
+              <ul id="cfZipList" class="bulk-hint" style="margin:0;padding-left:18px;max-height:280px;overflow:auto;"></ul>
+              <p class="bulk-hint" style="margin-top:12px;">성공 ZIP은 원본 옆 <strong>성공</strong> 폴더에 주소 반영본으로 저장됩니다.</p>
             </div>
           </div>
         </div>

@@ -13,6 +13,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteCreatedSite: (id) => ipcRenderer.invoke('delete-created-site', id),
   syncCreatedSites: () => ipcRenderer.invoke('sync-created-sites'),
   cloudflareSaveSite: (project) => ipcRenderer.invoke('cloudflare-save-site', project || {}),
+  cloudflareDeployZip: (options) => ipcRenderer.invoke('cloudflare-deploy-zip', options || {}),
+  onCloudflareLog: (callback) => {
+    ipcRenderer.removeAllListeners('cloudflare-log');
+    ipcRenderer.on('cloudflare-log', (_, line) => callback(line));
+  },
   loadGeneratedTokens: () => ipcRenderer.invoke('load-generated-tokens'),
   saveGeneratedTokens: (tokens) => ipcRenderer.invoke('save-generated-tokens', tokens),
   selectOutputDir: () => ipcRenderer.invoke('select-output-dir'),

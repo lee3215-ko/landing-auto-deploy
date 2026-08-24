@@ -25,6 +25,13 @@ let seoCounts = {};
 let seoSelected = new Set();
 let seoFolder = 'all';
 let seoKeywordsLoaded = false;
+/** CF / 닷홈 ZIP·실행 상태 */
+let cfBusy = false;
+let cfStopRequested = false;
+let cfDeploySources = [];
+let dhBusy = false;
+let dhDeploySources = [];
+let dhStopRequested = false;
 /** 수동캡챠 진행 중 URL — 탭 전환·목록 리렌더 후에도 「수동캡챠 진행중」유지 */
 const manualCaptchaBusyUrls = new Set();
 /** 닷홈 다시 배포 진행 중 사이트 id */
@@ -78,7 +85,7 @@ function dothomeRedeployButtonHtml({
 const PAGE_META = {
   config: { title: '설정', subtitle: 'Netlify 대량 배포 및 네이버 서치어드바이저 자동 등록' },
   'seo-gen': { title: '넷리파이 생성', subtitle: '롱폼 SEO 미리보기 스타일 · 이미지 카드 · Netlify 배포' },
-  'cf-pages': { title: 'Cloudflare Pages 생성', subtitle: 'Cloudflare Pages 사이트 생성 · 배포 (기본 틀 · 순차 업데이트)' },
+  'cf-pages': { title: 'Cloudflare Pages', subtitle: 'ZIP → Pages 배포 · 네이버 메타·소유확인·사이트맵 수집' },
   dothome: { title: '닷홈 호스팅 생성', subtitle: '닷홈 회원가입 자동화 · 이후 FTP/사이트 배포' },
   'url-crawl': { title: 'URL 수집', subtitle: '하위 URL 수집 후 네이버 웹페이지 수집 일괄 신청' },
   sites: { title: '생성 사이트', subtitle: 'Netlify · Cloudflare Pages · 닷홈 생성 목록 (생성일 포함)' },
@@ -652,8 +659,13 @@ function collectConfig() {
       keywords: ($('cfKeywords')?.value || ''),
       notes: ($('cfNotes')?.value || ''),
       sites: Array.isArray(config.cloudflare?.sites) ? config.cloudflare.sites : [],
+      deploySources: Array.isArray(cfDeploySources) ? [...cfDeploySources] : [],
       deploy: !!$('cfDeploy')?.checked,
       createProject: !!$('cfCreateProject')?.checked,
+      registerNaver: $('cfRegisterNaver') ? !!$('cfRegisterNaver').checked : true,
+      gapAfterDone: !!$('cfGapAfterDone')?.checked,
+      gapMinSec: Math.max(1, parseInt($('cfGapMinSec')?.value || '100', 10) || 100),
+      gapMaxSec: Math.max(1, parseInt($('cfGapMaxSec')?.value || '300', 10) || 300),
     },
     dothome: {
       hostId: ($('dhHostId')?.value || '').trim(),
@@ -1565,7 +1577,7 @@ function isSiteNaverDone(site) {
 
 /** 메타는 있는데 소유확인/캡챠 실패 → 수동캡챠 대상 */
 function needsNaverIndexRetry(site) {
-  if (site?.provider !== 'netlify') return false;
+  if (site?.provider !== 'netlify' && site?.provider !== 'cloudflare') return false;
   if (isSiteNaverDone(site)) return false;
   const d = site?.detail || {};
   const st = String(d.naverStatus || '').toLowerCase();
@@ -1573,6 +1585,11 @@ function needsNaverIndexRetry(site) {
   if (d.naverMeta) return true;
   if (d.naverError && (site.url || '').trim()) return true;
   return false;
+}
+
+/** Cloudflare: URL 있으면 네이버 완료/수동캡챠 UI 대상 */
+function needsCloudflareNaverUi(site) {
+  return site?.provider === 'cloudflare' && !!(site.url || '').trim();
 }
 
 /** 닷홈: 가입만 됐거나 배포/네이버 미완료 → 이어서 처리 대상 */
@@ -1711,7 +1728,17 @@ function siteDetailHtml(site) {
   }
   if (site.provider === 'cloudflare') {
     const bits = [];
-    if (d.brand) bits.push(d.brand);
+    if (d.title) bits.push(`타이틀 ${d.title}`);
+    else if (d.keyword) bits.push(d.keyword);
+    else if (d.brand) bits.push(d.brand);
+    if (d.h1) bits.push(`H1 ${d.h1}`);
+    const zipNm = pathBasename(d.sourcePath);
+    if (zipNm) bits.push(`ZIP ${zipNm}`);
+    else if (d.sourceType) bits.push(d.sourceType === 'zip' ? 'ZIP' : d.sourceType);
+    if (isSiteNaverDone(site)) bits.push('네이버 완료');
+    else if (d.naverError) bits.push(`원인: ${String(d.naverError).slice(0, 48)}`);
+    else if (d.naverStatus) bits.push(`네이버 ${d.naverStatus}`);
+    if (d.deployedAt) bits.push(`배포 ${formatDate(d.deployedAt)}`);
     if (d.notes) bits.push(d.notes);
     return bits.join(' · ') || 'Cloudflare Pages';
   }
@@ -1809,11 +1836,63 @@ function renderCreatedSites() {
     const st = SITE_STATUS_META[s.status] || { label: s.status || '-', cls: 'unknown' };
     const url = (s.url || '').trim();
     const accounts = siteAccountIds(s);
-    const canRetryNaver = s.provider === 'netlify' && !!(s.url || '').trim();
+    const canRetryNaver = (s.provider === 'netlify' || s.provider === 'cloudflare') && !!(s.url || '').trim();
     const naverDone = canRetryNaver && isSiteNaverDone(s);
     const indexRetry = canRetryNaver && needsNaverIndexRetry(s);
     let naverBtn = '';
-    if (canRetryNaver) {
+    if (s.provider === 'cloudflare' && needsCloudflareNaverUi(s)) {
+      const captchaBusy = isManualCaptchaBusy(s.url);
+      const busyHint = captchaBusy
+        ? '<div class="site-card-busy">수동캡챠 진행 중…</div>'
+        : '';
+      if (naverDone) {
+        naverBtn = `
+          <div class="site-card-next">
+            <span class="status-pill success" title="Cloudflare 배포·네이버 완료${accounts.naverId ? ` · ${accounts.naverId}` : ''}">네이버 완료</span>
+            ${busyHint}
+            <div class="site-card-actions-inline">
+              ${manualCaptchaButtonHtml({
+                attrs: `data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}"`,
+                url: s.url,
+                cls: 'btn btn-ghost btn-sm',
+              })}
+            </div>
+          </div>`;
+      } else if (indexRetry) {
+        const st = String(s.detail?.naverStatus || '').toLowerCase();
+        const reason = s.detail?.naverError || s.detail?.naverStatus || '소유확인 미완료';
+        const pillCls = st === 'captcha' ? 'manual' : 'indexed-fail';
+        const pillLabel = st === 'captcha' ? '캡챠 대기' : '네이버 미완료';
+        naverBtn = `
+          <div class="site-card-next">
+            <span class="status-pill ${pillCls}" title="${escapeHtml(reason)}">${escapeHtml(pillLabel)}</span>
+            <div class="site-card-hint" title="${escapeHtml(reason)}">${escapeHtml(String(reason).split('\n')[0])}</div>
+            ${busyHint}
+            <div class="site-card-actions-inline">
+              ${manualCaptchaButtonHtml({
+                attrs: `data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}"`,
+                url: s.url,
+                cls: 'btn btn-warning btn-sm',
+                title: '네이버 창에서 HTML태그 선택·캡챠 수동 입력 → 수집 자동 진행 (메타 재반영 시 Pages 재업로드)',
+              })}
+            </div>
+          </div>`;
+      } else {
+        naverBtn = `
+          <div class="site-card-next">
+            <span class="status-pill indexed-fail" title="네이버 등록·수집 필요">네이버 대기</span>
+            ${busyHint}
+            <div class="site-card-actions-inline">
+              ${manualCaptchaButtonHtml({
+                attrs: `data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}"`,
+                url: s.url,
+                cls: 'btn btn-primary btn-sm',
+                title: '수동캡챠로 소유확인·수집 진행',
+              })}
+            </div>
+          </div>`;
+      }
+    } else if (canRetryNaver) {
       if (naverDone) {
         naverBtn = `
           <span class="status-pill success" title="네이버 소유확인·인덱싱 신청 완료${accounts.naverId ? ` · ${accounts.naverId}` : ''}">네이버 완료</span>
@@ -2054,7 +2133,7 @@ async function checkDothomeHostingForSite(id) {
   }
 }
 
-async function loadCreatedSites(forceSync = true) {
+async function loadCreatedSites(forceSync = true, { checkHosting = true } = {}) {
   try {
     createdSites = forceSync
       ? (await window.electronAPI.syncCreatedSites()) || []
@@ -2064,14 +2143,18 @@ async function loadCreatedSites(forceSync = true) {
   }
   renderCreatedSites();
   if (currentTabName === 'keywords') renderKeywordsResults();
-  // 미완료 닷홈 건 DNS 자동 검사 → 호스팅 미개통이면 UI에 표시
-  try {
-    const changed = await refreshDothomeHostingChecks(createdSites);
-    if (changed) {
-      renderCreatedSites();
-      if (currentTabName === 'keywords') renderKeywordsResults();
-    }
-  } catch { /* ignore */ }
+  // DNS 검사는 UI(탭)를 막지 않도록 백그라운드 실행
+  if (checkHosting) {
+    Promise.resolve()
+      .then(() => refreshDothomeHostingChecks(createdSites))
+      .then((changed) => {
+        if (changed) {
+          renderCreatedSites();
+          if (currentTabName === 'keywords') renderKeywordsResults();
+        }
+      })
+      .catch(() => {});
+  }
 }
 
 function filterCreatedSites() {
@@ -2468,8 +2551,8 @@ async function siteManualCaptcha(id) {
   if (!id) return;
   const site = createdSites.find((s) => s.id === id);
   if (!site) return alert('사이트를 찾을 수 없습니다.');
-  if (site.provider !== 'netlify' && site.provider !== 'dothome') {
-    return alert('Netlify / 닷홈 사이트만 가능합니다.');
+  if (site.provider !== 'netlify' && site.provider !== 'dothome' && site.provider !== 'cloudflare') {
+    return alert('Netlify / Cloudflare / 닷홈 사이트만 가능합니다.');
   }
   if (!(site.url || '').trim()) return alert('사이트 URL이 없습니다.');
   if (isManualCaptchaBusy(site.url)) {
@@ -2486,7 +2569,9 @@ async function siteManualCaptcha(id) {
     + '여러 사이트를 연속으로 눌러 동시에 진행할 수 있습니다.\n'
     + (site.provider === 'dothome'
       ? '(닷홈: 메타 재반영 시 FTP로 업로드합니다)\n'
-      : '')
+      : (site.provider === 'cloudflare'
+        ? '(Cloudflare: 메타 재반영 시 Pages 재업로드합니다)\n'
+        : ''))
     + '(생성 중인 탭은 그대로 둡니다)',
   )) return;
 
@@ -2497,11 +2582,15 @@ async function siteManualCaptcha(id) {
     await window.electronAPI.saveConfig(collectConfig());
     logLine(`═══ 수동캡챠(생성사이트·${site.provider}): ${site.url} ═══`);
     if (site.provider === 'dothome') dhLog(`🔐 수동캡챠 시작: ${site.url}`);
+    if (site.provider === 'cloudflare') cfLog(`🔐 수동캡챠 시작: ${site.url}`);
     const out = await window.electronAPI.manualCaptchaCollect({
       siteUrl: site.url,
       siteDir: site.detail?.siteDir || site.detail?.output || '',
-      siteSlug: site.detail?.ftpId || site.name || '',
+      siteSlug: site.detail?.projectName || site.detail?.ftpId || site.name || '',
       ftpId: site.detail?.ftpId || '',
+      projectName: site.detail?.projectName || site.name || '',
+      accountId: site.detail?.accountId || ($('cfAccountId')?.value || '').trim(),
+      apiToken: ($('cfApiToken')?.value || config.cloudflare?.apiToken || '').trim(),
       provider: site.provider || '',
       naverAccountId: site.detail?.naverAccountId || '',
       createdSiteId: site.id,
@@ -2520,16 +2609,20 @@ async function siteManualCaptcha(id) {
         if (fresh) config = fresh;
         renderDhAccounts();
       }
+      if (site.provider === 'cloudflare') cfLog(`✔ 수동캡챠 완료: ${site.url}`);
       if (out.movedZip?.from && !out.movedZip.skipped) {
         const fromKey = String(out.movedZip.from).toLowerCase();
         deploySources = deploySources.filter((s) => String(s.path || '').toLowerCase() !== fromKey);
         removeDhZipPath(out.movedZip.from);
         if (out.movedZip.to) removeDhZipPath(out.movedZip.to);
+        dropCfZipPath(out.movedZip.from);
+        if (out.movedZip.to) dropCfZipPath(out.movedZip.to);
         updateDeploySourcesUI(
           deploySources.length
             ? `남은 소스 ${deploySources.length}개 (성공 ZIP 이동됨)`
             : '',
         );
+        updateCfZipUi();
         await window.electronAPI.saveConfig(collectConfig()).catch(() => {});
         logLine(`📦 성공 ZIP → 성공\\${out.movedZip.to ? out.movedZip.to.split(/[/\\\\]/).pop() : ''}`);
       }
@@ -2539,6 +2632,7 @@ async function siteManualCaptcha(id) {
       const failMsg = out?.popupMessage || out?.error || out?.message || '실패';
       logLine(`⚠ 수동캡챠: ${failMsg}`);
       if (site.provider === 'dothome') dhLog(`⚠ 수동캡챠: ${failMsg}`);
+      if (site.provider === 'cloudflare') cfLog(`⚠ 수동캡챠: ${failMsg}`);
       if (out?.status === 'meta_missing' || out?.offerDelete || /메타미검출|메타\s*태그/i.test(failMsg)) {
         setManualCaptchaBusy(site.url, false);
         renderCreatedSites();
@@ -2555,6 +2649,7 @@ async function siteManualCaptcha(id) {
     setSitesIndexProgress('', false);
     logLine(`[ERROR] 수동캡챠: ${e.message}`);
     if (site.provider === 'dothome') dhLog(`✖ 수동캡챠: ${e.message}`);
+    if (site.provider === 'cloudflare') cfLog(`✖ 수동캡챠: ${e.message}`);
     alert(e.message || String(e));
   } finally {
     setManualCaptchaBusy(site.url, false);
@@ -3567,6 +3662,9 @@ async function applyGenTokens() {
 }
 
 async function load() {
+  // 설정 로드 전에 탭 클릭부터 연결 (DNS/동기화 대기에 탭이 먹통 되지 않게)
+  setupEvents();
+  try {
   config = await window.electronAPI.loadConfig();
   config.netlifyTokens = (config.netlifyTokens || []).map(t =>
     typeof t === 'string'
@@ -3658,8 +3756,15 @@ async function load() {
   if ($('cfNotes')) $('cfNotes').value = cf.notes || '';
   if ($('cfDeploy')) $('cfDeploy').checked = cf.deploy !== false;
   if ($('cfCreateProject')) $('cfCreateProject').checked = cf.createProject !== false;
+  if ($('cfRegisterNaver')) $('cfRegisterNaver').checked = cf.registerNaver !== false;
+  if ($('cfGapAfterDone')) $('cfGapAfterDone').checked = cf.gapAfterDone !== false;
+  if ($('cfGapMinSec')) $('cfGapMinSec').value = String(cf.gapMinSec > 0 ? cf.gapMinSec : 100);
+  if ($('cfGapMaxSec')) $('cfGapMaxSec').value = String(cf.gapMaxSec > 0 ? cf.gapMaxSec : 300);
   if (cf.projectName && $('cfProjectName')) $('cfProjectName').value = cf.projectName;
-  else randomCfSlug(false);
+  cfDeploySources = Array.isArray(cf.deploySources)
+    ? cf.deploySources.filter((s) => s?.type === 'zip' && s?.path).map((s) => ({ ...s }))
+    : [];
+  updateCfZipUi();
   updateCfPreviewUrl();
 
   const dh = config.dothome || {};
@@ -3697,10 +3802,18 @@ async function load() {
   await restoreDeployFolder(config.deployFolder, config.deploySources);
   await loadSavedResults();
   await loadCreatedSites(true);
-  setupEvents();
+  } catch (e) {
+    console.error('[load]', e);
+    try { appendAppLog('system', `초기 로드 오류: ${e?.message || e}`); } catch { /* ignore */ }
+  } finally {
+    setupEvents();
+  }
 }
 
+let eventsBound = false;
 function setupEvents() {
+  if (eventsBound) return;
+  eventsBound = true;
   document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
@@ -3847,10 +3960,12 @@ function setupEvents() {
   $('seoGenerateBtn')?.addEventListener('click', startSeoGenerate);
   $('seoStopBtn')?.addEventListener('click', stopSeoGenerate);
 
-  // Cloudflare Pages 생성 (기본 틀)
+  // Cloudflare Pages ZIP 배포
   $('cfRandomSlugBtn')?.addEventListener('click', () => randomCfSlug(true));
   $('cfProjectName')?.addEventListener('input', updateCfPreviewUrl);
   $('cfBrowseOutBtn')?.addEventListener('click', browseCfOutputDir);
+  $('cfSelectZipsBtn')?.addEventListener('click', selectCfZips);
+  $('cfClearZipsBtn')?.addEventListener('click', clearCfZips);
   $('cfGenerateBtn')?.addEventListener('click', startCfGenerate);
   $('cfStopBtn')?.addEventListener('click', stopCfGenerate);
 
@@ -4609,9 +4724,7 @@ async function stopSeoGenerate() {
   await window.electronAPI.kkangStop();
 }
 
-/* ── Cloudflare Pages 생성 (기본 틀) ── */
-let cfBusy = false;
-
+/* ── Cloudflare Pages ZIP → 네이버 ── */
 function cfLog(line) {
   appendAppLog('cf-pages', line);
 }
@@ -4619,6 +4732,7 @@ function cfLog(line) {
 function sanitizeCfSlug(raw) {
   return String(raw || '')
     .toLowerCase()
+    .replace(/\.zip$/i, '')
     .replace(/[^a-z0-9-]/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
@@ -4626,7 +4740,12 @@ function sanitizeCfSlug(raw) {
 }
 
 function updateCfPreviewUrl() {
-  const slug = sanitizeCfSlug($('cfProjectName')?.value || '') || 'my-landing-xxxxxx';
+  const manual = sanitizeCfSlug($('cfProjectName')?.value || '');
+  const zips = cfZipSources();
+  const fromZip = zips[0]
+    ? sanitizeCfSlug(String(zips[0].name || zips[0].path || '').replace(/\.zip$/i, ''))
+    : '';
+  const slug = manual || fromZip || '{zip-name}';
   const el = $('cfPreviewUrl');
   if (el) el.textContent = `https://${slug}.pages.dev`;
 }
@@ -4644,41 +4763,274 @@ async function browseCfOutputDir() {
   if (dir && $('cfOutputDir')) $('cfOutputDir').value = dir;
 }
 
+function cfZipSources() {
+  return (cfDeploySources || []).filter((s) => s?.type === 'zip' && s?.path);
+}
+
+function updateCfZipUi() {
+  const zips = cfZipSources();
+  const label = $('cfZipLabel');
+  const info = $('cfZipInfo');
+  const list = $('cfZipList');
+  if (label) {
+    label.textContent = zips.length
+      ? `ZIP ${zips.length}개 선택됨`
+      : 'ZIP 없음';
+  }
+  if (info) {
+    if (!zips.length) {
+      info.style.display = 'none';
+      info.textContent = '';
+    } else {
+      const names = zips.slice(0, 6).map((s) => s.name || s.path).join(', ');
+      const more = zips.length > 6 ? ` 외 ${zips.length - 6}개` : '';
+      info.style.display = 'block';
+      info.textContent = `${names}${more}`;
+    }
+  }
+  if (list) {
+    list.innerHTML = zips.length
+      ? zips.map((s) => `<li>${escapeHtml(s.name || s.path)}</li>`).join('')
+      : '<li style="list-style:none;color:var(--text-muted);">선택된 ZIP이 없습니다.</li>';
+  }
+  const btn = $('cfGenerateBtn');
+  if (btn && !cfBusy) {
+    btn.textContent = zips.length
+      ? `▶ ZIP → Pages 배포 + 네이버 (${zips.length}개)`
+      : '▶ ZIP → Pages 배포 + 네이버';
+  }
+  updateCfPreviewUrl();
+}
+
+async function selectCfZips() {
+  if (!window.electronAPI?.selectFiles) {
+    alert('ZIP 선택 기능을 사용할 수 없습니다. 앱을 최신 버전으로 업데이트하세요.');
+    return;
+  }
+  const paths = await window.electronAPI.selectFiles({
+    title: 'Cloudflare Pages에 배포할 ZIP 선택 (여러 개 가능)',
+    filters: [
+      { name: 'ZIP 파일', extensions: ['zip'] },
+      { name: '모든 파일', extensions: ['*'] },
+    ],
+  });
+  if (!paths?.length) return;
+
+  const seen = new Set(cfDeploySources.map((s) => String(s.path || '').toLowerCase()));
+  let added = 0;
+  const skipped = [];
+  for (const filePath of paths) {
+    const p = String(filePath || '').trim();
+    if (!p || !p.toLowerCase().endsWith('.zip')) continue;
+    const key = p.toLowerCase();
+    if (seen.has(key)) continue;
+    const name = p.split(/[\\/]/).pop() || p;
+    if (window.electronAPI?.validateZipIndex) {
+      try {
+        const check = await window.electronAPI.validateZipIndex(p);
+        if (!check?.ok) {
+          skipped.push(`${name}: ${check?.error || 'index.html 없음'}`);
+          continue;
+        }
+      } catch (e) {
+        skipped.push(`${name}: ${e.message || '검사 실패'}`);
+        continue;
+      }
+    }
+    seen.add(key);
+    cfDeploySources.push({ type: 'zip', path: p, name });
+    added += 1;
+  }
+  if (skipped.length) {
+    alert(`index.html이 없는 ZIP ${skipped.length}개 제외:\n\n${skipped.slice(0, 8).join('\n')}${skipped.length > 8 ? `\n…외 ${skipped.length - 8}개` : ''}`);
+  }
+  if (!added) {
+    alert(skipped.length
+      ? '추가된 ZIP이 없습니다. (index.html 없는 파일만 선택됨)'
+      : '새로 추가할 ZIP이 없습니다. (이미 선택된 파일일 수 있습니다)');
+    return;
+  }
+  updateCfZipUi();
+  await window.electronAPI.saveConfig(collectConfig());
+  cfLog(`📦 Cloudflare ZIP ${added}개 추가 (총 ${cfZipSources().length}개)`);
+}
+
+function clearCfZips() {
+  cfDeploySources = [];
+  updateCfZipUi();
+  window.electronAPI.saveConfig(collectConfig()).catch(() => {});
+  cfLog('📦 Cloudflare ZIP 목록 비움');
+}
+
+function dropCfZipPath(zipPath) {
+  const key = String(zipPath || '').toLowerCase();
+  if (!key) return;
+  cfDeploySources = cfDeploySources.filter((s) => String(s.path || '').toLowerCase() !== key);
+  updateCfZipUi();
+}
+
 function setCfBusy(busy) {
   cfBusy = busy;
   if ($('cfGenerateBtn')) $('cfGenerateBtn').disabled = busy;
   if ($('cfStopBtn')) $('cfStopBtn').disabled = !busy;
+  if ($('cfSelectZipsBtn')) $('cfSelectZipsBtn').disabled = busy;
+  if ($('cfClearZipsBtn')) $('cfClearZipsBtn').disabled = busy;
+  if (!busy) updateCfZipUi();
+}
+
+/** 배포 1건 완료 후 다음 ZIP까지 랜덤 대기 (초) */
+function cfGapConfig() {
+  const enabled = !!$('cfGapAfterDone')?.checked;
+  let minS = Math.max(1, parseInt($('cfGapMinSec')?.value || '100', 10) || 100);
+  let maxS = Math.max(1, parseInt($('cfGapMaxSec')?.value || '300', 10) || 300);
+  if (maxS < minS) {
+    const t = minS;
+    minS = maxS;
+    maxS = t;
+  }
+  return { enabled, minS, maxS };
+}
+
+/** 정지 가능하도록 쪼개서 대기. 다음 ZIP이 없으면 스킵 */
+async function waitCfGapAfterDeploy({ hasMore = true } = {}) {
+  const gap = cfGapConfig();
+  if (!gap.enabled || !hasMore) return;
+  if (cfStopRequested) return;
+  const seconds = gap.minS + Math.random() * (gap.maxS - gap.minS);
+  const totalMs = Math.round(seconds * 1000);
+  const endAt = Date.now() + totalMs;
+  cfLog(`⏳ 배포 1건 완료 — 다음까지 약 ${Math.round(seconds)}초 대기 (${gap.minS}~${gap.maxS}초 랜덤)`);
+  let lastLogAt = Date.now();
+  while (Date.now() < endAt) {
+    if (cfStopRequested) {
+      cfLog('⏹ 대기 중 정지 요청');
+      return;
+    }
+    if (Date.now() - lastLogAt >= 30_000) {
+      lastLogAt = Date.now();
+      const leftSec = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+      cfLog(`⏳ 대기 남음 약 ${leftSec}초…`);
+    }
+    await new Promise((r) => setTimeout(r, Math.min(2000, Math.max(0, endAt - Date.now()))));
+  }
+  cfLog('▶ 대기 종료 — 다음 ZIP 진행');
 }
 
 async function startCfGenerate() {
   if (cfBusy) return;
-  const project = sanitizeCfSlug($('cfProjectName')?.value || '');
-  if (!project) return alert('프로젝트명을 입력하세요.');
+  const zips = cfZipSources();
+  if (!zips.length) return alert('배포할 ZIP을 선택하세요.');
 
+  const accountId = ($('cfAccountId')?.value || '').trim();
+  const apiToken = ($('cfApiToken')?.value || '').trim();
+  if (!accountId || !apiToken) {
+    return alert('Cloudflare Account ID와 API Token을 입력하세요.\n토큰 권한: Account · Cloudflare Pages · Edit');
+  }
+
+  const registerNaver = $('cfRegisterNaver') ? !!$('cfRegisterNaver').checked : true;
+  if (registerNaver) {
+    const naverOk = (config.naverAccounts || []).some((a) => a?.id && a?.pw);
+    if (!naverOk) return alert('설정 탭에 네이버 계정(아이디/비밀번호)을 등록하세요.');
+  }
+
+  const manualProject = sanitizeCfSlug($('cfProjectName')?.value || '');
+  const createProject = $('cfCreateProject') ? !!$('cfCreateProject').checked : true;
+  const doDeploy = $('cfDeploy') ? !!$('cfDeploy').checked : true;
+  if (!doDeploy) return alert('「Pages 배포」를 체크하세요.');
+
+  cfStopRequested = false;
   setCfBusy(true);
-  if ($('cfLog')) $('cfLog').textContent = '';
-  cfLog(`☁ Cloudflare Pages 생성 틀 실행 — ${project}`);
-  cfLog('· 사이트 생성 / 디자인 / 배포 로직은 아직 연결되지 않았습니다.');
-  cfLog('· 입력값·생성 사이트 목록에 등록하고, 이후 업데이트에서 실제 생성을 붙일 예정입니다.');
+  const gap = cfGapConfig();
+  cfLog(`☁ Cloudflare Pages ZIP 배치 시작 — ${zips.length}개`
+    + (gap.enabled ? ` · 건당 대기 ${gap.minS}~${gap.maxS}초` : ''));
+
+  let okCount = 0;
+  let failCount = 0;
 
   try {
     await window.electronAPI.saveConfig(collectConfig());
-    const saved = await window.electronAPI.cloudflareSaveSite({
-      name: project,
-      url: `https://${project}.pages.dev`,
-      status: 'draft',
-      accountId: ($('cfAccountId')?.value || '').trim(),
-      brand: ($('cfBrand')?.value || '').trim(),
-      phone: ($('cfPhone')?.value || '').trim(),
-      notes: '기본 틀 저장 (실제 배포 전)',
-      createdAt: new Date().toISOString(),
-    });
-    if (saved?.createdSites) createdSites = saved.createdSites;
-    else await loadCreatedSites(true);
+
+    // 루프 중 목록이 줄어들 수 있으므로 시작 시점 스냅샷 사용
+    const queue = [...zips];
+    for (let i = 0; i < queue.length; i++) {
+      if (cfStopRequested) {
+        cfLog('⏹ 정지됨');
+        break;
+      }
+      const zip = queue[i];
+      const zipPath = zip.path;
+      const zipName = zip.name || zipPath.split(/[\\/]/).pop() || zipPath;
+      cfLog(`─── [${i + 1}/${queue.length}] ${zipName} ───`);
+
+      if (window.electronAPI?.validateZipIndex) {
+        try {
+          const check = await window.electronAPI.validateZipIndex(zipPath);
+          if (!check?.ok) {
+            cfLog(`✖ ZIP 없음/무효: ${check?.error || 'index.html 없음'}`);
+            dropCfZipPath(zipPath);
+            failCount += 1;
+            await window.electronAPI.saveConfig(collectConfig()).catch(() => {});
+            continue;
+          }
+        } catch (e) {
+          cfLog(`✖ ZIP 검사 실패: ${e.message}`);
+          dropCfZipPath(zipPath);
+          failCount += 1;
+          continue;
+        }
+      }
+
+      let deployOk = false;
+      try {
+        const out = await window.electronAPI.cloudflareDeployZip({
+          zipPath,
+          projectName: manualProject,
+          accountId,
+          apiToken,
+          registerNaver,
+          reuseProject: !createProject && !!manualProject,
+        });
+        if (out?.createdSites) createdSites = out.createdSites;
+        if (Array.isArray(out?.deploySources)) {
+          cfDeploySources = out.deploySources;
+          updateCfZipUi();
+        } else {
+          dropCfZipPath(zipPath);
+          if (out?.movedZip?.to) dropCfZipPath(out.movedZip.to);
+        }
+        await window.electronAPI.saveConfig(collectConfig()).catch(() => {});
+
+        if (out?.ok) {
+          okCount += 1;
+          deployOk = true;
+          cfLog(`✔ 완료: ${out.siteUrl || out.projectName}`);
+          if (out.movedZip?.to) {
+            cfLog(`📦 성공 ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
+          }
+        } else {
+          failCount += 1;
+          cfLog(`✖ 실패: ${out?.error || '알 수 없음'}`);
+          if (out?.zipMissing) dropCfZipPath(zipPath);
+        }
+      } catch (e) {
+        failCount += 1;
+        cfLog(`✖ 예외: ${e.message}`);
+      }
+      renderCreatedSites();
+
+      // 성공한 건만, 다음 ZIP이 남아 있으면 랜덤 대기
+      if (deployOk) {
+        const hasMore = i < queue.length - 1 && !cfStopRequested;
+        await waitCfGapAfterDeploy({ hasMore });
+      }
+    }
+
+    await loadCreatedSites(true);
     renderCreatedSites();
-    cfLog('✔ 설정 저장 완료 (Account / Token / 키워드 등)');
-    cfLog(`✔ 생성 사이트 목록에 등록: https://${project}.pages.dev`);
-    alert(`Cloudflare Pages 목록에 등록했습니다.\nhttps://${project}.pages.dev\n\n실제 사이트 생성·배포는 이후 업데이트됩니다.`);
+    cfLog(`☁ 배치 종료 — 성공 ${okCount} / 실패 ${failCount}`);
+    if (!cfStopRequested) {
+      alert(`Cloudflare Pages ZIP 배포 완료\n성공 ${okCount} · 실패 ${failCount}`);
+    }
   } catch (e) {
     cfLog(`✖ ${e.message}`);
     alert(e.message);
@@ -4689,16 +5041,11 @@ async function startCfGenerate() {
 
 async function stopCfGenerate() {
   if (!cfBusy) return;
-  cfLog('⏹ 정지 요청… (아직 실행 중인 작업 없음)');
-  setCfBusy(false);
+  cfStopRequested = true;
+  cfLog('⏹ 정지 요청… (현재 ZIP 끝나면 중단)');
 }
 
 /* ── 닷홈 호스팅 회원가입 ── */
-let dhBusy = false;
-/** 닷홈 탭 전용 ZIP 소스 (설정 탭 deploySources 와 분리) */
-let dhDeploySources = [];
-let dhStopRequested = false;
-
 function dhLog(line) {
   appendAppLog('dothome', line);
 }
@@ -5623,6 +5970,7 @@ window.electronAPI.getAppVersion?.().then((v) => {
   if (el && v) el.textContent = `v${v}`;
 }).catch(() => {});
 window.electronAPI.onDothomeLog(dhLog);
+window.electronAPI.onCloudflareLog?.(cfLog);
 window.electronAPI.onDothomeMailSessionUpdate?.((data) => {
   updateDhMailSessionBadge(data || {});
 });
@@ -5656,6 +6004,7 @@ window.electronAPI.onTokenGenProgress((data) => {
     renderNetlifyGenAccounts();
   }
 });
+setupEvents();
 load();
 
 document.addEventListener('click', (e) => {

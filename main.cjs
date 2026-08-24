@@ -76,6 +76,11 @@ function loadConfig() {
         notes: '',
         deploy: true,
         createProject: true,
+        deploySources: [],
+        registerNaver: true,
+        gapAfterDone: true,
+        gapMinSec: 100,
+        gapMaxSec: 300,
         sites: [],
       },
       dothome: {
@@ -749,6 +754,8 @@ ipcMain.handle('manual-captcha-collect', async (event, options = {}) => {
         })();
         const isDothome = /\.dothome\.co\.kr$/i.test(host)
           || String(options.provider || '').toLowerCase() === 'dothome';
+        const isCloudflare = /\.pages\.dev$/i.test(host)
+          || String(options.provider || '').toLowerCase() === 'cloudflare';
 
         if (isDothome) {
           const ftpId = String(options.ftpId || siteSlug || host.replace(/\.dothome\.co\.kr$/i, '') || '').trim();
@@ -768,6 +775,47 @@ ipcMain.handle('manual-captcha-collect', async (event, options = {}) => {
             sendLog,
           });
           return { ok: true, url: siteUrl };
+        }
+
+        if (isCloudflare) {
+          const accountId = String(
+            options.accountId
+            || config.cloudflare?.accountId
+            || '',
+          ).trim();
+          const apiToken = String(
+            options.apiToken
+            || config.cloudflare?.apiToken
+            || '',
+          ).trim();
+          if (!accountId || !apiToken) {
+            return { ok: false, error: 'Cloudflare Account ID / API Token이 없습니다. CF 탭에서 확인하세요.' };
+          }
+          let projectName = String(
+            options.projectName
+            || siteSlug
+            || options.siteSlug
+            || '',
+          ).trim();
+          if (!projectName) {
+            try {
+              projectName = new URL(siteUrl).hostname.replace(/\.pages\.dev$/i, '');
+            } catch { /* ignore */ }
+          }
+          if (!projectName) {
+            return { ok: false, error: 'Cloudflare Pages 프로젝트명을 알 수 없습니다.' };
+          }
+          const { deployPagesDirectory, sanitizePagesSlug } = await import('./lib/cloudflare-pages.js');
+          const slug = sanitizePagesSlug(projectName) || projectName;
+          sendLog(`   Cloudflare Pages 재업로드 중… (${slug})`);
+          const deployInfo = await deployPagesDirectory({
+            accountId,
+            apiToken,
+            projectName: slug,
+            siteDir: dir,
+            sendLog,
+          });
+          return { ok: true, url: deployInfo?.url || siteUrl };
         }
 
         const tokens = Array.isArray(config.netlifyTokens) ? config.netlifyTokens : [];
@@ -2734,6 +2782,12 @@ ipcMain.handle('cloudflare-save-site', async (event, project = {}) => {
     brand: entry.detail.brand || '',
     phone: entry.detail.phone || '',
     notes: entry.detail.notes || '',
+    sourcePath: entry.detail.sourcePath || '',
+    sourceType: entry.detail.sourceType || '',
+    naverStatus: entry.detail.naverStatus || '',
+    naverAccountId: entry.detail.naverAccountId || '',
+    title: entry.detail.title || '',
+    h1: entry.detail.h1 || '',
   };
   if (idx >= 0) sites[idx] = { ...sites[idx], ...row };
   else sites.unshift(row);
@@ -2743,4 +2797,188 @@ ipcMain.handle('cloudflare-save-site', async (event, project = {}) => {
 
   const createdSites = await upsertCreatedSite(entry);
   return { ok: true, site: entry, createdSites };
+});
+
+ipcMain.handle('cloudflare-deploy-zip', async (event, options = {}) => {
+  const config = loadConfig();
+  const { deployCloudflareZipSite } = await import('./lib/cloudflare-deploy.js');
+  const sendLog = (line) => event.sender.send('cloudflare-log', line);
+
+  const accountId = String(options.accountId || config.cloudflare?.accountId || '').trim();
+  const apiToken = String(options.apiToken || config.cloudflare?.apiToken || '').trim();
+  const zipPath = String(options.zipPath || options.sourcePath || '').trim();
+  const projectName = String(options.projectName || options.name || '').trim();
+  const registerNaver = options.registerNaver !== false;
+  const reuseProject = !!options.reuseProject;
+  const naverAccount = pickNaverAccountForDothome(config, options);
+
+  if (!accountId || !apiToken) {
+    return {
+      ok: false,
+      error: 'Cloudflare Account ID와 API Token이 필요합니다.\nCF 탭에서 입력하세요.\n토큰 권한: Account · Cloudflare Pages · Edit',
+    };
+  }
+  if (!zipPath) {
+    return { ok: false, error: '배포할 ZIP 경로가 없습니다.' };
+  }
+  if (registerNaver && !naverAccount) {
+    return {
+      ok: false,
+      error: '네이버 서치어드바이저 등록이 포함됩니다.\n설정 탭에 네이버 계정(아이디/비밀번호)을 등록하세요.',
+    };
+  }
+
+  try {
+    const out = await deployCloudflareZipSite({
+      zipPath,
+      projectName,
+      accountId,
+      apiToken,
+      registerNaver,
+      reuseProject,
+      naverAccount,
+      naverAccounts: config.naverAccounts || [],
+      openaiApiKey: config.openaiApiKey || '',
+      yesCaptchaClientKey: config.yesCaptchaClientKey || '',
+      headless: !!config.headless,
+      metaInjectOnly: !!config.metaInjectOnly,
+      outputRoot: OUTPUT_ROOT,
+      sendLog,
+    });
+
+    const siteUrl = String(out.siteUrl || '').replace(/\/?$/, '/');
+    const deployedAt = new Date().toISOString();
+    const cf = { ...(config.cloudflare || {}) };
+    cf.accountId = accountId;
+    cf.apiToken = apiToken;
+    if (Array.isArray(cf.deploySources)) {
+      const fromKey = zipPath.toLowerCase();
+      const toKey = String(out.movedZip?.to || '').toLowerCase();
+      cf.deploySources = cf.deploySources.filter((s) => {
+        const p = String(s?.path || '').toLowerCase();
+        return p && p !== fromKey && p !== toKey;
+      });
+    }
+    const sites = Array.isArray(cf.sites) ? [...cf.sites] : [];
+    const siteRow = {
+      name: out.projectName,
+      url: siteUrl,
+      status: 'deployed',
+      createdAt: deployedAt,
+      accountId,
+      sourcePath: out.sourcePath || zipPath,
+      sourceType: 'zip',
+      naverStatus: out.naver?.status || '',
+      naverAccountId: out.naver?.naverAccountId || naverAccount?.id || '',
+      deployedAt,
+    };
+    const sIdx = sites.findIndex((s) => String(s.name || '').toLowerCase() === String(out.projectName).toLowerCase());
+    if (sIdx >= 0) sites[sIdx] = { ...sites[sIdx], ...siteRow };
+    else sites.unshift(siteRow);
+    cf.sites = sites;
+    config.cloudflare = cf;
+    saveConfig(config);
+
+    sendLog(`✔ Pages 배포 완료: ${siteUrl}`);
+    if (out.naver?.status) sendLog(`✔ 네이버: ${out.naver.status}`);
+
+    let createdSites;
+    try {
+      const { entryFromCloudflare } = await import('./lib/sites-registry.js');
+      const siteEntry = entryFromCloudflare({
+        name: out.projectName,
+        url: siteUrl,
+        status: 'deployed',
+        accountId,
+        siteDir: out.siteDir || '',
+        sourcePath: out.sourcePath || zipPath,
+        sourceType: 'zip',
+        naverStatus: out.naver?.status || '',
+        naverAccountId: out.naver?.naverAccountId || naverAccount?.id || '',
+        deployedAt,
+        from: 'cloudflare-deploy-zip',
+      });
+      if (siteEntry) createdSites = await upsertCreatedSite(siteEntry);
+    } catch (e) {
+      sendLog(`[WARN] 생성 사이트 목록 저장 실패: ${e.message}`);
+    }
+    return {
+      ...out,
+      ok: true,
+      createdSites,
+      deploySources: cf.deploySources || [],
+    };
+  } catch (e) {
+    sendLog(`[ERROR] ${e.message}`);
+    const errMsg = e?.message || String(e);
+    const failKind = String(e?.failKind || e?.naverStatus || '').toLowerCase();
+    const metaMissing = failKind === 'meta_missing'
+      || /meta_missing|메타태그|메타\s*태그|찾을\s*수\s*없/i.test(errMsg);
+    const accessFail = failKind === 'access_fail'
+      || /access_fail|접근\s*실패|응답을\s*받지|Status\s*0/i.test(errMsg);
+    const captchaFail = !metaMissing && !accessFail && (
+      failKind === 'captcha'
+      || /캡챠|captcha|보안절차|수동캡챠/i.test(errMsg)
+    );
+    const naverStatus = metaMissing ? 'meta_missing'
+      : accessFail ? 'access_fail'
+      : captchaFail ? 'captcha'
+      : 'error';
+    const zipMissing = !!(e?.zipMissing || e?.code === 'ZIP_MISSING'
+      || /ZIP 파일이 없습니다/i.test(errMsg));
+    const movedZip = e?.movedZip || null;
+    const deployOk = !!e?.deployOk;
+    const projectNameOut = String(e?.projectName || projectName || '').trim();
+
+    let deploySources = Array.isArray(config.cloudflare?.deploySources)
+      ? config.cloudflare.deploySources
+      : [];
+    if ((movedZip || deployOk) && Array.isArray(config.cloudflare?.deploySources)) {
+      const fromKey = String(movedZip?.from || zipPath || '').toLowerCase();
+      const toKey = String(movedZip?.to || '').toLowerCase();
+      const cf = { ...(config.cloudflare || {}) };
+      cf.deploySources = (cf.deploySources || []).filter((s) => {
+        const p = String(s?.path || '').toLowerCase();
+        return p && p !== fromKey && p !== toKey && p !== zipPath.toLowerCase();
+      });
+      config.cloudflare = cf;
+      deploySources = cf.deploySources;
+      saveConfig(config);
+    }
+
+    let createdSites;
+    try {
+      if (projectNameOut || e?.siteUrl) {
+        const { entryFromCloudflare } = await import('./lib/sites-registry.js');
+        const siteEntry = entryFromCloudflare({
+          name: projectNameOut || 'cf-unknown',
+          url: String(e?.siteUrl || (projectNameOut ? `https://${projectNameOut}.pages.dev/` : '')).trim(),
+          status: deployOk ? 'deployed' : 'error',
+          accountId,
+          siteDir: e?.siteDir || '',
+          sourcePath: e?.sourcePath || movedZip?.to || zipPath || '',
+          sourceType: 'zip',
+          naverStatus,
+          naverError: errMsg,
+          naverAccountId: naverAccount?.id || '',
+          deployedAt: deployOk ? new Date().toISOString() : '',
+          from: 'cloudflare-deploy-fail',
+        });
+        if (siteEntry) createdSites = await upsertCreatedSite(siteEntry);
+      }
+    } catch { /* ignore */ }
+
+    return {
+      ok: false,
+      error: errMsg,
+      createdSites,
+      movedZip,
+      deploySources,
+      deployOk,
+      zipMissing,
+      projectName: projectNameOut,
+      naverStatus,
+      failKind: failKind || naverStatus,
+    };
+  }
 });

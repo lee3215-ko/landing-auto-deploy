@@ -1,6 +1,6 @@
 {
   "name": "landing-auto-deploy",
-  "version": "3.8.101",
+  "version": "3.8.102",
   "description": "Netlify bulk deploy + Naver Search Advisor",
   "main": "main.cjs",
   "type": "module",
@@ -18,6 +18,7 @@
   "license": "ISC",
   "dependencies": {
     "@cursor/sdk": "^1.0.24",
+    "@noble/hashes": "^2.3.0",
     "basic-ftp": "^6.0.1",
     "jszip": "^3.10.1",
     "puppeteer": "^25.1.0",
@@ -50,7 +51,9 @@
       {
         "from": "engine/kkang-site-builder",
         "to": "kkang-site-builder",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
