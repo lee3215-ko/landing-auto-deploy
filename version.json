@@ -1,11 +1,12 @@
 {
     "version":  "3.8.103",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.103/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/537380820",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.103/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/537380820",
+    "asset_id":  537380820,
     "notes":  "업데이트 후 CMD 창 숨김, 시작 시 네이버 로그인 창 미표시, 대량생성 ID 다음 계정 전환",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/537380820",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.103/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
