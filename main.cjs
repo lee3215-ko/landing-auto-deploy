@@ -201,6 +201,67 @@ function makeOnSiteCount() {
   };
 }
 
+function removeNaverAccountFromConfig(accountId) {
+  const id = String(accountId || '').trim();
+  if (!id) return loadConfig().naverAccounts || [];
+  const config = loadConfig();
+  const before = Array.isArray(config.naverAccounts) ? config.naverAccounts : [];
+  config.naverAccounts = before.filter((a) => String(a?.id || '').trim() !== id);
+  saveConfig(config);
+  try {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('naver-accounts-updated', {
+          naverAccounts: config.naverAccounts,
+          removedAccountId: id,
+        });
+      }
+    }
+  } catch { /* ignore */ }
+  return config.naverAccounts;
+}
+
+function makeOnMassCreatedId() {
+  return async ({ accountId, reason, date, nextAccount }) => {
+    const id = String(accountId || '').trim() || '(알 수 없음)';
+    const nextId = String(nextAccount?.id || '').trim();
+    const parent = BrowserWindow.getFocusedWindow() || mainWindow || undefined;
+    const detail = [
+      `제한사유: ${reason || '대량생성 ID'}`,
+      date ? `제한일자: ${date}` : '',
+      '',
+      nextId
+        ? `다음 네이버 아이디(${nextId})로 로그인할까요까요?\n(제한된 아이디는 목록에서 삭제됩니다)`
+        : '설정에 다음으로 쓸 네이버 계정이 없습니다.\n제한된 아이디만 목록에서 삭제합니다.',
+    ].filter(Boolean).join('\n');
+
+    const { response } = await dialog.showMessageBox(parent, {
+      type: 'warning',
+      buttons: nextId ? ['다음 아이디로 로그인', '취소'] : ['목록에서 삭제', '취소'],
+      defaultId: 0,
+      cancelId: 1,
+      title: '네이버 로그인 제한',
+      message: `${id}는 대량생성 ID로 로그인 제한 중입니다.`,
+      detail,
+      noLink: true,
+    });
+
+    if (response !== 0) {
+      return { proceed: false };
+    }
+
+    const accounts = removeNaverAccountFromConfig(id);
+    if (!nextId || !nextAccount?.pw) {
+      return { proceed: false, accounts };
+    }
+    return {
+      proceed: true,
+      nextAccount,
+      accounts,
+    };
+  };
+}
+
 function saveConfig(config) {
   fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf8');
@@ -494,16 +555,23 @@ async function initNaverSessionListeners() {
     getNaverSessionStatus,
     setNaverSessionProfileDir,
     setDefaultOnSiteCount,
+    setDefaultOnMassCreatedId,
     setKnownNaverSiteCount,
+    closeOrphanNaverChromeOnStartup,
   } = await import('./lib/naver-session.js');
   const profileDir = path.join(app.getPath('userData'), 'chrome-naver-session');
   setNaverSessionProfileDir(profileDir);
   setDefaultOnSiteCount(makeOnSiteCount());
+  setDefaultOnMassCreatedId(makeOnMassCreatedId());
   try {
     const cfg = loadConfig();
     for (const a of (cfg.naverAccounts || [])) {
       if (a?.id && a.siteCount != null) setKnownNaverSiteCount(a.id, a.siteCount);
     }
+  } catch { /* ignore */ }
+  // 이전 실행에서 남은 네이버 로그인 Chrome이 있으면 닫음 (시작 시 창이 뜨지 않게)
+  try {
+    await closeOrphanNaverChromeOnStartup();
   } catch { /* ignore */ }
   onNaverSessionStatus((snap) => broadcastNaverSession(snap));
   broadcastNaverSession(getNaverSessionStatus());
@@ -549,9 +617,8 @@ ipcMain.handle('clipboard-write', (_event, text) => {
 });
 
 ipcMain.handle('naver-session-status', async () => {
-  const { getNaverSessionStatus, attachNaverChrome } = await import('./lib/naver-session.js');
-  // 이미 떠 있는 서치어드바이저 Chrome이 있으면 상태 idle로 오인하지 않도록 재연결
-  try { await attachNaverChrome(); } catch { /* ignore */ }
+  const { getNaverSessionStatus } = await import('./lib/naver-session.js');
+  // 시작 시 Chrome 재연결/포커스 금지 — 「네이버 로그인」 클릭 시에만 창 실행
   return getNaverSessionStatus();
 });
 
@@ -584,6 +651,7 @@ ipcMain.handle('naver-session-start', async (event, options = {}) => {
       yesCaptchaClientKey: config.yesCaptchaClientKey || '',
       headless: false,
       forceRelogin: !!options.forceRelogin,
+      forceNewSession: true,
       userDataDir: profileDir,
       outputFolder: path.join(OUTPUT_ROOT, 'naver-session'),
       onLog: (msg) => event.sender.send('log-line', `[네이버세션] ${msg}`),

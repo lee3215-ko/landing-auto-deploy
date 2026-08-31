@@ -1,12 +1,12 @@
 {
-    "version":  "3.8.102",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.102/LandingAutoDeploy.zip",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.102/LandingAutoDeploy.zip",
+    "version":  "3.8.103",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.103/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.103/LandingAutoDeploy.zip",
     "api_download_url":  null,
     "asset_id":  null,
-    "notes":  "Cloudflare Pages ZIP→네이버 파이프라인, API 토큰 표시, 생성사이트 수동캡챠, 배포 후 100~300초 랜덤 대기",
+    "notes":  "업데이트 후 CMD 창 숨김, 시작 시 네이버 로그인 창 미표시, 대량생성 ID 다음 계정 전환",
     "download_urls":  [
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.102/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.103/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }

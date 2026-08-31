@@ -5958,7 +5958,9 @@ window.electronAPI.onNaverAccountsUpdated?.((data) => {
       : false,
   }));
   renderNaverAccounts();
-  if (data.accountId != null && data.siteCount != null) {
+  if (data.removedAccountId) {
+    logLine(`[네이버] 대량생성 ID 목록에서 삭제: ${data.removedAccountId}`);
+  } else if (data.accountId != null && data.siteCount != null) {
     logLine(`[네이버] ${data.accountId} 등록 수 기록: ${data.siteCount}개`);
   }
 });
