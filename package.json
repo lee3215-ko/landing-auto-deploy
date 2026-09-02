@@ -1,6 +1,6 @@
 {
   "name": "landing-auto-deploy",
-  "version": "3.8.103",
+  "version": "3.8.104",
   "description": "Netlify bulk deploy + Naver Search Advisor",
   "main": "main.cjs",
   "type": "module",

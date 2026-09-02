@@ -826,17 +826,24 @@
               <div class="value" id="kwStatAi">0</div>
               <div class="label">AI/기타</div>
             </div>
+            <div class="stat-card error">
+              <div class="value" id="kwStatFail">0</div>
+              <div class="label">배포 실패</div>
+            </div>
           </div>
           <div class="card">
             <div class="results-toolbar sites-toolbar">
               <div class="form-group" style="margin:0;min-width:200px;flex:1;">
                 <label for="keywordsSearch">검색</label>
-                <input type="text" id="keywordsSearch" placeholder="타이틀, H1, 키워드, ZIP명…">
+                <input type="text" id="keywordsSearch" placeholder="타이틀, H1, 키워드, ZIP명, 플랫폼…">
               </div>
+              <button class="btn btn-primary btn-sm" id="keywordsCheckIndexBtn" type="button">🔍 인덱싱 확인</button>
               <button class="btn btn-ghost btn-sm" id="keywordsRefreshBtn" type="button">새로고침</button>
               <button class="btn btn-ghost btn-sm" id="keywordsCopyBtn" type="button">키워드 복사</button>
+              <button class="btn btn-danger btn-sm" id="keywordsDeleteFailedBtn" type="button" title="배포 실패로 표시된 항목만 목록에서 삭제">실패 항목 삭제</button>
             </div>
-            <p class="bulk-hint">생성 사이트 기준으로 <strong>날짜별</strong> 타이틀·H1 키워드와 제작 방식(ZIP/AI)을 모읍니다.</p>
+            <p class="bulk-hint" id="keywordsIndexHint">생성 사이트 기준 · 플랫폼 태그 · ZIP/AI · 인덱싱 확인(네이버 site: 검색, 로그인 불필요)</p>
+            <div id="keywordsIndexProgress" class="index-progress" hidden></div>
             <div id="keywordsList"></div>
           </div>
         </div>

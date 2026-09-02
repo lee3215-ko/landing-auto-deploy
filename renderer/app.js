@@ -89,7 +89,7 @@ const PAGE_META = {
   dothome: { title: '닷홈 호스팅 생성', subtitle: '닷홈 회원가입 자동화 · 이후 FTP/사이트 배포' },
   'url-crawl': { title: 'URL 수집', subtitle: '하위 URL 수집 후 네이버 웹페이지 수집 일괄 신청' },
   sites: { title: '생성 사이트', subtitle: 'Netlify · Cloudflare Pages · 닷홈 생성 목록 (생성일 포함)' },
-  keywords: { title: '통합키워드결과', subtitle: '날짜별 타이틀·H1 키워드 · 제작 방식(ZIP/AI) · 생성 건수' },
+  keywords: { title: '통합키워드결과', subtitle: '플랫폼 태그 · 날짜별 타이틀·H1 · ZIP/AI · 인덱싱 확인 · 실패 삭제' },
   results: { title: '배포/등록 결과', subtitle: '저장된 배포 URL 및 네이버 등록 현황' },
   logs: { title: '로그', subtitle: '탭별 실행 로그 · 필터로 구분해서 보기' },
 };
@@ -2170,15 +2170,32 @@ function dateKeyLocal(iso) {
   return `${y}-${m}-${day}`;
 }
 
+function isDeployFailedSite(site) {
+  if (!site) return false;
+  const st = String(site.status || '').toLowerCase();
+  if (st === 'error' || st === 'fail' || st === 'failed') return true;
+  const d = site.detail || {};
+  if (d.deployOk === false || d.deployed === false) return true;
+  const ns = String(d.naverStatus || '').toLowerCase();
+  const url = String(site.url || '').trim();
+  // URL 없고 배포/네이버 오류 흔적 → 실패
+  if (!url && (d.naverError || d.error || d.deployError || /^(error|fail|failed)$/i.test(ns))) {
+    return true;
+  }
+  return false;
+}
+
 function collectKeywordEntries() {
   return createdSites
     .filter(isCreatedSitesRow)
     .map((s) => {
       const d = s.detail || {};
       const src = siteSourceInfo(s);
+      const prov = SITE_PROVIDER_META[s.provider] || { label: s.provider || '-', cls: 'unknown' };
       const title = String(d.title || '').trim();
       const h1 = String(d.h1 || '').trim();
       const keyword = String(d.keyword || title || h1 || '').trim();
+      const failed = isDeployFailedSite(s);
       return {
         id: s.id,
         date: dateKeyLocal(s.createdAt || s.updatedAt || d.deployedAt),
@@ -2190,8 +2207,16 @@ function collectKeywordEntries() {
         sourceKind: src.kind,
         zipName: src.zipName,
         provider: s.provider,
+        providerLabel: prov.label,
+        providerCls: prov.cls,
         url: s.url || '',
         name: s.name || '',
+        status: s.status || '',
+        failed,
+        indexed: s.indexed,
+        indexCheckedAt: s.indexCheckedAt || '',
+        indexMessage: s.indexMessage || '',
+        site: s,
       };
     })
     .sort((a, b) => {
@@ -2209,7 +2234,8 @@ function getFilteredKeywordEntries() {
   return rows.filter((r) => {
     const hay = [
       r.title, r.h1, r.keyword, r.zipName, r.sourceLabel,
-      r.name, r.url, r.provider, r.date,
+      r.name, r.url, r.provider, r.providerLabel, r.date,
+      r.failed ? '실패' : '',
     ].join(' ').toLowerCase();
     return hay.includes(q);
   });
@@ -2219,10 +2245,58 @@ function updateKeywordsStats(rows) {
   const dates = new Set(rows.map((r) => r.date));
   const zipN = rows.filter((r) => r.sourceKind === 'zip').length;
   const aiN = rows.length - zipN;
+  const failN = rows.filter((r) => r.failed).length;
+  const withUrl = rows.filter((r) => !!(r.url || '').trim()).length;
+  const indexed = rows.filter((r) => r.indexed === true).length;
+  const pending = rows.filter((r) => (r.url || '').trim() && r.indexed !== true).length;
   if ($('kwStatTotal')) $('kwStatTotal').textContent = String(rows.length);
   if ($('kwStatDays')) $('kwStatDays').textContent = String(dates.size);
   if ($('kwStatZip')) $('kwStatZip').textContent = String(zipN);
   if ($('kwStatAi')) $('kwStatAi').textContent = String(aiN);
+  if ($('kwStatFail')) $('kwStatFail').textContent = String(failN);
+  const delBtn = $('keywordsDeleteFailedBtn');
+  if (delBtn) {
+    delBtn.disabled = failN === 0;
+    delBtn.textContent = failN ? `실패 항목 삭제 (${failN})` : '실패 항목 삭제';
+  }
+  const hint = $('keywordsIndexHint');
+  if (hint) {
+    hint.textContent = withUrl
+      ? `URL ${withUrl}건 · 인덱싱됨 ${indexed}건 · 미확인/미인덱싱 ${pending}건 · 배포 실패 ${failN}건 (네이버 site: 검색 · 로그인 불필요)`
+      : (failN
+        ? `배포 실패 ${failN}건 · 인덱싱 확인할 URL이 없습니다.`
+        : '생성 사이트 기준으로 날짜별 타이틀·H1·플랫폼·인덱싱을 모읍니다.');
+  }
+}
+
+function renderKwIndexCell(row) {
+  // 생성사이트와 동일한 인덱싱 셀 — 액션만 keywords용 data 속성
+  const site = row.site || row;
+  const url = (site?.url || row.url || '').trim();
+  if (!url) {
+    return '<span class="status-pill indexed-pending" style="opacity:0.5">—</span>';
+  }
+  const idAttr = escapeHtml(row.id || site.id || '');
+  if (row.indexed === true || site.indexed === true) {
+    const when = (row.indexCheckedAt || site.indexCheckedAt)
+      ? `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${formatDate(row.indexCheckedAt || site.indexCheckedAt)}</div>`
+      : '';
+    return `<span class="status-pill indexed-yes" title="${escapeHtml(row.indexMessage || site.indexMessage || '인덱싱됨')}">인덱싱됨</span>${when}
+      <div class="index-actions"><button class="btn btn-ghost btn-sm" type="button" data-kw-action="check-index" data-id="${idAttr}" title="재확인">재확인</button></div>`;
+  }
+  if (row.indexed === false || site.indexed === false) {
+    const when = (row.indexCheckedAt || site.indexCheckedAt)
+      ? `<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${formatDate(row.indexCheckedAt || site.indexCheckedAt)}</div>`
+      : '';
+    return `<span class="status-pill indexed-no">미인덱싱</span>${when}
+      <div class="index-actions"><button class="btn btn-ghost btn-sm" type="button" data-kw-action="check-index" data-id="${idAttr}">재확인</button></div>`;
+  }
+  if ((row.indexed === null || site.indexed === null) && (row.indexMessage || site.indexMessage)) {
+    return `<span class="status-pill indexed-fail">${escapeHtml(row.indexMessage || site.indexMessage)}</span>
+      <button class="btn btn-ghost btn-sm" type="button" data-kw-action="check-index" data-id="${idAttr}">재시도</button>`;
+  }
+  return `<span class="status-pill indexed-pending">미확인</span>
+    <button class="btn btn-ghost btn-sm" type="button" data-kw-action="check-index" data-id="${idAttr}">확인</button>`;
 }
 
 function renderKeywordsResults() {
@@ -2245,6 +2319,7 @@ function renderKeywordsResults() {
   for (const [date, items] of byDate) {
     const zipN = items.filter((r) => r.sourceKind === 'zip').length;
     const aiN = items.length - zipN;
+    const failN = items.filter((r) => r.failed).length;
     const section = document.createElement('section');
     section.className = 'kw-day-group';
     section.innerHTML = `
@@ -2253,6 +2328,7 @@ function renderKeywordsResults() {
         <span class="kw-day-count">총 <b>${items.length}</b>개</span>
         <span class="kw-day-pill zip">ZIP ${zipN}</span>
         <span class="kw-day-pill ai">AI/기타 ${aiN}</span>
+        ${failN ? `<span class="kw-day-pill" style="color:#fecaca;border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.12)">실패 ${failN}</span>` : ''}
       </div>`;
     const table = document.createElement('div');
     table.className = 'kw-table';
@@ -2261,17 +2337,29 @@ function renderKeywordsResults() {
         <span>타이틀</span>
         <span>H1</span>
         <span>제작</span>
+        <span>상태</span>
+        <span>인덱싱</span>
         <span>ZIP / 출처</span>
       </div>`;
     for (const r of items) {
       const row = document.createElement('div');
-      row.className = 'kw-table-row';
-      const titleShow = r.title || r.keyword || '(타이틀 없음)';
-      const h1Show = r.h1 || '(H1 없음)';
+      row.className = `kw-table-row${r.failed ? ' is-failed' : ''}`;
+      const titleShow = r.failed
+        ? (r.title || r.keyword || r.zipName || r.name || '배포 실패')
+        : (r.title || r.keyword || '(타이틀 없음)');
+      const h1Show = r.h1 || (r.failed ? '-' : '(H1 없음)');
+      const statusHtml = r.failed
+        ? '<span class="kw-fail-pill">실패</span>'
+        : '<span class="kw-ok-pill">배포</span>';
       row.innerHTML = `
-        <span class="kw-col-title" title="${escapeHtml(titleShow)}">${escapeHtml(titleShow)}</span>
+        <span class="kw-col-title" title="${escapeHtml(`${r.providerLabel || ''} ${titleShow}`.trim())}">
+          <span class="kw-platform-pill ${escapeHtml(r.providerCls || 'unknown')}">${escapeHtml(r.providerLabel || '-')}</span>
+          <span class="kw-title-text">${escapeHtml(titleShow)}</span>
+        </span>
         <span class="kw-col-h1" title="${escapeHtml(h1Show)}">${escapeHtml(h1Show)}</span>
         <span class="kw-col-src"><span class="kw-src-pill ${escapeHtml(r.sourceKind)}">${escapeHtml(r.sourceLabel || '-')}</span></span>
+        <span class="kw-col-status">${statusHtml}</span>
+        <span class="kw-col-index">${renderKwIndexCell(r)}</span>
         <span class="kw-col-zip" title="${escapeHtml(r.zipName || r.name || '')}">${escapeHtml(r.zipName || r.name || '-')}</span>`;
       table.appendChild(row);
     }
@@ -2294,13 +2382,94 @@ async function copyKeywordsSummary() {
   for (const [date, items] of byDate) {
     lines.push(`# ${date} (${items.length}개)`);
     for (const r of items) {
-      lines.push(`- 타이틀: ${r.title || r.keyword || '-'}`);
+      const tag = r.providerLabel ? `[${r.providerLabel}] ` : '';
+      const fail = r.failed ? ' · 실패' : '';
+      lines.push(`- ${tag}타이틀: ${r.title || r.keyword || '-'}${fail}`);
       lines.push(`  H1: ${r.h1 || '-'}`);
       lines.push(`  제작: ${r.sourceLabel || '-'}${r.zipName ? ` · ${r.zipName}` : ''}`);
+      if (r.url) lines.push(`  URL: ${r.url}`);
     }
     lines.push('');
   }
   await copyToClipboard(lines.join('\n').trim(), `📋 키워드 ${rows.length}건 복사됨`, { sitesTab: true });
+}
+
+async function deleteFailedKeywordSites() {
+  const failed = collectKeywordEntries().filter((r) => r.failed && r.id);
+  if (!failed.length) {
+    alert('삭제할 실패 항목이 없습니다.');
+    return;
+  }
+  if (!confirm(
+    `배포 실패 ${failed.length}건을 목록에서 삭제할까요?\n`
+    + '(실제 호스팅/배포는 삭제되지 않습니다)',
+  )) return;
+  const failIds = new Set(failed.map((r) => r.id));
+  const next = (createdSites || []).filter((s) => !failIds.has(s.id));
+  createdSites = (await window.electronAPI.saveCreatedSites(next)) || next;
+  renderCreatedSites();
+  renderKeywordsResults();
+  logLine(`[키워드] 배포 실패 ${failed.length}건 목록에서 삭제`);
+}
+
+function setKeywordsIndexProgress(text, show = true) {
+  const el = $('keywordsIndexProgress');
+  if (!el) return;
+  if (!show || !text) {
+    el.hidden = true;
+    el.textContent = '';
+    return;
+  }
+  el.hidden = false;
+  el.textContent = text;
+}
+
+async function runKeywordsIndexCheck(ids = null) {
+  if (sitesIndexCheckRunning || indexCheckRunning) return;
+  sitesIndexCheckRunning = true;
+  const btn = $('keywordsCheckIndexBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ 확인 중...';
+  }
+  setKeywordsIndexProgress('인덱싱 확인 준비 중...');
+  try {
+    const out = await window.electronAPI.checkSitesIndex({
+      ids,
+      force: Array.isArray(ids) && ids.length === 1,
+    });
+    if (out?.results) createdSites = out.results;
+    renderCreatedSites();
+    renderKeywordsResults();
+
+    if (out?.error) {
+      if (out.summary?.skipped && !out.summary?.checked) {
+        setKeywordsIndexProgress(out.error, true);
+        setTimeout(() => setKeywordsIndexProgress('', false), 6000);
+      } else {
+        alert(out.error);
+        setKeywordsIndexProgress('', false);
+      }
+      return;
+    }
+
+    const s = out?.summary || {};
+    const skipPart = s.skipped ? ` · 이미 인덱싱 ${s.skipped}건 건너뜀` : '';
+    setKeywordsIndexProgress(
+      `완료: ${s.checked || 0}건 확인 · 인덱싱 ${s.indexed || 0} · 미인덱싱 ${s.notIndexed || 0}${s.failed ? ` · 실패 ${s.failed}` : ''}${skipPart}`,
+      true,
+    );
+    setTimeout(() => setKeywordsIndexProgress('', false), 8000);
+  } catch (e) {
+    alert(e.message || String(e));
+    setKeywordsIndexProgress('', false);
+  } finally {
+    sitesIndexCheckRunning = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🔍 인덱싱 확인';
+    }
+  }
 }
 
 async function deleteCreatedSite(id, { skipConfirm = false } = {}) {
@@ -2429,6 +2598,7 @@ async function runSitesIndexCheck(ids = null) {
     });
     if (out?.results) createdSites = out.results;
     renderCreatedSites();
+    if (currentTabName === 'keywords') renderKeywordsResults();
 
     if (out?.error) {
       if (out.summary?.skipped && !out.summary?.checked) {
@@ -3866,6 +4036,18 @@ function setupEvents() {
     renderKeywordsResults();
   });
   $('keywordsCopyBtn')?.addEventListener('click', () => copyKeywordsSummary());
+  $('keywordsCheckIndexBtn')?.addEventListener('click', () => runKeywordsIndexCheck());
+  $('keywordsDeleteFailedBtn')?.addEventListener('click', () => deleteFailedKeywordSites());
+  $('keywordsList')?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-kw-action]');
+    if (!btn) return;
+    const action = btn.dataset.kwAction;
+    if (action === 'check-index') {
+      const id = btn.dataset.id;
+      if (!id) return;
+      await runKeywordsIndexCheck([id]);
+    }
+  });
   $('sitesList')?.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-sites-action]');
     if (!btn) return;
@@ -4101,7 +4283,9 @@ window.electronAPI.onIndexUpdated((p) => {
 
 window.electronAPI.onSitesIndexProgress((p) => {
   if (p.phase === 'checking') {
-    setSitesIndexProgress(`인덱싱 확인 ${p.current}/${p.total}: ${p.url}`);
+    const msg = `인덱싱 확인 ${p.current}/${p.total}: ${p.url}`;
+    setSitesIndexProgress(msg);
+    if (currentTabName === 'keywords') setKeywordsIndexProgress(msg);
   }
 });
 
@@ -4109,6 +4293,14 @@ window.electronAPI.onSitesIndexUpdated((p) => {
   if (p.index != null && createdSites[p.index]) {
     createdSites[p.index] = p.result;
     renderCreatedSites();
+    if (currentTabName === 'keywords') renderKeywordsResults();
+  } else if (p.result?.id) {
+    const idx = createdSites.findIndex((s) => s.id === p.result.id);
+    if (idx >= 0) {
+      createdSites[idx] = { ...createdSites[idx], ...p.result };
+      renderCreatedSites();
+      if (currentTabName === 'keywords') renderKeywordsResults();
+    }
   }
 });
 
