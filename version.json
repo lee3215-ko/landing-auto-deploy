@@ -1,11 +1,12 @@
 {
     "version":  "3.8.104",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.104/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/540466050",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.104/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/540466050",
+    "asset_id":  540466050,
     "notes":  "통합키워드결과: 플랫폼 태그, 배포실패 표시/삭제, 인덱싱 확인",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/540466050",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.104/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
