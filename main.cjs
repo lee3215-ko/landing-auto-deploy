@@ -87,6 +87,8 @@ function loadConfig() {
         hostId: '',
         hostPw: 'dlwkdrns12435!',
         emailLocal: '',
+        mailKakaoId: '',
+        mailKakaoPw: '',
         mailNaverId: '',
         mailNaverPw: '',
         ftpHost: '',
@@ -559,7 +561,7 @@ async function initNaverSessionListeners() {
     setKnownNaverSiteCount,
     closeOrphanNaverChromeOnStartup,
   } = await import('./lib/naver-session.js');
-  const profileDir = path.join(app.getPath('userData'), 'chrome-naver-session');
+  const profileDir = path.join(app.getPath('userData'), 'edge-naver-session');
   setNaverSessionProfileDir(profileDir);
   setDefaultOnSiteCount(makeOnSiteCount());
   setDefaultOnMassCreatedId(makeOnMassCreatedId());
@@ -582,7 +584,7 @@ async function initDothomeMailSessionListeners() {
     onDothomeMailSessionStatus,
     getDothomeMailSessionStatus,
     setDothomeMailProfileDir,
-  } = await import('./lib/dothome-naver-mail-session.js');
+  } = await import('./lib/dothome-kakao-mail-session.js');
   setDothomeMailProfileDir(path.join(app.getPath('userData'), 'chrome-dothome-mail'));
   onDothomeMailSessionStatus((snap) => broadcastDothomeMailSession(snap));
   broadcastDothomeMailSession(getDothomeMailSessionStatus());
@@ -641,7 +643,7 @@ ipcMain.handle('naver-session-start', async (event, options = {}) => {
     };
   }
   onNaverSessionStatus((snap) => broadcastNaverSession(snap));
-  const profileDir = path.join(app.getPath('userData'), 'chrome-naver-session');
+  const profileDir = path.join(app.getPath('userData'), 'edge-naver-session');
   setNaverSessionProfileDir(profileDir);
   try {
     await ensureNaverSession({
@@ -1724,7 +1726,7 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
   // 네이버 세션 프로필 경로 고정 (배포 중 ensureNaverSession이 같은 창을 쓰도록)
   {
     const { setNaverSessionProfileDir } = await import('./lib/naver-session.js');
-    setNaverSessionProfileDir(path.join(app.getPath('userData'), 'chrome-naver-session'));
+    setNaverSessionProfileDir(path.join(app.getPath('userData'), 'edge-naver-session'));
   }
   // Persist builder path / cursor key / netlify 자격증명
   if (job.kkangBuilderPath != null) config.kkangBuilderPath = String(job.kkangBuilderPath || '').trim();
@@ -2286,8 +2288,15 @@ ipcMain.handle('dothome-signup', async (event, options = {}) => {
       dh.hostId = out.account.id;
       dh.hostPw = out.account.pw;
       dh.emailLocal = options.emailLocal || dh.emailLocal || '';
-      if (options.mailNaverId) dh.mailNaverId = String(options.mailNaverId).trim().replace(/@.*$/, '');
-      if (options.mailNaverPw) dh.mailNaverPw = String(options.mailNaverPw).trim();
+      if (options.mailKakaoId || options.mailNaverId) {
+        dh.mailKakaoId = String(options.mailKakaoId || options.mailNaverId).trim();
+      }
+      if (options.mailKakaoPw || options.mailNaverPw) {
+        dh.mailKakaoPw = String(options.mailKakaoPw || options.mailNaverPw).trim();
+      }
+      // 구버전 키 호환 유지
+      if (dh.mailKakaoId) dh.mailNaverId = String(dh.mailKakaoId).replace(/@.*$/, '');
+      if (dh.mailKakaoPw) dh.mailNaverPw = dh.mailKakaoPw;
       config.dothome = dh;
       saveConfig(config);
       try {
@@ -2312,23 +2321,27 @@ ipcMain.handle('dothome-signup-stop', async () => {
 });
 
 /**
- * 닷홈 메일 인증용 계정 — 닷홈 탭 입력값만 사용 (설정 탭 서치어드바이저 계정과 분리)
+ * 닷홈 메일 인증용 계정 — 닷홈 탭 카카오 메일 입력값만 사용 (설정 탭 서치어드바이저 계정과 분리)
  */
 function resolveDothomeMailAccount(config, options = {}) {
   const dh = config.dothome || {};
   const emailLocal = String(options.emailLocal || dh.emailLocal || '').trim().replace(/@.*$/, '');
-  const id = String(options.mailNaverId || dh.mailNaverId || emailLocal || '').trim().replace(/@.*$/, '');
-  const pw = String(options.mailNaverPw || dh.mailNaverPw || '').trim();
+  const id = String(
+    options.mailKakaoId || options.mailNaverId || dh.mailKakaoId || dh.mailNaverId || emailLocal || '',
+  ).trim();
+  const pw = String(
+    options.mailKakaoPw || options.mailNaverPw || dh.mailKakaoPw || dh.mailNaverPw || '',
+  ).trim();
   if (!id || !pw) {
     return {
       naverAccount: null,
       emailLocal,
-      error: '닷홈 탭에 네이버 메일 아이디·비밀번호를 입력하세요. (설정 탭 계정은 서치어드바이저 전용)',
+      error: '닷홈 탭에 카카오 메일 아이디·비밀번호를 입력하세요. (설정 탭 계정은 서치어드바이저 전용)',
     };
   }
   return {
     naverAccount: { id, pw },
-    emailLocal: emailLocal || id,
+    emailLocal: emailLocal || String(id).replace(/@.*$/, ''),
   };
 }
 
@@ -2342,7 +2355,7 @@ ipcMain.handle('dothome-mail-session-status', async () => {
     getDothomeMailSessionStatus,
     reviveDothomeMailSession,
     setDothomeMailProfileDir,
-  } = await import('./lib/dothome-naver-mail-session.js');
+  } = await import('./lib/dothome-kakao-mail-session.js');
   setDothomeMailProfileDir(path.join(app.getPath('userData'), 'chrome-dothome-mail'));
   const cur = getDothomeMailSessionStatus();
   if (!cur.loggedIn) {
@@ -2360,26 +2373,31 @@ ipcMain.handle('dothome-mail-session-login', async (event, options = {}) => {
   const sendLog = (line) => event.sender.send('dothome-log', line);
   const { naverAccount, emailLocal, error: mailErr } = resolveDothomeMailAccount(config, options);
   if (!naverAccount?.id || !naverAccount?.pw) {
-    return { ok: false, error: mailErr || '닷홈 탭에 네이버 메일 아이디·비밀번호를 입력하세요.' };
-  }
-  if (!config.openaiApiKey && !config.yesCaptchaClientKey) {
-    return { ok: false, error: '설정 탭에 OpenAI 또는 YesCaptcha 키가 필요합니다. (로그인 캡챠)' };
+    return { ok: false, error: mailErr || '닷홈 탭에 카카오 메일 아이디·비밀번호를 입력하세요.' };
   }
 
   const {
-    startDothomeNaverMailLogin,
+    startDothomeMailLogin,
     setDothomeMailProfileDir,
     getDothomeMailSessionStatus,
-  } = await import('./lib/dothome-naver-mail-session.js');
+  } = await import('./lib/dothome-kakao-mail-session.js');
   setDothomeMailProfileDir(path.join(app.getPath('userData'), 'chrome-dothome-mail'));
 
   try {
-    sendLog(`[DOTHOME-MAIL] 로그인 요청: ${naverAccount.id}${emailLocal && emailLocal !== naverAccount.id ? ` (가입메일 ${emailLocal}@naver.com)` : ''} · 닷홈 탭 계정`);
-    const st = await startDothomeNaverMailLogin({
-      naverId: naverAccount.id,
-      naverPw: naverAccount.pw,
-      openaiApiKey: config.openaiApiKey || '',
-      yesCaptchaClientKey: config.yesCaptchaClientKey || '',
+    // 설정에 저장
+    const dh = { ...(config.dothome || {}) };
+    dh.emailLocal = emailLocal || dh.emailLocal || '';
+    dh.mailKakaoId = naverAccount.id;
+    dh.mailKakaoPw = naverAccount.pw;
+    dh.mailNaverId = String(naverAccount.id).replace(/@.*$/, '');
+    dh.mailNaverPw = naverAccount.pw;
+    config.dothome = dh;
+    saveConfig(config);
+
+    sendLog(`[DOTHOME-MAIL] 카카오 로그인 요청: ${naverAccount.id}${emailLocal && emailLocal !== String(naverAccount.id).replace(/@.*$/, '') ? ` (가입메일 ${emailLocal}@kakao.com)` : ''} · 닷홈 탭 계정`);
+    const st = await startDothomeMailLogin({
+      mailId: naverAccount.id,
+      mailPw: naverAccount.pw,
       headless: false,
       forceRelogin: !!options.forceRelogin,
       scratchDir: path.join(OUTPUT_ROOT, 'dothome-mail-captcha'),
@@ -2396,39 +2414,36 @@ ipcMain.handle('dothome-mail-session-login', async (event, options = {}) => {
 });
 
 ipcMain.handle('dothome-mail-session-close', async () => {
-  const { closeDothomeNaverMailSession } = await import('./lib/dothome-naver-mail-session.js');
-  const st = await closeDothomeNaverMailSession();
+  const { closeDothomeMailSession } = await import('./lib/dothome-kakao-mail-session.js');
+  const st = await closeDothomeMailSession();
   broadcastDothomeMailSession(st);
   return { ok: true, ...st };
 });
 
-/** VPN IP 변경 후 네이버 메일 강제 재로그인 */
+/** 카카오 메일 강제 재로그인 */
 ipcMain.handle('dothome-mail-session-relogin', async (event, options = {}) => {
   const config = loadConfig();
   const sendLog = (line) => event.sender.send('dothome-log', line);
   const { naverAccount, error: mailErr } = resolveDothomeMailAccount(config, options);
   if (!naverAccount?.id || !naverAccount?.pw) {
-    return { ok: false, error: mailErr || '닷홈 탭에 네이버 메일 아이디·비밀번호를 입력하세요.' };
+    return { ok: false, error: mailErr || '닷홈 탭에 카카오 메일 아이디·비밀번호를 입력하세요.' };
   }
   const {
     reloginDothomeMailAfterVpn,
     setDothomeMailProfileDir,
-  } = await import('./lib/dothome-naver-mail-session.js');
+  } = await import('./lib/dothome-kakao-mail-session.js');
   setDothomeMailProfileDir(path.join(app.getPath('userData'), 'chrome-dothome-mail'));
   try {
     const st = await reloginDothomeMailAfterVpn({
-      naverId: naverAccount.id,
-      naverPw: naverAccount.pw,
-      openaiApiKey: config.openaiApiKey || '',
-      yesCaptchaClientKey: config.yesCaptchaClientKey || '',
+      mailId: naverAccount.id,
+      mailPw: naverAccount.pw,
       scratchDir: path.join(OUTPUT_ROOT, 'dothome-mail-captcha'),
       sendLog,
-      waitMs: Number(options.waitMs) > 0 ? Number(options.waitMs) : 4000,
     });
     broadcastDothomeMailSession(st);
     return { ok: true, ...st };
   } catch (e) {
-    sendLog(`[DOTHOME-MAIL][ERROR] VPN 후 재로그인 실패: ${e.message}`);
+    sendLog(`[DOTHOME-MAIL][ERROR] 재로그인 실패: ${e.message}`);
     return { ok: false, error: e.message };
   }
 });

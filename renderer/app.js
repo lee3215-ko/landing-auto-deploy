@@ -671,8 +671,10 @@ function collectConfig() {
       hostId: ($('dhHostId')?.value || '').trim(),
       hostPw: ($('dhFixedPw')?.value || 'dlwkdrns12435!').trim(),
       emailLocal: ($('dhEmailLocal')?.value || '').trim().replace(/@.*$/, ''),
-      mailNaverId: ($('dhMailNaverId')?.value || '').trim().replace(/@.*$/, ''),
-      mailNaverPw: ($('dhMailNaverPw')?.value || '').trim(),
+      mailKakaoId: ($('dhMailKakaoId')?.value || '').trim(),
+      mailKakaoPw: ($('dhMailKakaoPw')?.value || '').trim(),
+      mailNaverId: ($('dhMailKakaoId')?.value || '').trim().replace(/@.*$/, ''),
+      mailNaverPw: ($('dhMailKakaoPw')?.value || '').trim(),
       keyword: '',
       gapAfterDone: !!$('dhGapAfterDone')?.checked,
       gapMinMin: Math.max(1, parseInt($('dhGapMinMin')?.value || '15', 10) || 15),
@@ -3939,8 +3941,12 @@ async function load() {
 
   const dh = config.dothome || {};
   if ($('dhEmailLocal')) $('dhEmailLocal').value = dh.emailLocal || '';
-  if ($('dhMailNaverId')) $('dhMailNaverId').value = dh.mailNaverId || dh.emailLocal || '';
-  if ($('dhMailNaverPw')) $('dhMailNaverPw').value = dh.mailNaverPw || '';
+  if ($('dhMailKakaoId')) {
+    $('dhMailKakaoId').value = dh.mailKakaoId || dh.mailNaverId || dh.emailLocal || '';
+  }
+  if ($('dhMailKakaoPw')) {
+    $('dhMailKakaoPw').value = dh.mailKakaoPw || dh.mailNaverPw || '';
+  }
   if ($('dhFixedPw')) $('dhFixedPw').value = 'dlwkdrns12435!';
   if ($('dhHostId')) $('dhHostId').value = dh.hostId || '';
   if ($('dhExternalUrl')) $('dhExternalUrl').value = dh.externalUrl || '';
@@ -4157,7 +4163,7 @@ function setupEvents() {
   $('dhBrowseGoogleBtn')?.addEventListener('click', browseDhGoogleFile);
   $('dhEmailLocal')?.addEventListener('change', () => {
     const local = ($('dhEmailLocal')?.value || '').trim().replace(/@.*$/, '');
-    const mailEl = $('dhMailNaverId');
+    const mailEl = $('dhMailKakaoId');
     if (local && mailEl && !String(mailEl.value || '').trim()) mailEl.value = local;
   });
   $('dhSelectZipsBtn')?.addEventListener('click', selectDhZips);
@@ -4168,7 +4174,6 @@ function setupEvents() {
   $('dhGenerateBtn')?.addEventListener('click', startDhGenerate);
   $('dhFullPipelineBtn')?.addEventListener('click', startDhFullPipeline);
   $('dhStopBtn')?.addEventListener('click', stopDhGenerate);
-  $('vpnHotkeyTestBtn')?.addEventListener('click', testVpnHotkey);
   $('dhAccountsList')?.addEventListener('click', (e) => {
     if (dhBusy) return;
     const genBtn = e.target?.closest?.('[data-dh-seo-gen]');
@@ -5565,48 +5570,54 @@ function updateDhMailSessionBadge(data) {
 
   if (hint) {
     hint.textContent = loggedIn
-      ? `메일 로그인 유지 중 (${id}). VPN으로 IP가 바뀌면 자동 재로그인합니다. 메일 Chrome 창은 닫지 마세요.`
-      : '「네이버 메일 로그인」 1회 후 사용. VPN IP 변경 시에도 자동 재로그인합니다.';
+      ? `메일 로그인 유지 중 (${id}). 메일 Chrome 창은 닫지 마세요. 인증코드는 이 창에서만 조회합니다.`
+      : '「카카오 메일 로그인」 1회 후 사용. mail.kakao.com 창을 유지하면 계속 인증코드를 읽습니다.';
   }
 }
 
 function dhMailCredsOrAlert() {
   const emailLocal = ($('dhEmailLocal')?.value || '').trim().replace(/@.*$/, '');
-  const mailNaverId = ($('dhMailNaverId')?.value || '').trim().replace(/@.*$/, '') || emailLocal;
-  const mailNaverPw = ($('dhMailNaverPw')?.value || '').trim();
-  if (!mailNaverId || !mailNaverPw) {
-    alert('닷홈 탭에 네이버 메일 아이디·비밀번호를 입력하세요.');
+  const mailKakaoId = ($('dhMailKakaoId')?.value || '').trim() || emailLocal;
+  const mailKakaoPw = ($('dhMailKakaoPw')?.value || '').trim();
+  if (!mailKakaoId || !mailKakaoPw) {
+    alert('닷홈 탭에 카카오 메일 아이디·비밀번호를 입력하세요.');
     return null;
   }
-  return { emailLocal: emailLocal || mailNaverId, mailNaverId, mailNaverPw };
+  return {
+    emailLocal: emailLocal || String(mailKakaoId).replace(/@.*$/, ''),
+    mailKakaoId,
+    mailKakaoPw,
+    // 구버전 IPC 호환
+    mailNaverId: mailKakaoId,
+    mailNaverPw: mailKakaoPw,
+  };
 }
 
 async function startDhMailLogin(forceRelogin = false) {
   if (dhBusy || dhMailLoginBusy) return;
   const creds = dhMailCredsOrAlert();
   if (!creds) return;
-  if (!($('openaiApiKey')?.value || '').trim()) {
-    return alert('설정 탭에 OpenAI API Key를 입력하세요. (로그인 캡챠용)');
-  }
   await window.electronAPI.saveConfig(collectConfig());
   dhMailLoginBusy = true;
   if ($('dhMailLoginBtn')) $('dhMailLoginBtn').disabled = true;
   if ($('dhMailReloginBtn')) $('dhMailReloginBtn').disabled = true;
   updateDhMailSessionBadge({ status: 'starting' });
-  dhLog(forceRelogin ? '📧 네이버 메일 다시 로그인…' : '📧 네이버 메일 로그인…');
+  dhLog(forceRelogin ? '📧 카카오 메일 다시 로그인…' : '📧 카카오 메일 로그인…');
   try {
     const res = await window.electronAPI.dothomeMailSessionLogin({
       emailLocal: creds.emailLocal,
-      mailNaverId: creds.mailNaverId,
-      mailNaverPw: creds.mailNaverPw,
+      mailKakaoId: creds.mailKakaoId,
+      mailKakaoPw: creds.mailKakaoPw,
+      mailNaverId: creds.mailKakaoId,
+      mailNaverPw: creds.mailKakaoPw,
       forceRelogin: !!forceRelogin,
     });
     updateDhMailSessionBadge(res || {});
     if (res?.ok && res.loggedIn) {
-      dhLog(`✔ 네이버 메일 로그인 완료: ${res.accountId || creds.mailNaverId} (창 유지)`);
+      dhLog(`✔ 카카오 메일 로그인 완료: ${res.accountId || creds.mailKakaoId} (창 유지)`);
     } else {
       dhLog(`✖ 메일 로그인 실패: ${res?.error || 'unknown'}`);
-      alert(res?.error || '네이버 메일 로그인 실패');
+      alert(res?.error || '카카오 메일 로그인 실패');
     }
   } catch (e) {
     dhLog(`✖ ${e.message}`);
@@ -5621,11 +5632,11 @@ async function startDhMailLogin(forceRelogin = false) {
 
 async function closeDhMailSession() {
   if (dhBusy) return alert('가입/배포 진행 중에는 메일 창을 닫을 수 없습니다.');
-  if (!confirm('네이버 메일 창을 닫을까요?\n다음에 가입하려면 다시 로그인해야 합니다.')) return;
+  if (!confirm('카카오 메일 창을 닫을까요?\n다음에 가입하려면 다시 로그인해야 합니다.')) return;
   try {
     const res = await window.electronAPI.dothomeMailSessionClose();
     updateDhMailSessionBadge(res || { status: 'idle', loggedIn: false, accountId: '' });
-    dhLog('네이버 메일 창 닫음');
+    dhLog('카카오 메일 창 닫음');
   } catch (e) {
     alert(e.message);
   }
@@ -5639,7 +5650,7 @@ async function ensureDhMailLoggedInOrAlert() {
     if (st) updateDhMailSessionBadge(st);
     if (st?.loggedIn) return true;
   } catch { /* ignore */ }
-  alert('먼저 「네이버 메일 로그인」을 완료하세요.\n메일 Chrome 창을 닫지 않으면 한 번 로그인으로 계속 사용됩니다.');
+  alert('먼저 「카카오 메일 로그인」을 완료하세요.\n메일 Chrome 창을 닫지 않으면 한 번 로그인으로 계속 사용됩니다.');
   return false;
 }
 
@@ -5762,7 +5773,7 @@ async function startDhGenerate() {
   if (dhBusy) return;
   const creds = dhMailCredsOrAlert();
   if (!creds) return;
-  if (!creds.emailLocal) return alert('닷홈 가입용 네이버 이메일을 입력하세요.');
+  if (!creds.emailLocal) return alert('닷홈 가입용 카카오 이메일을 입력하세요.');
   if (!(await ensureDhMailLoggedInOrAlert())) return;
   if (!($('openaiApiKey')?.value || '').trim()) {
     return alert('설정 탭에 OpenAI API Key를 입력하세요. (보안문자 인식용)');
@@ -5775,12 +5786,12 @@ async function startDhGenerate() {
     if (!confirm('YesCaptcha 키가 없습니다. reCAPTCHA는 수동으로 풀어야 합니다. 계속할까요?')) return;
   }
 
-  const count = Math.max(1, Math.min(30, parseInt($('dhSignupCount')?.value || '1', 10) || 1));
+  const count = 1;
   setDhBusy(true);
   dhStopRequested = false;
   if ($('dhLog')) $('dhLog').textContent = '';
-  dhLog(`🏠 닷홈 회원가입 시작… (${count}회)`);
-  dhLog(`이메일: ${creds.emailLocal}@naver.com · 메일계정: ${creds.mailNaverId}`);
+  dhLog('🏠 닷홈 회원가입 시작…');
+  dhLog(`이메일: ${creds.emailLocal}@kakao.com · 메일계정: ${creds.mailKakaoId}`);
 
   let okCount = 0;
   try {
@@ -5793,8 +5804,10 @@ async function startDhGenerate() {
       await window.electronAPI.saveConfig(collectConfig());
       const out = await window.electronAPI.dothomeSignup({
         emailLocal: creds.emailLocal,
-        mailNaverId: creds.mailNaverId,
-        mailNaverPw: creds.mailNaverPw,
+        mailKakaoId: creds.mailKakaoId,
+        mailKakaoPw: creds.mailKakaoPw,
+        mailNaverId: creds.mailKakaoId,
+        mailNaverPw: creds.mailKakaoPw,
         headless: !!$('headlessMode')?.checked,
       });
       const fresh = await window.electronAPI.loadConfig();
@@ -5835,7 +5848,7 @@ async function startDhFullPipeline() {
   if (dhBusy) return;
   const creds = dhMailCredsOrAlert();
   if (!creds) return;
-  if (!creds.emailLocal) return alert('닷홈 가입용 네이버 이메일을 입력하세요.');
+  if (!creds.emailLocal) return alert('닷홈 가입용 카카오 이메일을 입력하세요.');
   if (!(await ensureDhMailLoggedInOrAlert())) return;
   const zipMode = dhZipSources().length > 0;
   const inputs = dhSeoInputsOrAlert({ allowZipOnly: zipMode });
@@ -5848,16 +5861,14 @@ async function startDhFullPipeline() {
   }
 
   const zipCount = dhZipSources().length;
-  const count = zipCount > 0
-    ? Math.min(30, zipCount)
-    : Math.max(1, Math.min(30, parseInt($('dhSignupCount')?.value || '1', 10) || 1));
+  const count = zipCount > 0 ? Math.min(30, zipCount) : 1;
   setDhBusy(true);
   dhStopRequested = false;
   if ($('dhLog')) $('dhLog').textContent = '';
   dhLog(zipCount
     ? `🚀 가입→ZIP 배포 시작 (${count}개 ZIP)`
-    : `🚀 가입→AI생성→배포 시작 (${count}회)`);
-  dhLog(`이메일: ${creds.emailLocal}@naver.com · 메일계정: ${creds.mailNaverId}`);
+    : '🚀 가입→AI생성→배포 시작');
+  dhLog(`이메일: ${creds.emailLocal}@kakao.com · 메일계정: ${creds.mailKakaoId}`);
 
   let okCount = 0;
   let mailFailStreak = 0;
@@ -5879,27 +5890,33 @@ async function startDhFullPipeline() {
 
       let signup = await window.electronAPI.dothomeSignup({
         emailLocal: creds.emailLocal,
-        mailNaverId: creds.mailNaverId,
-        mailNaverPw: creds.mailNaverPw,
+        mailKakaoId: creds.mailKakaoId,
+        mailKakaoPw: creds.mailKakaoPw,
+        mailNaverId: creds.mailKakaoId,
+        mailNaverPw: creds.mailKakaoPw,
         headless: !!$('headlessMode')?.checked,
       });
 
-      // 메일 세션/IP보안 실패 시 1회 재로그인 후 같은 ZIP으로 재시도
+      // 메일 세션 실패 시 1회 재로그인 후 같은 ZIP으로 재시도
       if (!signup?.ok && isDhMailSessionError(signup?.error)) {
         dhLog('⚠ 메일 세션 오류 — 재로그인 후 같은 ZIP 재시도…');
         try {
           const relog = await window.electronAPI.dothomeMailSessionRelogin?.({
             emailLocal: creds.emailLocal,
-            mailNaverId: creds.mailNaverId,
-            mailNaverPw: creds.mailNaverPw,
+            mailKakaoId: creds.mailKakaoId,
+            mailKakaoPw: creds.mailKakaoPw,
+            mailNaverId: creds.mailKakaoId,
+            mailNaverPw: creds.mailKakaoPw,
             waitMs: 1500,
           });
           updateDhMailSessionBadge(relog || {});
         } catch { /* ignore */ }
         signup = await window.electronAPI.dothomeSignup({
           emailLocal: creds.emailLocal,
-          mailNaverId: creds.mailNaverId,
-          mailNaverPw: creds.mailNaverPw,
+          mailKakaoId: creds.mailKakaoId,
+          mailKakaoPw: creds.mailKakaoPw,
+          mailNaverId: creds.mailKakaoId,
+          mailNaverPw: creds.mailKakaoPw,
           headless: !!$('headlessMode')?.checked,
         });
       }
@@ -5918,7 +5935,7 @@ async function startDhFullPipeline() {
         if (isDhMailSessionError(signup?.error)) {
           mailFailStreak += 1;
           if (mailFailStreak >= 2) {
-            dhLog('⏹ 메일 세션 오류가 연속 2회 — 배치 중단. 「네이버 메일 다시 로그인」 후 재실행하세요.');
+            dhLog('⏹ 메일 세션 오류가 연속 2회 — 배치 중단. 「카카오 메일 다시 로그인」 후 재실행하세요.');
             break;
           }
         } else {
@@ -5963,7 +5980,6 @@ async function startDhFullPipeline() {
         if (out.movedZip?.to && !out.movedZip.skipped) {
           dhLog(`📦 성공 ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
         }
-        await maybeSendVpnHotkey(okCount, creds);
         const hasMore = zipMode
           ? dhZipSources().length > 0
           : (i + 1 < count);
@@ -6017,77 +6033,14 @@ async function stopDhGenerate() {
   await window.electronAPI.dothomeSignupStop();
 }
 
-function readVpnHotkeyFromUi() {
-  const key = String($('vpnHotkeyKey')?.value || '').trim().toLowerCase().slice(0, 1);
-  const mod = String($('vpnHotkeyMod')?.value || 'alt').toLowerCase();
-  return {
-    alt: mod === 'alt',
-    ctrl: mod === 'ctrl',
-    shift: mod === 'shift',
-    key: key || '',
-  };
-}
-
-function vpnEverySitesCount() {
-  return Math.max(1, Math.min(50, parseInt($('vpnEverySites')?.value || '1', 10) || 1));
-}
-
-async function maybeSendVpnHotkey(okCount, mailCreds = null) {
-  const every = vpnEverySitesCount();
-  if (!okCount || okCount % every !== 0) return false;
-  const hk = readVpnHotkeyFromUi();
-  if (!hk.key) {
-    dhLog('⚠ VPN 단축키 키가 비어 있어 건너뜀');
-    return false;
-  }
-  const label = [hk.ctrl && 'Ctrl', hk.alt && 'Alt', hk.shift && 'Shift', hk.key.toUpperCase()].filter(Boolean).join('+');
-  dhLog(`VPN 단축키 전송 (설정 ${every}개마다 · 이번이 ${okCount}번째 성공) · ${label}`);
-  const out = await window.electronAPI.sendHotkey?.(hk);
-  if (out && !out.ok) {
-    dhLog(`⚠ VPN 단축키 실패: ${out.error || ''}`);
-    return false;
-  }
-  dhLog('✔ VPN 단축키 전송 완료 — IP 바뀌면 네이버 메일 IP보안으로 세션이 끊김 → 재로그인');
-  // VPN으로 IP가 바뀌면 네이버 메일 IP보안이 세션을 끊음 → 즉시 재로그인
-  const creds = mailCreds || dhMailCredsOrAlert();
-  if (!creds) return true;
-  try {
-    const relog = await window.electronAPI.dothomeMailSessionRelogin?.({
-      emailLocal: creds.emailLocal,
-      mailNaverId: creds.mailNaverId,
-      mailNaverPw: creds.mailNaverPw,
-      waitMs: 12000, // IP 반영 여유 (너무 짧으면 IP보안 팝업에 걸려 재로그인 실패)
-    });
-    updateDhMailSessionBadge(relog || {});
-    if (relog?.ok && relog.loggedIn) {
-      dhLog(`✔ VPN 후 메일 재로그인 완료: ${relog.accountId || creds.mailNaverId}`);
-    } else {
-      dhLog(`⚠ VPN 후 메일 재로그인 실패: ${relog?.error || 'unknown'} — 다음 가입 시작 시 다시 로그인 시도`);
-    }
-  } catch (e) {
-    dhLog(`⚠ VPN 후 메일 재로그인 오류: ${e.message}`);
-  }
-  return true;
-}
-
 function isDhMailSessionError(err) {
   const m = String(err || '');
-  return /메일\s*세션|메일\s*로그인|IP보안|IP\s*보안|네이버 메일 로그인/i.test(m);
+  return /메일\s*세션|메일\s*로그인|IP보안|IP\s*보안|카카오\s*메일|네이버 메일 로그인/i.test(m);
 }
 
 function isDhOpenAiCreditsError(err) {
   const m = String(err || '');
   return /no credits remaining|OpenAI API 크레딧|insufficient[_ ]quota|exceeded.*quota|credit balance|platform\.openai\.com.*billing/i.test(m);
-}
-
-async function testVpnHotkey() {
-  const hk = readVpnHotkeyFromUi();
-  if (!hk.key) return alert('VPN 단축키 키를 입력하세요.');
-  const label = [hk.ctrl && 'Ctrl', hk.alt && 'Alt', hk.shift && 'Shift', hk.key.toUpperCase()].filter(Boolean).join('+');
-  dhLog(`VPN 단축키 테스트: ${label}`);
-  const out = await window.electronAPI.sendHotkey?.(hk);
-  if (out && !out.ok) alert(out.error || '단축키 전송 실패');
-  else alert(`단축키를 보냈습니다 (${label}).\nVPN IP가 바뀌었는지 확인하세요.`);
 }
 
 window.electronAPI.onLogLine(logLine);
