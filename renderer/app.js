@@ -351,6 +351,7 @@ function renderNaverAccounts() {
 
 function renderServices() {
   const el = $('services');
+  if (!el) return;
   if (!config.services.length) {
     el.innerHTML = '<p class="empty-hint">등록된 서비스가 없습니다.</p>';
     return;
@@ -613,12 +614,14 @@ function collectConfig() {
       .filter(s => s.keyword?.trim())
       .map(s => ({ ...s, count: parseInt(s.count) || 1 })),
     seoOptions: {
-      metaTitles: parseLines($('metaTitles').value),
-      metaDescriptions: parseLines($('metaDescriptions').value),
-      metaKeywords: parseLines($('metaKeywords').value),
-      generateSitemap: $('generateSitemap').checked,
-      generateRobots: $('generateRobots').checked,
+      metaTitles: [],
+      metaDescriptions: [],
+      metaKeywords: [],
+      generateSitemap: !!$('generateSitemap')?.checked,
+      generateRobots: !!$('generateRobots')?.checked,
     },
+    deployGapMinMin: Math.max(0, parseInt($('deployGapMinMin')?.value || '0', 10) || 0),
+    deployGapMaxMin: Math.max(0, parseInt($('deployGapMaxMin')?.value || '0', 10) || 0),
     deployFolder: deployFolderPath,
     deploySources: [...deploySources],
     netlifyGenAccounts: parseGenAccountsFromBulk(),
@@ -3475,15 +3478,10 @@ async function startRun() {
   if (!cfg.netlifyTokens.length) return alert('Netlify 토큰을 하나 이상 입력하세요.');
   if (!cfg.naverAccounts.length) return alert('네이버 계정을 하나 이상 입력하세요.');
 
-  const sourceMode = hasDeploySources(cfg);
-  if (!sourceMode) {
-    if (!cfg.services.length) return alert('등록할 키워드를 하나 이상 입력하세요.');
-    if (!cfg.seoOptions.metaTitles.length || !cfg.seoOptions.metaDescriptions.length || !cfg.seoOptions.metaKeywords.length) {
-      return alert('메타 타이틀, 디스크립션, 키워드를 각각 최소 1개 이상 입력하세요.');
-    }
-  } else if (!cfg.services.length) {
-    logLine(`📦 ZIP/폴더 소스 ${cfg.deploySources.length}개 배포 모드 (SEO·서비스 생략)`);
+  if (!hasDeploySources(cfg)) {
+    return alert('배포할 ZIP/폴더 소스를 하나 이상 선택하세요.');
   }
+  logLine(`📦 ZIP/폴더 소스 ${cfg.deploySources.length}개 배포 시작`);
 
   setRunControls({ active: true });
   setJobProgress({ active: true, job: 'run', phase: 'start', label: '전체 실행 시작…', percent: 2 });
@@ -3889,11 +3887,16 @@ async function load() {
   if ($('crawlOptSitemap')) $('crawlOptSitemap').checked = opts.sitemap !== false;
   if ($('crawlOptWebpage')) $('crawlOptWebpage').checked = opts.webpage !== false;
   syncBulkGenTextareasFromConfig();
-  $('metaTitles').value = (config.seoOptions?.metaTitles || []).join('\n');
-  $('metaDescriptions').value = (config.seoOptions?.metaDescriptions || []).join('\n');
-  $('metaKeywords').value = (config.seoOptions?.metaKeywords || []).join('\n');
-  $('generateSitemap').checked = config.seoOptions?.generateSitemap !== false;
-  $('generateRobots').checked = config.seoOptions?.generateRobots !== false;
+  if ($('generateSitemap')) $('generateSitemap').checked = config.seoOptions?.generateSitemap !== false;
+  if ($('generateRobots')) $('generateRobots').checked = config.seoOptions?.generateRobots !== false;
+  if ($('deployGapMinMin')) {
+    const gmin = Number(config.deployGapMinMin);
+    $('deployGapMinMin').value = String(Number.isFinite(gmin) && gmin >= 0 ? gmin : 1);
+  }
+  if ($('deployGapMaxMin')) {
+    const gmax = Number(config.deployGapMaxMin);
+    $('deployGapMaxMin').value = String(Number.isFinite(gmax) && gmax >= 0 ? gmax : 5);
+  }
   syncHeadlessUi(!!config.headless);
   if ($('metaInjectOnly')) $('metaInjectOnly').checked = !!config.metaInjectOnly;
 
@@ -3996,7 +3999,7 @@ function setupEvents() {
 
   $('addTokenBtn')?.addEventListener('click', addNetlifyToken);
   $('addAccountBtn').addEventListener('click', addNaverAccount);
-  $('addServiceBtn').addEventListener('click', addService);
+  $('addServiceBtn')?.addEventListener('click', addService);
   $('selectFolderBtn').addEventListener('click', selectDeployFolder);
   $('selectZipsBtn')?.addEventListener('click', selectDeployZips);
   $('clearDeploySourcesBtn')?.addEventListener('click', clearDeploySources);
@@ -4241,12 +4244,12 @@ function setupEvents() {
     updateNaverAccount(idx, 'pw', t.value);
   });
 
-  $('services').addEventListener('click', (e) => {
+  $('services')?.addEventListener('click', (e) => {
     const t = e.target.closest('[data-action]');
     if (!t || t.dataset.action !== 'remove-service') return;
     removeService(parseInt(t.dataset.idx, 10));
   });
-  $('services').addEventListener('change', (e) => {
+  $('services')?.addEventListener('change', (e) => {
     const t = e.target;
     if (!t.dataset.idx) return;
     updateService(parseInt(t.dataset.idx, 10), t.dataset.field, t.value);

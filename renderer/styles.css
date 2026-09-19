@@ -2013,3 +2013,12 @@ textarea {
   align-items: center;
   gap: 6px;
 }
+
+.config-deploy-card .config-run-controls {
+  margin-top: 18px;
+  justify-content: flex-end;
+}
+.config-deploy-card .config-run-controls #startBtn {
+  flex: 0 1 auto;
+  min-width: 160px;
+}

@@ -143,25 +143,12 @@
               </div>
             </div>
 
-            <div class="card">
+                        <div class="card config-deploy-card">
               <div class="card-header">
                 <div>
-                  <div class="card-title"><span class="emoji">🛠</span> 서비스 & SEO</div>
-                  <div class="card-sub">메타 정보 및 배포 소스</div>
+                  <div class="card-title"><span class="emoji">📦</span> 배포 소스 (ZIP / 폴더)</div>
+                  <div class="card-sub">ZIP·폴더 선택 후 전체 실행</div>
                 </div>
-              </div>
-
-              <div class="form-group">
-                <label for="metaTitles">메타 타이틀 (줄바꿈 구분)</label>
-                <textarea id="metaTitles" rows="3" placeholder="서비스명-키워드-슬로건"></textarea>
-              </div>
-              <div class="form-group">
-                <label for="metaDescriptions">메타 디스크립션</label>
-                <textarea id="metaDescriptions" rows="3"></textarea>
-              </div>
-              <div class="form-group">
-                <label for="metaKeywords">메타 키워드</label>
-                <textarea id="metaKeywords" rows="3"></textarea>
               </div>
 
               <div class="form-group">
@@ -174,10 +161,21 @@
                 </div>
                 <div id="deployFolderInfo" class="folder-info" style="display:none;"></div>
                 <p class="bulk-hint">폴더: 안의 ZIP·사이트 폴더 자동 수집 · ZIP: 여러 개 직접 선택 (Ctrl/Shift)</p>
-                <p class="bulk-hint" id="sourceModeHint" hidden>ZIP/폴더 소스 배포 모드 — 서비스·SEO 입력 없이 실행 가능합니다. 결과명은 index.html &lt;title&gt;을 사용합니다.</p>
+                <p class="bulk-hint" id="sourceModeHint" hidden>ZIP/폴더 소스 배포 모드 — 결과명은 index.html &lt;title&gt;을 사용합니다.</p>
               </div>
 
-              <div class="checkbox-row">
+              <div class="form-group" style="margin-top:14px;">
+                <label for="deployGapMinMin">배포 성공 후 다음까지 대기 (분)</label>
+                <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;">
+                  <input type="number" id="deployGapMinMin" min="0" max="180" value="1" style="width:72px;" title="최소(분)">
+                  <span style="color:var(--text-muted);">~</span>
+                  <input type="number" id="deployGapMaxMin" min="0" max="180" value="5" style="width:72px;" title="최대(분)">
+                  <span style="color:var(--text-muted);font-size:13px;">분 랜덤</span>
+                </div>
+                <p class="bulk-hint">한 건 배포에 성공하면 다음 소스 전에 이 구간에서 랜덤으로 쉽니다. 0~0이면 추가 대기 없음. 일시정지·정지로 대기 중에도 중단할 수 있습니다.</p>
+              </div>
+
+              <div class="checkbox-row" style="margin-top:12px;">
                 <label><input type="checkbox" id="generateSitemap" checked> Sitemap 생성</label>
                 <label><input type="checkbox" id="generateRobots" checked> Robots.txt 생성</label>
                 <label title="브라우저 창을 띄우지 않고 백그라운드에서 실행"><input type="checkbox" id="headlessMode"> 헤드리스 모드</label>
@@ -189,22 +187,16 @@
               </div>
               <p class="bulk-hint" id="headlessHint">헤드리스 ON: Chrome 창이 안 보입니다. 네이버 수동 로그인·캡챠 확인이 필요하면 OFF로 두세요.</p>
               <p class="bulk-hint" id="metaInjectOnlyHint">체크 시: HTML 태그 메타만 넣고 소유확인·색인·하위 수집은 생략합니다. 「소유확인」은 직접 하세요.</p>
-              <p class="bulk-hint">전체 실행 = Netlify 생성과 동일: HTML 태그 선수집 → 전체 HTML 메타 삽입 → Netlify 1회 배포 → 소유확인 → 홈 색인 → 하위 페이지 수집. 우측 상단 「네이버 로그인」을 먼저 완료하세요.</p>
+              <p class="bulk-hint">전체 실행 = HTML 태그 선수집 → 메타 삽입 → Netlify 1회 배포 → 소유확인 → 홈 색인 → 하위 페이지 수집. 우측 상단 「네이버 로그인」을 먼저 완료하세요.</p>
 
-              <div class="section-divider">
-                <h3 style="font-size:13px;font-weight:700;margin-bottom:12px;">등록할 서비스</h3>
-                <div id="services" class="item-list"></div>
-                <button type="button" class="add-btn" id="addServiceBtn">+ 서비스 추가</button>
+              <div class="run-section run-controls config-run-controls">
+                <button class="btn btn-ghost" id="headlessToggleBtn" type="button" title="헤드리스 모드 전환">🖥 창 모드</button>
+                <button class="btn btn-success" id="startBtn" type="button">▶ 전체 실행 시작</button>
+                <button class="btn btn-warning" id="pauseRunBtn" type="button" disabled>⏸ 일시정지</button>
+                <button class="btn btn-primary" id="resumeRunBtn" type="button" disabled>▶ 재개</button>
+                <button class="btn btn-danger" id="stopRunBtn" type="button" disabled>⏹ 정지</button>
               </div>
             </div>
-          </div>
-
-          <div class="run-section run-controls">
-            <button class="btn btn-ghost" id="headlessToggleBtn" type="button" title="헤드리스 모드 전환">🖥 창 모드</button>
-            <button class="btn btn-success" id="startBtn" type="button">▶ 전체 실행 시작</button>
-            <button class="btn btn-warning" id="pauseRunBtn" type="button" disabled>⏸ 일시정지</button>
-            <button class="btn btn-primary" id="resumeRunBtn" type="button" disabled>▶ 재개</button>
-            <button class="btn btn-danger" id="stopRunBtn" type="button" disabled>⏹ 정지</button>
           </div>
 
           <div id="runProgress" class="run-progress" hidden>
