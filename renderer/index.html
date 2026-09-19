@@ -98,7 +98,7 @@
                   <button type="button" class="btn btn-ghost btn-sm api-topup-btn" data-topup-url="https://platform.openai.com/settings/organization/billing" title="OpenAI 결제·크레딧 충전">💳 충전</button>
                 </div>
                 <input type="password" id="openaiApiKey" placeholder="sk-..." autocomplete="off">
-                <p class="bulk-hint">랜딩 자동 생성·보안문자 OCR에 사용됩니다.</p>
+                <p class="bulk-hint">랜딩 자동 생성·네이버 글자캡챠 OCR(교차검증). 닷홈 글자/타일 캡챠 자동 통과는 아래 YesCaptcha가 성공률이 높습니다.</p>
               </div>
 
               <div class="form-group">
@@ -107,7 +107,7 @@
                   <button type="button" class="btn btn-ghost btn-sm api-topup-btn" data-topup-url="https://yescaptcha.com" title="YesCaptcha 로그인 후 온라인 충전">💳 충전</button>
                 </div>
                 <input type="password" id="yesCaptchaClientKey" placeholder="eec1… (sk- 로 시작하면 안 됨)" autocomplete="off">
-                <p class="bulk-hint">닷홈 reCAPTCHA + 네이버 이미지 캡챠(ImageToText)용. OpenAI 키(sk-…)가 아니라 YesCaptcha 클라이언트 키를 넣으세요.</p>
+                <p class="bulk-hint">닷홈 글자 보안문자·reCAPTCHA 자동 통과용. OpenAI보다 성공률이 높습니다. sk-… 가 아니라 YesCaptcha 클라이언트 키를 넣으세요.</p>
               </div>
 
               <details class="settings-collapsible" id="cursorApiDetails">

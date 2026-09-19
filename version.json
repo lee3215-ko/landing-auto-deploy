@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.107",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/567451795",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.107/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/567451795",
-    "asset_id":  567451795,
-    "notes":  "닷홈: 카카오메일 인증, 가입횟수/VPN 제거, SEO입력 기본접힘 / 서치어드바이저: Edge + 사이트 수동삭제 수정",
+    "version":  "3.8.109",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.109/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.109/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "서치어드바이저: 사이트당 페이지 이동 최소화(폼 재사용, 요약 이동 제거, 동일 화면 스킵)",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/567451795",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.107/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.109/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
