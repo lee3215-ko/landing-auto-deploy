@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.111",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/576057326",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.111/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/576057326",
-    "asset_id":  576057326,
-    "notes":  "상단 전역 진행 게이지(N/M 진행중) + 네이버 보호조치 시 전체 일시정지/안내 팝업",
+    "version":  "3.8.112",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.112/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.112/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "모든 탭 ZIP 배포 시 sitemap/robots/canonical 등 공개 URL을 이번 도메인으로 치환 후 업로드",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/576057326",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.111/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.112/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
