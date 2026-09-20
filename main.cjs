@@ -269,25 +269,37 @@ function makeOnNaverProtection() {
   return async ({ detail, source } = {}) => {
     const parent = BrowserWindow.getFocusedWindow() || mainWindow || undefined;
     const src = source ? ` (${source})` : '';
+    // 작업은 이미 중지됨 — 팝업은 안내만. 재개하지 않음.
     await dialog.showMessageBox(parent, {
       type: 'warning',
-      buttons: ['보호조치 해제 후 재개'],
+      buttons: ['확인'],
       defaultId: 0,
       cancelId: 0,
       title: '네이버 보호조치',
       message: '보호조치를 해제하세요',
       detail: [
-        detail || '네이버에서 보호조치가 감지되어 모든 작업을 일시정지했습니다.',
+        detail || '네이버에서 보호조치가 감지되어 모든 작업을 중지했습니다.',
         src ? `감지 위치${src}` : '',
         '',
-        '브라우저(Chrome)에서 네이버 보호조치·추가인증을 완료한 뒤',
-        '아래 버튼을 누르면 작업을 재개합니다.',
+        '1) 브라우저(Chrome)에서 네이버 보호조치·추가인증을 완료하세요.',
+        '2) 앱에서 「전체 실행 시작」을 다시 누르면',
+        '   서치어드바이저 대시보드로 들어가 작업을 처음부터 진행합니다.',
       ].filter(Boolean).join('\n'),
       noLink: true,
     });
     try {
-      const { requestRunResume } = await import('./lib/run-pause.js');
-      requestRunResume();
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (win.isDestroyed()) continue;
+        win.webContents.send('log-line', '⏹ [RUN_STOPPED] 보호조치 — 작업 중지됨. 해제 후 「시작」을 다시 눌러 주세요.');
+        win.webContents.send('job-progress', {
+          job: 'run',
+          phase: 'stopped',
+          active: false,
+          paused: false,
+          stopped: true,
+          label: '중지됨',
+        });
+      }
     } catch { /* ignore */ }
   };
 }
@@ -600,19 +612,22 @@ async function initNaverSessionListeners() {
     } = await import('./lib/naver-protection-guard.js');
     setNaverProtectionAlertHandler(makeOnNaverProtection());
     setNaverProtectionUiNotify((payload) => {
+      // 게이지에는 보호조치 상태를 넣지 않음 — 로그 + 중지 상태만 전달 (팝업은 alertHandler)
       try {
         for (const win of BrowserWindow.getAllWindows()) {
           if (win.isDestroyed()) continue;
           win.webContents.send(
             'log-line',
-            `⏸ [RUN_PAUSED] 네이버 보호조치${payload?.source ? ` (${payload.source})` : ''} — 보호조치를 해제하세요`,
+            `⏹ [RUN_STOPPED] 네이버 보호조치${payload?.source ? ` (${payload.source})` : ''} — 작업 중지. 해제 후 「시작」을 다시 눌러 주세요.`,
           );
           win.webContents.send('job-progress', {
             job: 'run',
-            phase: 'paused',
-            active: true,
-            paused: true,
-            label: '네이버 보호조치 — 해제 후 재개',
+            phase: 'stopped',
+            active: false,
+            paused: false,
+            stopped: true,
+            // label은 게이지에 보호조치 문구를 올리지 않도록 짧게
+            label: '중지됨',
           });
         }
       } catch { /* ignore */ }

@@ -3431,10 +3431,11 @@ function setRunControls({ active = false, paused = false } = {}) {
 
 function jobProgressStatusText(data = {}, { active, paused } = {}) {
   const phase = String(data.phase || '').toLowerCase();
-  if (paused || phase === 'paused' || data.paused) return '일시정지';
+  // 보호조치는 팝업만 — 게이지 상태에는 넣지 않음
   if (phase === 'error' || data.error) return '실패';
-  if (phase === 'stopped') return '정지';
+  if (phase === 'stopped' || data.stopped) return '정지';
   if (phase === 'done' || data.done) return '완료';
+  if (paused || phase === 'paused') return '일시정지';
   if (active) return '진행중';
   return '대기';
 }
@@ -3453,11 +3454,24 @@ function jobNameLabel(job) {
 let lastJobProgressNums = { current: 0, total: 0, job: '' };
 
 function setJobProgress(data = {}) {
+  // 보호조치 이벤트는 게이지에 반영하지 않음 (팝업만)
+  const rawLabel = String(data.label || '');
+  const isProtectionEvent = data.type === 'naver-protection'
+    || /보호조치/.test(rawLabel)
+    || /\[RUN_STOPPED\].*보호/.test(rawLabel);
+  if (isProtectionEvent && data.phase !== 'stopped' && !data.stopped) {
+    return;
+  }
+
   const active = data.active !== false
     && data.phase !== 'done'
     && data.phase !== 'stopped'
-    && data.phase !== 'error';
-  const paused = !!(data.paused || data.phase === 'paused' || /\[RUN_PAUSED\]/.test(String(data.label || '')));
+    && data.phase !== 'error'
+    && !data.stopped;
+  // 보호조치로 인한 paused 표시는 게이지에서 제외
+  const paused = !isProtectionEvent
+    && !!(data.paused || data.phase === 'paused')
+    && !/보호/.test(rawLabel);
   let cur = Number(data.current);
   let tot = Number(data.total);
   if (!Number.isFinite(cur) || cur < 0) cur = lastJobProgressNums.current || 0;
@@ -3468,9 +3482,6 @@ function setJobProgress(data = {}) {
   if (Number.isFinite(Number(data.current)) || Number.isFinite(Number(data.total))) {
     lastJobProgressNums = { current: cur, total: tot, job: lastJobProgressNums.job || String(data.job || '') };
   }
-  if (!active && (data.phase === 'done' || data.phase === 'stopped' || data.phase === 'error')) {
-    // 완료 시 카운트 유지(표시용), 다음 작업 시작 때 덮어씀
-  }
   let pct = Number(data.percent);
   if (!Number.isFinite(pct)) {
     pct = tot > 0 ? Math.round((cur / tot) * 100) : (active ? 8 : 0);
@@ -3479,10 +3490,15 @@ function setJobProgress(data = {}) {
 
   const statusText = jobProgressStatusText(data, { active, paused });
   const countText = tot > 0 ? `${Math.min(cur, tot)}/${tot}` : (active ? `${cur || 0}/—` : '0/0');
-  const mainLabel = data.label || data.name || (active ? `${jobNameLabel(data.job)} ${statusText}` : '작업 대기 중');
-  const displayLabel = tot > 0 && active
-    ? `${countText} ${statusText}${data.name ? ` · ${data.name}` : (data.label && !String(data.label).includes(`${cur}/`) ? ` · ${data.label}` : '')}`
-    : mainLabel;
+  // 게이지는 홈페이지 진행·개수만 표시
+  const siteName = data.name || data.siteName || '';
+  const displayLabel = tot > 0
+    ? (siteName ? `홈페이지 ${countText} · ${siteName}` : `홈페이지 ${countText}`)
+    : (active ? '홈페이지 진행 중' : '홈페이지 대기');
+
+  if (data.stopped || data.phase === 'stopped') {
+    setRunControls({ active: false, paused: false });
+  }
 
   // 상단 전역 게이지
   const globalBox = $('globalProgress');
@@ -3492,7 +3508,7 @@ function setJobProgress(data = {}) {
       globalBox.hidden = true;
     } else {
       globalBox.hidden = false;
-      globalBox.classList.toggle('is-paused', paused || statusText === '일시정지');
+      globalBox.classList.toggle('is-paused', false); // 보호조치 일시정지 표시 제거
       globalBox.classList.toggle('is-error', statusText === '실패');
       globalBox.classList.toggle('is-done', statusText === '완료' || statusText === '정지');
       if ($('globalProgressCount')) $('globalProgressCount').textContent = countText;
@@ -4393,7 +4409,8 @@ window.electronAPI.onSitesIndexUpdated((p) => {
 async function logLine(line, channel) {
   appendAppLog(channel || resolveLogChannel(), line);
 
-  if (line.includes('[RUN_PAUSED]')) setRunControls({ active: true, paused: true });
+  if (line.includes('[RUN_STOPPED]')) setRunControls({ active: false, paused: false });
+  if (line.includes('[RUN_PAUSED]') && !/\uBCF4\uD638\uC870\uCE58/.test(line)) setRunControls({ active: true, paused: true });
   if (line.includes('[RUN_RESUMED]')) setRunControls({ active: true, paused: false });
 
   const usedMatch = line.match(/\[TOKEN_USED\]\s*(\d+)/);

@@ -1,12 +1,12 @@
 {
-    "version":  "3.8.112",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.112/LandingAutoDeploy.zip",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.112/LandingAutoDeploy.zip",
+    "version":  "3.8.113",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.113/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.113/LandingAutoDeploy.zip",
     "api_download_url":  null,
     "asset_id":  null,
-    "notes":  "모든 탭 ZIP 배포 시 sitemap/robots/canonical 등 공개 URL을 이번 도메인으로 치환 후 업로드",
+    "notes":  "보호조치 시 전체 중지+팝업만, 상단 게이지는 홈페이지 N/M만 표시, 재시작 시 서치어드바이저 대시보드 진입",
     "download_urls":  [
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.112/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.113/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
