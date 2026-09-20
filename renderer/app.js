@@ -3429,45 +3429,114 @@ function setRunControls({ active = false, paused = false } = {}) {
   $('stopRunBtn').disabled = !active;
 }
 
+function jobProgressStatusText(data = {}, { active, paused } = {}) {
+  const phase = String(data.phase || '').toLowerCase();
+  if (paused || phase === 'paused' || data.paused) return '일시정지';
+  if (phase === 'error' || data.error) return '실패';
+  if (phase === 'stopped') return '정지';
+  if (phase === 'done' || data.done) return '완료';
+  if (active) return '진행중';
+  return '대기';
+}
+
+function jobNameLabel(job) {
+  const j = String(job || '');
+  if (j === 'kkang' || j === 'seo-gen') return '넷리파이 생성';
+  if (j === 'run') return '전체 실행';
+  if (j === 'dothome') return '닷홈';
+  if (j === 'cloudflare' || j === 'cf') return 'Cloudflare';
+  if (j === 'crawl' || j === 'url-crawl') return 'URL 수집';
+  return j || '작업';
+}
+
+/** 마지막 진행 수치 — 일시정지 이벤트에 current/total이 없을 때 유지 */
+let lastJobProgressNums = { current: 0, total: 0, job: '' };
+
 function setJobProgress(data = {}) {
-  const box = $('runProgress');
-  if (!box) return;
-  const active = data.active !== false && data.phase !== 'done' && data.phase !== 'stopped' && data.phase !== 'error';
-  const hide = data.hidden === true || (!active && !data.keepVisible);
-  if (hide && data.phase !== 'done' && data.phase !== 'stopped' && data.phase !== 'error') {
-    box.hidden = true;
-    return;
+  const active = data.active !== false
+    && data.phase !== 'done'
+    && data.phase !== 'stopped'
+    && data.phase !== 'error';
+  const paused = !!(data.paused || data.phase === 'paused' || /\[RUN_PAUSED\]/.test(String(data.label || '')));
+  let cur = Number(data.current);
+  let tot = Number(data.total);
+  if (!Number.isFinite(cur) || cur < 0) cur = lastJobProgressNums.current || 0;
+  else cur = Math.max(0, cur);
+  if (!Number.isFinite(tot) || tot < 0) tot = lastJobProgressNums.total || 0;
+  else tot = Math.max(0, tot);
+  if (data.job) lastJobProgressNums.job = String(data.job);
+  if (Number.isFinite(Number(data.current)) || Number.isFinite(Number(data.total))) {
+    lastJobProgressNums = { current: cur, total: tot, job: lastJobProgressNums.job || String(data.job || '') };
   }
-  box.hidden = false;
+  if (!active && (data.phase === 'done' || data.phase === 'stopped' || data.phase === 'error')) {
+    // 완료 시 카운트 유지(표시용), 다음 작업 시작 때 덮어씀
+  }
   let pct = Number(data.percent);
   if (!Number.isFinite(pct)) {
-    const cur = Number(data.current) || 0;
-    const tot = Number(data.total) || 0;
     pct = tot > 0 ? Math.round((cur / tot) * 100) : (active ? 8 : 0);
   }
   pct = Math.max(0, Math.min(100, pct));
-  if ($('runProgressFill')) $('runProgressFill').style.width = `${pct}%`;
-  if ($('runProgressPct')) $('runProgressPct').textContent = `${pct}%`;
-  if ($('runProgressLabel')) {
-    $('runProgressLabel').textContent = data.label || data.name || (active ? '실행 중…' : '대기 중');
+
+  const statusText = jobProgressStatusText(data, { active, paused });
+  const countText = tot > 0 ? `${Math.min(cur, tot)}/${tot}` : (active ? `${cur || 0}/—` : '0/0');
+  const mainLabel = data.label || data.name || (active ? `${jobNameLabel(data.job)} ${statusText}` : '작업 대기 중');
+  const displayLabel = tot > 0 && active
+    ? `${countText} ${statusText}${data.name ? ` · ${data.name}` : (data.label && !String(data.label).includes(`${cur}/`) ? ` · ${data.label}` : '')}`
+    : mainLabel;
+
+  // 상단 전역 게이지
+  const globalBox = $('globalProgress');
+  if (globalBox) {
+    const hideGlobal = data.hidden === true || (!active && !data.keepVisible && data.phase !== 'done' && data.phase !== 'stopped' && data.phase !== 'error');
+    if (hideGlobal) {
+      globalBox.hidden = true;
+    } else {
+      globalBox.hidden = false;
+      globalBox.classList.toggle('is-paused', paused || statusText === '일시정지');
+      globalBox.classList.toggle('is-error', statusText === '실패');
+      globalBox.classList.toggle('is-done', statusText === '완료' || statusText === '정지');
+      if ($('globalProgressCount')) $('globalProgressCount').textContent = countText;
+      if ($('globalProgressStatus')) $('globalProgressStatus').textContent = statusText;
+      if ($('globalProgressLabel')) $('globalProgressLabel').textContent = displayLabel;
+      if ($('globalProgressPct')) $('globalProgressPct').textContent = `${pct}%`;
+      if ($('globalProgressFill')) $('globalProgressFill').style.width = `${pct}%`;
+    }
   }
-  if ($('runProgressMeta')) {
-    const bits = [];
-    if (data.job) bits.push(data.job === 'kkang' ? 'Netlify SEO' : data.job === 'run' ? '전체 실행' : data.job);
-    if (data.phase) bits.push(data.phase);
-    if (data.current && data.total) bits.push(`${data.current}/${data.total}`);
-    if (data.url) bits.push(data.url);
-    if (data.status) bits.push(data.status);
-    $('runProgressMeta').textContent = bits.filter(Boolean).join(' · ');
+
+  // 설정 탭 내 기존 게이지도 동기화
+  const box = $('runProgress');
+  if (box) {
+    const hide = data.hidden === true || (!active && !data.keepVisible);
+    if (hide && data.phase !== 'done' && data.phase !== 'stopped' && data.phase !== 'error') {
+      box.hidden = true;
+    } else {
+      box.hidden = false;
+      if ($('runProgressFill')) $('runProgressFill').style.width = `${pct}%`;
+      if ($('runProgressPct')) $('runProgressPct').textContent = tot > 0 ? `${countText} · ${pct}%` : `${pct}%`;
+      if ($('runProgressLabel')) {
+        $('runProgressLabel').textContent = tot > 0 && active
+          ? `${countText} ${statusText}`
+          : (data.label || data.name || (active ? '실행 중…' : '대기 중'));
+      }
+      if ($('runProgressMeta')) {
+        const bits = [];
+        if (data.job) bits.push(jobNameLabel(data.job));
+        if (data.phase && data.phase !== 'paused') bits.push(data.phase);
+        if (tot > 0) bits.push(`${countText}`);
+        if (data.url) bits.push(data.url);
+        if (data.status) bits.push(data.status);
+        $('runProgressMeta').textContent = bits.filter(Boolean).join(' · ');
+      }
+    }
   }
+
   if (!active && (data.phase === 'done' || data.phase === 'stopped' || data.phase === 'error')) {
     setTimeout(() => {
-      if ($('runProgress') && !$('startBtn')?.disabled && !seoBusy) {
-        // 새 작업이 없으면 게이지 숨김
-        const label = $('runProgressLabel')?.textContent || '';
-        if (/완료|정지|실패/.test(label) || data.phase === 'error') {
-          $('runProgress').hidden = true;
-        }
+      if ($('startBtn')?.disabled || seoBusy) return;
+      const label = $('globalProgressStatus')?.textContent || $('runProgressLabel')?.textContent || '';
+      if (/완료|정지|실패/.test(label) || data.phase === 'error') {
+        if ($('runProgress')) $('runProgress').hidden = true;
+        if ($('globalProgress')) $('globalProgress').hidden = true;
       }
     }, 8000);
   }
@@ -3484,7 +3553,16 @@ async function startRun() {
   logLine(`📦 ZIP/폴더 소스 ${cfg.deploySources.length}개 배포 시작`);
 
   setRunControls({ active: true });
-  setJobProgress({ active: true, job: 'run', phase: 'start', label: '전체 실행 시작…', percent: 2 });
+  const runTotal = Array.isArray(cfg.deploySources) ? cfg.deploySources.length : 0;
+  setJobProgress({
+    active: true,
+    job: 'run',
+    phase: 'start',
+    current: 0,
+    total: runTotal,
+    label: runTotal > 0 ? `전체 실행 시작… 0/${runTotal}` : '전체 실행 시작…',
+    percent: 2,
+  });
   clearAppLogs('config');
 
   await window.electronAPI.saveConfig(cfg);

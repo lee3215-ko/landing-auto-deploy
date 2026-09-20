@@ -264,6 +264,34 @@ function makeOnMassCreatedId() {
   };
 }
 
+
+function makeOnNaverProtection() {
+  return async ({ detail, source } = {}) => {
+    const parent = BrowserWindow.getFocusedWindow() || mainWindow || undefined;
+    const src = source ? ` (${source})` : '';
+    await dialog.showMessageBox(parent, {
+      type: 'warning',
+      buttons: ['보호조치 해제 후 재개'],
+      defaultId: 0,
+      cancelId: 0,
+      title: '네이버 보호조치',
+      message: '보호조치를 해제하세요',
+      detail: [
+        detail || '네이버에서 보호조치가 감지되어 모든 작업을 일시정지했습니다.',
+        src ? `감지 위치${src}` : '',
+        '',
+        '브라우저(Chrome)에서 네이버 보호조치·추가인증을 완료한 뒤',
+        '아래 버튼을 누르면 작업을 재개합니다.',
+      ].filter(Boolean).join('\n'),
+      noLink: true,
+    });
+    try {
+      const { requestRunResume } = await import('./lib/run-pause.js');
+      requestRunResume();
+    } catch { /* ignore */ }
+  };
+}
+
 function saveConfig(config) {
   fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf8');
@@ -565,6 +593,33 @@ async function initNaverSessionListeners() {
   setNaverSessionProfileDir(profileDir);
   setDefaultOnSiteCount(makeOnSiteCount());
   setDefaultOnMassCreatedId(makeOnMassCreatedId());
+  try {
+    const {
+      setNaverProtectionAlertHandler,
+      setNaverProtectionUiNotify,
+    } = await import('./lib/naver-protection-guard.js');
+    setNaverProtectionAlertHandler(makeOnNaverProtection());
+    setNaverProtectionUiNotify((payload) => {
+      try {
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (win.isDestroyed()) continue;
+          win.webContents.send(
+            'log-line',
+            `⏸ [RUN_PAUSED] 네이버 보호조치${payload?.source ? ` (${payload.source})` : ''} — 보호조치를 해제하세요`,
+          );
+          win.webContents.send('job-progress', {
+            job: 'run',
+            phase: 'paused',
+            active: true,
+            paused: true,
+            label: '네이버 보호조치 — 해제 후 재개',
+          });
+        }
+      } catch { /* ignore */ }
+    });
+  } catch (e) {
+    console.warn('[naver-protection] init failed', e?.message || e);
+  }
   try {
     const cfg = loadConfig();
     for (const a of (cfg.naverAccounts || [])) {
@@ -1220,8 +1275,14 @@ ipcMain.handle('start-run', async (event, config) => {
   resetRunControl();
   const { runFullPipeline } = await import('./lib/runner.js');
   try {
+    const runTotal = Array.isArray(config?.deploySources) ? config.deploySources.length : 0;
     event.sender.send('job-progress', {
-      job: 'run', phase: 'start', current: 0, total: 0, label: '전체 실행 시작…', active: true,
+      job: 'run',
+      phase: 'start',
+      current: 0,
+      total: runTotal,
+      label: runTotal > 0 ? `전체 실행 시작… 0/${runTotal}` : '전체 실행 시작…',
+      active: true,
     });
     const result = await runFullPipeline(
       { ...config, outputRoot: OUTPUT_ROOT },
@@ -1242,6 +1303,8 @@ ipcMain.handle('start-run', async (event, config) => {
       job: 'run',
       phase: result?.stopped ? 'stopped' : 'done',
       active: false,
+      current: runTotal,
+      total: runTotal,
       label: result?.stopped ? '정지됨' : '완료',
       percent: 100,
     });

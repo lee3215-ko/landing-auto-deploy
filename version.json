@@ -1,12 +1,12 @@
 {
-    "version":  "3.8.110",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.110/LandingAutoDeploy.zip",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.110/LandingAutoDeploy.zip",
+    "version":  "3.8.111",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.111/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.111/LandingAutoDeploy.zip",
     "api_download_url":  null,
     "asset_id":  null,
-    "notes":  "설정탭: SEO/서비스 섹션 제거, 배포소스·실행버튼 재배치, 배포성공 후 분단위 랜덤 대기",
+    "notes":  "상단 전역 진행 게이지(N/M 진행중) + 네이버 보호조치 시 전체 일시정지/안내 팝업",
     "download_urls":  [
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.110/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.111/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }

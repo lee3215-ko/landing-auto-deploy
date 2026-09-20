@@ -80,6 +80,22 @@
         </div>
       </header>
 
+      <div id="globalProgress" class="global-progress" hidden>
+        <div class="global-progress-inner">
+          <div class="global-progress-head">
+            <div class="global-progress-count-wrap">
+              <span id="globalProgressCount" class="global-progress-count">0/0</span>
+              <span id="globalProgressStatus" class="global-progress-status">대기</span>
+            </div>
+            <span id="globalProgressLabel" class="global-progress-label">작업 대기 중</span>
+            <span id="globalProgressPct" class="global-progress-pct">0%</span>
+          </div>
+          <div class="global-progress-track" aria-hidden="true">
+            <div id="globalProgressFill" class="global-progress-fill" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
       <div class="content">
         <!-- 설정 패널 -->
         <div id="configPanel" class="panel active">
