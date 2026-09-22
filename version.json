@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.114",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/580413720",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.114/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/580413720",
-    "asset_id":  580413720,
-    "notes":  "글자캡챠: YesCaptcha 우선 채택, 실패 시에만 GPT 폴백 (크레딧 절감)",
+    "version":  "3.8.117",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.117/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.117/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "닷홈 보안문자: capt_img 재fetch 제거(세션 불일치 수정), 화면샷+업스케일 후 YesCaptcha, 실패 시 M1 폴백",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/580413720",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.114/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.117/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
