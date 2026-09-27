@@ -1391,7 +1391,9 @@ async function startNaverLogin(ev) {
         loggedIn: false,
         siteCount: null,
       });
-      alert(res.error || '네이버 로그인 실패');
+      if (res.code !== 'NAVER_SITE_LIMIT' && !/계정을 추가하거나 변경/.test(res.error || '')) {
+        alert(res.error || '네이버 로그인 실패');
+      }
     } else if (res) {
       updateNaverSessionBadge(res);
       if (res.siteCount != null) logLine(`[네이버] 로그인 완료 · 등록 ${res.siteCount}개`);
@@ -1715,6 +1717,16 @@ function resolveDothomeNextAction(site) {
   };
 }
 
+/** 생성 사이트 일괄 선택 — 다시 배포가 가능하고 네이버 완료가 아닌 닷홈만 */
+function canBulkRedeploySite(site) {
+  if (site?.provider !== 'dothome') return false;
+  if (isSiteNaverDone(site)) return false;
+  const ftpId = String(site.detail?.ftpId || site.name || '').trim();
+  if (!ftpId) return false;
+  const next = resolveDothomeNextAction(site);
+  return next.showRedeploy === true && next.next !== 'done' && next.next !== 'rejoin';
+}
+
 function siteDetailHtml(site) {
   const d = site.detail || {};
   if (site.provider === 'netlify') {
@@ -2021,7 +2033,7 @@ function renderCreatedSites() {
       <div class="site-card-body">
         <div class="site-card-top">
           <div class="site-card-title-row">
-            ${s.provider === 'dothome' ? `<label class="site-select" title="다시 배포에 포함"><input type="checkbox" data-sites-select="1" data-id="${escapeHtml(s.id)}" ${selectedRedeployIds.has(s.id) ? 'checked' : ''}></label>` : ''}
+            ${canBulkRedeploySite(s) ? `<label class="site-select" title="다시 배포 가능"><input type="checkbox" data-sites-select="1" data-id="${escapeHtml(s.id)}" ${selectedRedeployIds.has(s.id) ? 'checked' : ''}></label>` : ''}
             <span class="provider-pill ${prov.cls}">${prov.label}</span>
             <strong class="site-card-name" title="${escapeHtml(s.name || '')}">${escapeHtml(s.name || '-')}</strong>
             ${statusPill}
@@ -2057,16 +2069,44 @@ function renderCreatedSites() {
   updateSitesRedeployBtn();
 }
 
+function visibleRedeployableSites() {
+  return getFilteredCreatedSites().filter(canBulkRedeploySite);
+}
+
 function updateSitesRedeployBtn() {
   const btn = $('sitesRedeploySelectedBtn');
-  if (!btn) return;
   for (const id of [...selectedRedeployIds]) {
     const site = createdSites.find((s) => s.id === id);
-    if (!site || site.provider !== 'dothome') selectedRedeployIds.delete(id);
+    if (!canBulkRedeploySite(site)) selectedRedeployIds.delete(id);
   }
   const n = selectedRedeployIds.size;
-  btn.disabled = n < 2;
-  btn.textContent = n > 0 ? `선택 다시 배포 (${n})` : '선택 다시 배포';
+  if (btn) {
+    btn.disabled = n < 2;
+    btn.textContent = n > 0 ? `선택 다시 배포 (${n})` : '선택 다시 배포';
+  }
+  const selectBtn = $('sitesSelectRedeployableBtn');
+  if (selectBtn) {
+    const rows = visibleRedeployableSites();
+    const allOn = rows.length > 0 && rows.every((s) => selectedRedeployIds.has(s.id));
+    selectBtn.disabled = rows.length === 0;
+    selectBtn.textContent = allOn
+      ? '다시배포 선택 해제'
+      : `다시배포 가능 선택${rows.length ? ` (${rows.length})` : ''}`;
+  }
+}
+
+function toggleSelectRedeployableSites() {
+  const rows = visibleRedeployableSites();
+  if (!rows.length) {
+    alert('다시 배포할 수 있는 닷홈 사이트가 없습니다.\n네이버 완료·호스팅 미개통은 제외됩니다.');
+    return;
+  }
+  const allOn = rows.every((s) => selectedRedeployIds.has(s.id));
+  for (const site of rows) {
+    if (allOn) selectedRedeployIds.delete(site.id);
+    else selectedRedeployIds.add(site.id);
+  }
+  renderCreatedSites();
 }
 
 async function refreshDothomeHostingChecks(sites = createdSites) {
@@ -3034,10 +3074,7 @@ async function redeployDothomeCreatedSite(id, { skipConfirm = false, quiet = fal
 
 /** 생성 사이트에서 고른 닷홈 계정을 하나씩 다시 배포 */
 async function redeploySelectedDothomeSites() {
-  const ids = [...selectedRedeployIds].filter((id) => {
-    const site = createdSites.find((s) => s.id === id);
-    return site?.provider === 'dothome';
-  });
+  const ids = [...selectedRedeployIds].filter((id) => canBulkRedeploySite(createdSites.find((s) => s.id === id)));
   if (ids.length < 2) {
     return alert('다시 배포할 닷홈 사이트를 2개 이상 선택하세요.');
   }
@@ -4210,13 +4247,15 @@ function setupEvents() {
   $('sitesCheckIndexBtn')?.addEventListener('click', () => runSitesIndexCheck());
   $('sitesSyncBtn')?.addEventListener('click', () => loadCreatedSites(true));
   $('sitesClearBtn')?.addEventListener('click', clearCreatedSites);
+  $('sitesSelectRedeployableBtn')?.addEventListener('click', () => toggleSelectRedeployableSites());
   $('sitesRedeploySelectedBtn')?.addEventListener('click', () => redeploySelectedDothomeSites());
   $('sitesList')?.addEventListener('change', (e) => {
     const box = e.target.closest('[data-sites-select]');
     if (!box) return;
     const id = box.dataset.id || '';
     if (!id) return;
-    if (box.checked) selectedRedeployIds.add(id);
+    const site = createdSites.find((s) => s.id === id);
+    if (box.checked && canBulkRedeploySite(site)) selectedRedeployIds.add(id);
     else selectedRedeployIds.delete(id);
     updateSitesRedeployBtn();
   });
@@ -5337,6 +5376,7 @@ async function startCfGenerate() {
 
   let okCount = 0;
   let failCount = 0;
+  let naverLimitStop = false;
 
   try {
     await window.electronAPI.saveConfig(collectConfig());
@@ -5402,6 +5442,11 @@ async function startCfGenerate() {
           failCount += 1;
           cfLog(`✖ 실패: ${out?.error || '알 수 없음'}`);
           if (out?.zipMissing) dropCfZipPath(zipPath);
+          if (/계정을 추가하거나 변경/.test(String(out?.error || ''))) {
+            naverLimitStop = true;
+            cfLog('⏹ 네이버 계정 한도 — 남은 ZIP은 진행하지 않습니다.');
+            break;
+          }
         }
       } catch (e) {
         failCount += 1;
@@ -5419,7 +5464,7 @@ async function startCfGenerate() {
     await loadCreatedSites(true);
     renderCreatedSites();
     cfLog(`☁ 배치 종료 — 성공 ${okCount} / 실패 ${failCount}`);
-    if (!cfStopRequested) {
+    if (!cfStopRequested && !naverLimitStop) {
       alert(`Cloudflare Pages ZIP 배포 완료\n성공 ${okCount} · 실패 ${failCount}`);
     }
   } catch (e) {
@@ -6070,6 +6115,7 @@ async function startDhFullPipeline() {
   let okCount = 0;
   let mailFailStreak = 0;
   let captchaPreserveStreak = 0;
+  let naverLimitStop = false;
   let dnsAbandonLeft = Math.max(count * 2, 3);
   try {
     for (let i = 0; i < count; i++) {
@@ -6218,6 +6264,11 @@ async function startDhFullPipeline() {
         }
       } else {
         dhLog(`✖ 배포 실패: ${out?.error || ''}`);
+        if (/계정을 추가하거나 변경/.test(String(out?.error || ''))) {
+          naverLimitStop = true;
+          dhLog('⏹ 네이버 계정 한도 — 남은 ZIP은 진행하지 않습니다.');
+          break;
+        }
         if (out?.zipMissing || /ZIP 파일이 없습니다/i.test(String(out?.error || ''))) {
           dhLog('🗑 없는 ZIP — 대기열에서 제거 (같은 파일로 재가입하지 않음)');
           if (zip?.path) removeDhZipPath(zip.path);
@@ -6227,7 +6278,7 @@ async function startDhFullPipeline() {
         }
       }
     }
-    alert(`풀파이프라인 완료\n성공 ${okCount}/${count}`);
+    if (!naverLimitStop) alert(`풀파이프라인 완료\n성공 ${okCount}/${count}`);
   } catch (e) {
     dhLog(`✖ ${e.message}`);
     alert(e.message);

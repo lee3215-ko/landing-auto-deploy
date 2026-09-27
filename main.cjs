@@ -265,6 +265,26 @@ function makeOnMassCreatedId() {
 }
 
 
+function makeOnNaverSiteLimit() {
+  return async ({ accountId, siteCount, message, detail } = {}) => {
+    const parent = BrowserWindow.getFocusedWindow() || mainWindow || undefined;
+    const id = String(accountId || '').trim();
+    const n = siteCount != null ? `${siteCount}개` : '95개 이상';
+    await dialog.showMessageBox(parent, {
+      type: 'warning',
+      buttons: ['확인'],
+      defaultId: 0,
+      cancelId: 0,
+      title: '네이버 계정 한도',
+      message: message || '계정을 추가하거나 변경 해주세요',
+      detail: detail || (id
+        ? `${id} 등록 ${n}입니다. 바꿀 네이버 계정이 없습니다.`
+        : '바꿀 네이버 계정이 없습니다.'),
+      noLink: true,
+    });
+  };
+}
+
 function makeOnNaverProtection() {
   return async ({ detail, source } = {}) => {
     const parent = BrowserWindow.getFocusedWindow() || mainWindow || undefined;
@@ -598,6 +618,7 @@ async function initNaverSessionListeners() {
     setNaverSessionProfileDir,
     setDefaultOnSiteCount,
     setDefaultOnMassCreatedId,
+    setDefaultOnSiteLimit,
     setKnownNaverSiteCount,
     closeOrphanNaverChromeOnStartup,
   } = await import('./lib/naver-session.js');
@@ -605,6 +626,7 @@ async function initNaverSessionListeners() {
   setNaverSessionProfileDir(profileDir);
   setDefaultOnSiteCount(makeOnSiteCount());
   setDefaultOnMassCreatedId(makeOnMassCreatedId());
+  setDefaultOnSiteLimit(makeOnNaverSiteLimit());
   try {
     const {
       setNaverProtectionAlertHandler,
@@ -731,7 +753,7 @@ ipcMain.handle('naver-session-start', async (event, options = {}) => {
     });
     return { ok: true, ...getNaverSessionStatus() };
   } catch (e) {
-    return { ok: false, error: e.message, ...getNaverSessionStatus() };
+    return { ok: false, error: e.message, code: e.code || '', ...getNaverSessionStatus() };
   }
 });
 
