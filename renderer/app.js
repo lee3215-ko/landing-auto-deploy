@@ -36,6 +36,8 @@ let dhStopRequested = false;
 const manualCaptchaBusyUrls = new Set();
 /** 닷홈 다시 배포 진행 중 사이트 id */
 const dothomeRedeployBusyIds = new Set();
+/** 생성 사이트에서 다시 배포로 고른 닷홈 사이트 id */
+const selectedRedeployIds = new Set();
 
 function normManualCaptchaUrl(url) {
   return String(url || '').replace(/\/$/, '').toLowerCase().trim();
@@ -1830,6 +1832,7 @@ function renderCreatedSites() {
   updateSitesStats(rows);
   if (!rows.length) {
     list.innerHTML = '<p class="empty-hint">표시할 생성 사이트가 없습니다. 넷리파이/Cloudflare/닷홈에서 만들거나 「새로고침」으로 기존 데이터를 불러오세요.</p>';
+    updateSitesRedeployBtn();
     return;
   }
 
@@ -2018,6 +2021,7 @@ function renderCreatedSites() {
       <div class="site-card-body">
         <div class="site-card-top">
           <div class="site-card-title-row">
+            ${s.provider === 'dothome' ? `<label class="site-select" title="다시 배포에 포함"><input type="checkbox" data-sites-select="1" data-id="${escapeHtml(s.id)}" ${selectedRedeployIds.has(s.id) ? 'checked' : ''}></label>` : ''}
             <span class="provider-pill ${prov.cls}">${prov.label}</span>
             <strong class="site-card-name" title="${escapeHtml(s.name || '')}">${escapeHtml(s.name || '-')}</strong>
             ${statusPill}
@@ -2050,6 +2054,19 @@ function renderCreatedSites() {
   }
   list.innerHTML = '';
   list.appendChild(wrap);
+  updateSitesRedeployBtn();
+}
+
+function updateSitesRedeployBtn() {
+  const btn = $('sitesRedeploySelectedBtn');
+  if (!btn) return;
+  for (const id of [...selectedRedeployIds]) {
+    const site = createdSites.find((s) => s.id === id);
+    if (!site || site.provider !== 'dothome') selectedRedeployIds.delete(id);
+  }
+  const n = selectedRedeployIds.size;
+  btn.disabled = n < 2;
+  btn.textContent = n > 0 ? `선택 다시 배포 (${n})` : '선택 다시 배포';
 }
 
 async function refreshDothomeHostingChecks(sites = createdSites) {
@@ -2833,23 +2850,41 @@ async function siteManualCaptcha(id) {
 }
 
 /** 생성사이트 탭 — 닷홈 실패 건 다시 배포 (ZIP/로컬/AI → FTP·네이버) */
-async function redeployDothomeCreatedSite(id) {
-  if (!id) return;
-  if (dhBusy) return alert('닷홈 작업이 진행 중입니다. 끝난 뒤 다시 시도하세요.');
+async function redeployDothomeCreatedSite(id, { skipConfirm = false, quiet = false } = {}) {
+  const notify = (msg) => {
+    if (quiet) dhLog(msg);
+    else alert(msg);
+  };
+  if (!id) return 'skip';
+  if (dhBusy) {
+    notify('닷홈 작업이 진행 중입니다. 끝난 뒤 다시 시도하세요.');
+    return 'skip';
+  }
   const site = createdSites.find((s) => s.id === id);
-  if (!site) return alert('사이트를 찾을 수 없습니다.');
-  if (site.provider !== 'dothome') return alert('닷홈 사이트만 가능합니다.');
+  if (!site) {
+    notify('사이트를 찾을 수 없습니다.');
+    return 'skip';
+  }
+  if (site.provider !== 'dothome') {
+    notify('닷홈 사이트만 가능합니다.');
+    return 'skip';
+  }
 
   const ftpId = String(site.detail?.ftpId || site.name || '').trim();
-  if (!ftpId) return alert('FTP 아이디가 없습니다.');
+  if (!ftpId) {
+    notify('FTP 아이디가 없습니다.');
+    return 'skip';
+  }
 
   const accounts = Array.isArray(config.dothome?.accounts) ? config.dothome.accounts : [];
   const account = accounts.find((a) => a?.ftpId === ftpId);
   if (!account) {
-    return alert(`닷홈 계정 목록에서 FTP ${ftpId} 를 찾을 수 없습니다.\n닷홈 탭 계정을 확인하세요.`);
+    notify(`닷홈 계정 목록에서 FTP ${ftpId} 를 찾을 수 없습니다.\n닷홈 탭 계정을 확인하세요.`);
+    return 'skip';
   }
   if (!(config.naverAccounts || []).some((a) => a?.id && a?.pw)) {
-    return alert('설정 탭에 네이버 계정(서치어드바이저)을 등록하세요.');
+    notify('설정 탭에 네이버 계정(서치어드바이저)을 등록하세요.');
+    return 'skip';
   }
 
   const sourcePath = String(site.detail?.sourcePath || account.sourcePath || '').trim();
@@ -2872,17 +2907,19 @@ async function redeployDothomeCreatedSite(id) {
     generate = true;
   }
 
-  const inputs = dhSeoInputsOrAlert({ allowZipOnly: !!zipPath });
-  if (!inputs) return;
+  const inputs = dhSeoInputsOrAlert({ allowZipOnly: !!zipPath, zipPath });
+  if (!inputs) return 'skip';
 
   const modeLabel = zipPath
     ? `ZIP 재배포\n${zipPath}`
     : (generate ? 'AI SEO 생성 후 배포' : `로컬 폴더 배포\n${siteDir}`);
   if (isDothomeRedeployBusy(site.id)) {
-    return alert('이미 이 사이트 다시 배포가 진행 중입니다.');
+    notify('이미 이 사이트 다시 배포가 진행 중입니다.');
+    return 'skip';
   }
   if (isManualCaptchaBusy(site.url)) {
-    return alert('이 사이트는 수동캡챠 진행 중입니다. 끝난 뒤 다시 배포하세요.');
+    notify('이 사이트는 수동캡챠 진행 중입니다. 끝난 뒤 다시 배포하세요.');
+    return 'skip';
   }
 
   // 다시 배포 전 DNS로 호스팅 개통 확인
@@ -2900,27 +2937,35 @@ async function redeployDothomeCreatedSite(id) {
     if (!hostCheck?.ok) {
       setSitesIndexProgress('', false);
       if (hostCheck?.status === 'dns_error') {
-        if (!confirm(
-          `DNS 일시 조회 실패\n${hostCheck?.host || ftpId}\n${hostCheck?.error || ''}\n\n`
-          + '미개통으로 확정되지 않았습니다. 그래도 다시 배포를 시도할까요?',
-        )) return;
+        const ask = `DNS 일시 조회 실패\n${hostCheck?.host || ftpId}\n${hostCheck?.error || ''}\n\n`
+          + '미개통으로 확정되지 않았습니다. 그래도 다시 배포를 시도할까요?';
+        if (skipConfirm) {
+          dhLog(`↩ ${ftpId} DNS 조회 실패 — 이 사이트는 건너뜁니다.`);
+          return 'skip';
+        }
+        if (!confirm(ask)) return 'cancel';
       } else {
-        return alert(
+        notify(
           `호스팅 미개통 — 다시 배포 불가\n\n${hostCheck?.host || ftpId}\n`
           + `${hostCheck?.tip || hostCheck?.error || '서브도메인 DNS가 없습니다.'}\n\n`
           + '「계정 삭제」로 이 계정을 버리고 닷홈 탭에서 새로 가입하세요.',
         );
+        return 'skip';
       }
     }
   } catch (e) {
     setSitesIndexProgress('', false);
-    if (!confirm(`호스팅 확인 실패: ${e.message}\n그래도 다시 배포를 시도할까요?`)) return;
+    if (skipConfirm) {
+      dhLog(`↩ ${ftpId} 호스팅 확인 실패 — 건너뜀: ${e.message}`);
+      return 'skip';
+    }
+    if (!confirm(`호스팅 확인 실패: ${e.message}\n그래도 다시 배포를 시도할까요?`)) return 'cancel';
   }
 
-  if (!confirm(
+  if (!skipConfirm && !confirm(
     `닷홈 다시 배포할까요?\n\nFTP: ${ftpId}\nURL: ${site.url || ''}\n\n${modeLabel}\n\n`
     + 'FTP 업로드 후 네이버 서치어드바이저 등록까지 진행합니다.',
-  )) return;
+  )) return 'cancel';
 
   setDhBusy(true);
   setDothomeRedeployBusy(site.id, true);
@@ -2959,28 +3004,69 @@ async function redeployDothomeCreatedSite(id) {
       if (out.movedZip?.to && !out.movedZip.skipped) {
         dhLog(`📦 성공 ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
       }
-      alert(`다시 배포 완료\n${out.siteUrl || ''}${out.naver?.status ? `\n네이버: ${out.naver.status}` : ''}`);
-    } else {
-      setSitesIndexProgress('', false);
-      dhLog(`✖ 다시 배포 실패: ${out?.error || ''}`);
-      if (out?.movedZip?.to && !out.movedZip.skipped) {
-        dhLog(`📦 FTP는 성공 — ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
+      if (!quiet) {
+        alert(`다시 배포 완료\n${out.siteUrl || ''}${out.naver?.status ? `\n네이버: ${out.naver.status}` : ''}`);
       }
-      if (out?.createdSites) {
-        createdSites = out.createdSites;
-        renderCreatedSites();
-      }
-      alert(out?.error || '다시 배포 실패\n캡챠 실패면 「수동캡챠」로 이어가세요.');
+      return 'ok';
     }
+    setSitesIndexProgress('', false);
+    dhLog(`✖ 다시 배포 실패: ${out?.error || ''}`);
+    if (out?.movedZip?.to && !out.movedZip.skipped) {
+      dhLog(`📦 FTP는 성공 — ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
+    }
+    if (out?.createdSites) {
+      createdSites = out.createdSites;
+      renderCreatedSites();
+    }
+    notify(out?.error || '다시 배포 실패\n캡챠 실패면 「수동캡챠」로 이어가세요.');
+    return 'fail';
   } catch (e) {
     setSitesIndexProgress('', false);
     dhLog(`✖ ${e.message}`);
-    alert(e.message || String(e));
+    notify(e.message || String(e));
+    return 'fail';
   } finally {
     setDothomeRedeployBusy(site.id, false);
     setDhBusy(false);
     renderCreatedSites();
   }
+}
+
+/** 생성 사이트에서 고른 닷홈 계정을 하나씩 다시 배포 */
+async function redeploySelectedDothomeSites() {
+  const ids = [...selectedRedeployIds].filter((id) => {
+    const site = createdSites.find((s) => s.id === id);
+    return site?.provider === 'dothome';
+  });
+  if (ids.length < 2) {
+    return alert('다시 배포할 닷홈 사이트를 2개 이상 선택하세요.');
+  }
+  if (dhBusy) return alert('닷홈 작업이 진행 중입니다. 끝난 뒤 다시 시도하세요.');
+  const names = ids.map((id) => {
+    const site = createdSites.find((s) => s.id === id);
+    return site?.detail?.ftpId || site?.name || id;
+  });
+  if (!confirm(
+    `선택한 닷홈 ${ids.length}개를 하나씩 다시 배포할까요?\n\n${names.join('\n')}\n\n`
+    + '한 건이 끝나야 다음 건을 시작합니다. 호스팅이 안 열린 계정은 건너뜁니다.',
+  )) return;
+
+  let ok = 0;
+  let fail = 0;
+  let skip = 0;
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const site = createdSites.find((s) => s.id === id);
+    const label = site?.detail?.ftpId || site?.name || id;
+    dhLog(`═══ 선택 다시 배포 ${i + 1}/${ids.length}: ${label} ═══`);
+    setSitesIndexProgress(`선택 다시 배포 ${i + 1}/${ids.length}: ${label}`, true);
+    const result = await redeployDothomeCreatedSite(id, { skipConfirm: true, quiet: true });
+    if (result === 'ok') ok += 1;
+    else if (result === 'fail') fail += 1;
+    else skip += 1;
+  }
+  setSitesIndexProgress(`선택 다시 배포 끝 · 성공 ${ok} · 실패 ${fail} · 건너뜀 ${skip}`, true);
+  alert(`선택 다시 배포 완료\n성공 ${ok}\n실패 ${fail}\n건너뜀 ${skip}`);
 }
 
 async function retrySiteNaver(id) {
@@ -4124,6 +4210,16 @@ function setupEvents() {
   $('sitesCheckIndexBtn')?.addEventListener('click', () => runSitesIndexCheck());
   $('sitesSyncBtn')?.addEventListener('click', () => loadCreatedSites(true));
   $('sitesClearBtn')?.addEventListener('click', clearCreatedSites);
+  $('sitesRedeploySelectedBtn')?.addEventListener('click', () => redeploySelectedDothomeSites());
+  $('sitesList')?.addEventListener('change', (e) => {
+    const box = e.target.closest('[data-sites-select]');
+    if (!box) return;
+    const id = box.dataset.id || '';
+    if (!id) return;
+    if (box.checked) selectedRedeployIds.add(id);
+    else selectedRedeployIds.delete(id);
+    updateSitesRedeployBtn();
+  });
   $('sitesFilters')?.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-sites-filter]');
     if (!btn) return;
@@ -5489,14 +5585,17 @@ async function peekValidDhZipOrDrop() {
   }
 }
 
-function dhSeoInputsOrAlert({ allowZipOnly = false } = {}) {
+function dhSeoInputsOrAlert({ allowZipOnly = false, zipPath = '' } = {}) {
   const zips = dhZipSources();
-  const useZip = allowZipOnly && zips.length > 0;
+  const ownZip = String(zipPath || '').trim();
+  const useZip = !!ownZip || (allowZipOnly && zips.length > 0);
   const imageDir = ($('dhImageDir')?.value || '').trim();
   const cursorApiKey = ($('cursorApiKey')?.value || config.cursorApiKey || '').trim();
   // AI 모드: ZIP명·이미지 폴더명으로 키워드 대체 (핵심키워드 입력란 제거됨)
   let keyword = '';
-  if (useZip && zips[0]?.name) {
+  if (useZip && ownZip) {
+    keyword = ownZip.split(/[/\\]/).pop().replace(/\.zip$/i, '').replace(/[_-]+/g, ' ').trim();
+  } else if (useZip && zips[0]?.name) {
     keyword = String(zips[0].name).replace(/\.zip$/i, '').replace(/[_-]+/g, ' ').trim();
   } else if (imageDir) {
     keyword = String(imageDir).split(/[/\\]/).filter(Boolean).pop() || '';
@@ -5970,6 +6069,7 @@ async function startDhFullPipeline() {
 
   let okCount = 0;
   let mailFailStreak = 0;
+  let captchaPreserveStreak = 0;
   let dnsAbandonLeft = Math.max(count * 2, 3);
   try {
     for (let i = 0; i < count; i++) {
@@ -6026,6 +6126,17 @@ async function startDhFullPipeline() {
       const ftpId = signup?.account?.ftpId;
       if (!signup?.ok || !ftpId) {
         dhLog(`✖ 가입 실패: ${signup?.error || 'FTP 없음'}`);
+        if (isDhSignupCaptchaPreserve(signup)) {
+          captchaPreserveStreak += 1;
+          dhLog('↩ 가입 전 보안문자 실패 — ZIP과 생성 횟수는 차감하지 않습니다. 생성 사이트에도 남기지 않습니다.');
+          if (captchaPreserveStreak >= 2) {
+            dhLog('⏹ 가입 보안문자가 계속 실패해 배치를 멈춥니다. ZIP은 대기열에 그대로 있습니다.');
+            break;
+          }
+          i -= 1;
+          continue;
+        }
+        captchaPreserveStreak = 0;
         if (isDhOpenAiCreditsError(signup?.error)) {
           dhLog('⏹ OpenAI 크레딧 소진 — 배치 중단. platform.openai.com 에서 충전하거나 설정 탭 YesCaptcha 키를 확인하세요.');
           break;
@@ -6047,6 +6158,7 @@ async function startDhFullPipeline() {
         continue;
       }
       mailFailStreak = 0;
+      captchaPreserveStreak = 0;
       dhLog(`✔ 가입 완료 · FTP ${ftpId}`);
       if ($('dhHostId')) $('dhHostId').value = signup.account.id || '';
 
@@ -6129,6 +6241,13 @@ async function stopDhGenerate() {
   dhStopRequested = true;
   dhLog('⏹ 정지 요청…');
   await window.electronAPI.dothomeSignupStop();
+}
+
+function isDhSignupCaptchaPreserve(signup) {
+  if (signup?.ok || signup?.account?.id) return false;
+  const stage = String(signup?.stage || '');
+  if (stage === 'signup_auth_expired' || stage === 'signup_captcha') return true;
+  return /가입 보안문자|가입 폼 세션/.test(String(signup?.error || ''));
 }
 
 function isDhMailSessionError(err) {

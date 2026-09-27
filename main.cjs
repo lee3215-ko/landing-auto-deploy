@@ -2354,7 +2354,9 @@ ipcMain.handle('dothome-signup', async (event, options = {}) => {
       sendLog,
     });
 
-    if (out?.account?.id) {
+    const signupStage = String(out?.stage || '');
+    const signupBeforeAccount = signupStage === 'signup_auth_expired' || signupStage === 'signup_captcha';
+    if (out?.account?.id && !signupBeforeAccount) {
       const dh = { ...(config.dothome || {}) };
       const used = new Set([...(dh.usedIds || []), out.account.id]);
       dh.usedIds = [...used];

@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.119",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/580764100",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.119/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/580764100",
-    "asset_id":  580764100,
-    "notes":  "닷홈 보안문자: capt_img 재fetch 제거(세션불일치), 화면샷+업스케일 YesCaptcha, 실패시 M1",
+    "version":  "3.8.120",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.120/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.120/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "닷홈 가입 보안문자는 Yes+GPT가 같은 답을 낼 때만 제출. 가입 전 실패는 ZIP·생성 횟수·생성 사이트를 남기지 않음. 생성 사이트에서 닷홈을 2개 이상 골라 하나씩 다시 배포",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/580764100",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.119/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.120/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
