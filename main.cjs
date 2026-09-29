@@ -2758,13 +2758,22 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
   const generate = useZip ? false : (options.generate !== false);
   const registerNaver = options.registerNaver !== false;
   const siteDir = String(options.siteDir || account.siteDir || '').trim();
-  const naverAccount = pickNaverAccountForDothome(config, options);
+  const lockNaverAccount = !!options.lockNaverAccount;
+  const lockedId = String(options.naverAccount?.id || '').trim();
+  const lockedPw = String(options.naverAccount?.pw || '').trim();
+  const naverAccount = lockNaverAccount
+    ? (lockedId && lockedPw
+      ? { id: lockedId, pw: lockedPw, siteCount: options.naverAccount?.siteCount ?? null }
+      : null)
+    : pickNaverAccountForDothome(config, options);
 
   try {
     if (registerNaver && !naverAccount) {
       return {
         ok: false,
-        error: '생성 후 배포에는 네이버 서치어드바이저 등록이 포함됩니다.\n설정 탭에 네이버 계정(아이디/비밀번호)을 등록하세요.',
+        error: lockNaverAccount
+          ? '로그인된 네이버 아이디로 배포할 수 없습니다.\n우측 상단에서 로그인한 뒤, 설정 탭에 그 아이디의 비밀번호가 있는지 확인하세요.'
+          : '생성 후 배포에는 네이버 서치어드바이저 등록이 포함됩니다.\n설정 탭에 네이버 계정(아이디/비밀번호)을 등록하세요.',
       };
     }
 
@@ -2783,6 +2792,7 @@ ipcMain.handle('dothome-deploy', async (event, options = {}) => {
       registerNaver,
       naverAccount,
       naverAccounts: config.naverAccounts || [],
+      lockNaverAccount,
       openaiApiKey: config.openaiApiKey || '',
       yesCaptchaClientKey: config.yesCaptchaClientKey || '',
       headless: !!config.headless,

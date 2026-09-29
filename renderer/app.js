@@ -1328,7 +1328,12 @@ function updateNaverLoginButton() {
   if (refreshBtn) refreshBtn.hidden = !loggedIn;
 }
 
+let prevNaverSessionId = '';
+let prevNaverSessionStatus = 'idle';
+
 function updateNaverSessionBadge(data) {
+  prevNaverSessionId = String(naverSessionState.accountId || '');
+  prevNaverSessionStatus = naverSessionState.status || 'idle';
   if (data) naverSessionState = { ...naverSessionState, ...data };
   const badge = $('naverSessionBadge');
   const idEl = $('naverSessionId');
@@ -1370,6 +1375,11 @@ function updateNaverSessionBadge(data) {
     badge.hidden = true;
   }
   updateNaverLoginButton();
+  const nextId = String(naverSessionState.accountId || '');
+  const nextSt = naverSessionState.status || 'idle';
+  if ((prevNaverSessionId !== nextId || prevNaverSessionStatus !== nextSt) && $('sitesList')) {
+    renderCreatedSites();
+  }
 }
 
 async function startNaverLogin(ev) {
@@ -1717,12 +1727,25 @@ function resolveDothomeNextAction(site) {
   };
 }
 
-/** 생성 사이트 일괄 선택 — 다시 배포가 가능하고 네이버 완료가 아닌 닷홈만 */
+function recordedNaverId(site) {
+  return String(site?.detail?.naverAccountId || '').trim();
+}
+
+function sameNaverId(a, b) {
+  const left = String(a || '').trim().toLowerCase();
+  const right = String(b || '').trim().toLowerCase();
+  return !!left && left === right;
+}
+
+/** 생성 사이트 일괄 선택 — 다시 배포 가능하고, 기록된 네이버 아이디가 로그인된 아이디와 같은 닷홈만 */
 function canBulkRedeploySite(site) {
   if (site?.provider !== 'dothome') return false;
   if (isSiteNaverDone(site)) return false;
   const ftpId = String(site.detail?.ftpId || site.name || '').trim();
   if (!ftpId) return false;
+  const loggedIn = String(naverSessionState?.accountId || '').trim();
+  const ready = naverSessionState?.status === 'ready' && !!loggedIn;
+  if (!ready || !sameNaverId(recordedNaverId(site), loggedIn)) return false;
   const next = resolveDothomeNextAction(site);
   return next.showRedeploy === true && next.next !== 'done' && next.next !== 'rejoin';
 }
@@ -2033,7 +2056,7 @@ function renderCreatedSites() {
       <div class="site-card-body">
         <div class="site-card-top">
           <div class="site-card-title-row">
-            ${canBulkRedeploySite(s) ? `<label class="site-select" title="다시 배포 가능"><input type="checkbox" data-sites-select="1" data-id="${escapeHtml(s.id)}" ${selectedRedeployIds.has(s.id) ? 'checked' : ''}></label>` : ''}
+            ${canBulkRedeploySite(s) ? `<label class="site-select" title="기록된 네이버 아이디가 로그인된 아이디와 같습니다"><input type="checkbox" data-sites-select="1" data-id="${escapeHtml(s.id)}" ${selectedRedeployIds.has(s.id) ? 'checked' : ''}></label>` : ''}
             <span class="provider-pill ${prov.cls}">${prov.label}</span>
             <strong class="site-card-name" title="${escapeHtml(s.name || '')}">${escapeHtml(s.name || '-')}</strong>
             ${statusPill}
@@ -2069,8 +2092,18 @@ function renderCreatedSites() {
   updateSitesRedeployBtn();
 }
 
-function visibleRedeployableSites() {
-  return getFilteredCreatedSites().filter(canBulkRedeploySite);
+function allRedeployableSites() {
+  return (createdSites || []).filter((s) => isCreatedSitesRow(s) && canBulkRedeploySite(s));
+}
+
+function loggedInNaverAccount() {
+  const id = String(naverSessionState?.accountId || '').trim();
+  const ready = naverSessionState?.status === 'ready' && !!id;
+  if (!ready) return null;
+  const row = (config.naverAccounts || []).find((a) => String(a?.id || '').trim() === id);
+  const pw = String(row?.pw || '').trim();
+  if (!pw) return { id, pw: '', missingPw: true, siteCount: row?.siteCount ?? null };
+  return { id, pw, siteCount: row?.siteCount ?? null };
 }
 
 function updateSitesRedeployBtn() {
@@ -2086,19 +2119,24 @@ function updateSitesRedeployBtn() {
   }
   const selectBtn = $('sitesSelectRedeployableBtn');
   if (selectBtn) {
-    const rows = visibleRedeployableSites();
+    const rows = allRedeployableSites();
     const allOn = rows.length > 0 && rows.every((s) => selectedRedeployIds.has(s.id));
     selectBtn.disabled = rows.length === 0;
     selectBtn.textContent = allOn
       ? '다시배포 선택 해제'
-      : `다시배포 가능 선택${rows.length ? ` (${rows.length})` : ''}`;
+      : `다시배포 가능 전체 선택${rows.length ? ` (${rows.length})` : ''}`;
   }
 }
 
 function toggleSelectRedeployableSites() {
-  const rows = visibleRedeployableSites();
+  const logged = loggedInNaverAccount();
+  if (!logged?.id) {
+    alert('로그인된 네이버 아이디가 없습니다.\n우측 상단 「네이버 로그인」 후 다시 배포할 사이트를 선택하세요.');
+    return;
+  }
+  const rows = allRedeployableSites();
   if (!rows.length) {
-    alert('다시 배포할 수 있는 닷홈 사이트가 없습니다.\n네이버 완료·호스팅 미개통은 제외됩니다.');
+    alert(`기록된 네이버 아이디가 ${logged.id}인 다시 배포 가능 닷홈이 없습니다.`);
     return;
   }
   const allOn = rows.every((s) => selectedRedeployIds.has(s.id));
@@ -2890,7 +2928,12 @@ async function siteManualCaptcha(id) {
 }
 
 /** 생성사이트 탭 — 닷홈 실패 건 다시 배포 (ZIP/로컬/AI → FTP·네이버) */
-async function redeployDothomeCreatedSite(id, { skipConfirm = false, quiet = false } = {}) {
+async function redeployDothomeCreatedSite(id, {
+  skipConfirm = false,
+  quiet = false,
+  naverAccount = null,
+  lockNaverAccount = false,
+} = {}) {
   const notify = (msg) => {
     if (quiet) dhLog(msg);
     else alert(msg);
@@ -3020,6 +3063,10 @@ async function redeployDothomeCreatedSite(id, { skipConfirm = false, quiet = fal
       zipPath,
       sourcePath: zipPath || sourcePath || '',
       siteDir: (zipPath || generate) ? '' : siteDir,
+      ...(lockNaverAccount && naverAccount?.id ? {
+        naverAccount,
+        lockNaverAccount: true,
+      } : {}),
       ...inputs,
     });
     const fresh = await window.electronAPI.loadConfig();
@@ -3079,12 +3126,22 @@ async function redeploySelectedDothomeSites() {
     return alert('다시 배포할 닷홈 사이트를 2개 이상 선택하세요.');
   }
   if (dhBusy) return alert('닷홈 작업이 진행 중입니다. 끝난 뒤 다시 시도하세요.');
+  const naver = loggedInNaverAccount();
+  if (!naver?.id) {
+    return alert('로그인된 네이버 아이디가 없습니다.\n우측 상단 「네이버 로그인」 후 다시 배포하세요.');
+  }
+  if (naver.missingPw) {
+    return alert(`로그인된 네이버 아이디 ${naver.id}의 비밀번호가 설정에 없습니다.\n설정 탭에서 그 계정을 확인해 주세요.`);
+  }
   const names = ids.map((id) => {
     const site = createdSites.find((s) => s.id === id);
-    return site?.detail?.ftpId || site?.name || id;
+    const label = site?.detail?.ftpId || site?.name || id;
+    const recorded = recordedNaverId(site);
+    return recorded ? `${label} (${recorded})` : label;
   });
   if (!confirm(
-    `선택한 닷홈 ${ids.length}개를 하나씩 다시 배포할까요?\n\n${names.join('\n')}\n\n`
+    `선택한 닷홈 ${ids.length}개를 기록된 네이버 아이디(${naver.id})로 하나씩 다시 배포할까요?\n\n`
+    + `${names.join('\n')}\n\n`
     + '한 건이 끝나야 다음 건을 시작합니다. 호스팅이 안 열린 계정은 건너뜁니다.',
   )) return;
 
@@ -3095,9 +3152,14 @@ async function redeploySelectedDothomeSites() {
     const id = ids[i];
     const site = createdSites.find((s) => s.id === id);
     const label = site?.detail?.ftpId || site?.name || id;
-    dhLog(`═══ 선택 다시 배포 ${i + 1}/${ids.length}: ${label} ═══`);
+    dhLog(`═══ 선택 다시 배포 ${i + 1}/${ids.length}: ${label} · 네이버 ${naver.id} ═══`);
     setSitesIndexProgress(`선택 다시 배포 ${i + 1}/${ids.length}: ${label}`, true);
-    const result = await redeployDothomeCreatedSite(id, { skipConfirm: true, quiet: true });
+    const result = await redeployDothomeCreatedSite(id, {
+      skipConfirm: true,
+      quiet: true,
+      naverAccount: naver,
+      lockNaverAccount: true,
+    });
     if (result === 'ok') ok += 1;
     else if (result === 'fail') fail += 1;
     else skip += 1;

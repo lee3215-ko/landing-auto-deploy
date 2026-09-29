@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.121",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/592595679",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.121/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/592595679",
-    "asset_id":  592595679,
-    "notes":  "생성 사이트는 다시 배포 가능한 닷홈만 일괄 선택하고 네이버 완료는 제외. 등록 95개인데 바꿀 계정이 없으면 로그와 안내 창을 띄우고 남은 배포를 중단",
+    "version":  "3.8.122",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.122/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.122/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "생성 사이트 선택 다시 배포는 기록된 네이버 아이디가 로그인된 아이디와 같은 닷홈만 전체 선택하고, 그 아이디로 고정해 배포합니다.",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/592595679",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.121/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.122/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
