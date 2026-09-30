@@ -74,6 +74,7 @@
         </div>
         <div class="topbar-right" id="topbarLoginWrap">
           <button type="button" class="btn btn-primary btn-sm" id="naverLoginBtn">네이버 로그인</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="naverSiteCountResetBtn" title="저장된 등록 개수를 지우고 같은 아이디로 다시 로그인한 뒤 사이트 수를 다시 셉니다">개수 초기화</button>
           <button type="button" class="btn btn-ghost btn-sm" id="naverSiteCountRefreshBtn" title="등록 사이트 수 새로고침" hidden>↻</button>
           <button type="button" class="btn btn-primary btn-sm" id="seoNetlifyLoginBtn" hidden>Netlify 로그인</button>
           <button type="button" class="btn btn-ghost btn-sm" id="seoNetlifyCreditRefreshBtn" title="크레딧 새로고침" hidden>↻</button>
@@ -783,6 +784,8 @@
                 <label for="resultsSearch">검색</label>
                 <input type="text" id="resultsSearch" placeholder="URL, 서비스명, 계정 ID...">
               </div>
+              <button class="btn btn-ghost btn-sm" id="resultsSelectCaptchaBtn" type="button" disabled title="기록된 네이버 아이디가 로그인된 아이디와 같은 수동캡챠 대상만 전체 선택합니다">캡챠 가능 전체 선택</button>
+              <button class="btn btn-primary btn-sm" id="resultsAutoCaptchaBtn" type="button" disabled title="선택한 사이트를 자동 캡챠한 뒤 수집 주기부터 자동으로 이어갑니다">선택 캡챠 자동</button>
               <button class="btn btn-ghost btn-sm" id="copySelectedUrlsBtn" type="button" title="체크한 배포 URL 복사">선택 복사</button>
               <button class="btn btn-ghost btn-sm" id="copyAllResultUrlsBtn" type="button" title="목록의 모든 배포 URL 복사">전체 복사</button>
               <button class="btn btn-primary btn-sm" id="checkIndexBtn" type="button">🔍 인덱싱 확인</button>

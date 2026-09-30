@@ -161,6 +161,33 @@ function requireNaverSessionSync() {
   return _naverSessionHelpers;
 }
 
+function clearNaverSiteCount(accountId) {
+  const id = String(accountId || '').trim();
+  if (!id) return null;
+  const config = loadConfig();
+  const accounts = Array.isArray(config.naverAccounts) ? config.naverAccounts : [];
+  let changed = false;
+  config.naverAccounts = accounts.map((a) => {
+    if (String(a?.id || '').trim() !== id) return a;
+    changed = true;
+    return { ...a, siteCount: null, siteCountAt: '' };
+  });
+  if (!changed) return null;
+  saveConfig(config);
+  try {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('naver-accounts-updated', {
+          naverAccounts: config.naverAccounts,
+          accountId: id,
+          siteCount: null,
+        });
+      }
+    }
+  } catch { /* ignore */ }
+  return config.naverAccounts;
+}
+
 function persistNaverSiteCount(accountId, count) {
   const id = String(accountId || '').trim();
   if (!id || count == null || Number.isNaN(Number(count))) return null;
@@ -719,15 +746,29 @@ ipcMain.handle('naver-session-status', async () => {
 ipcMain.handle('naver-session-start', async (event, options = {}) => {
   const config = loadConfig();
   const preferredId = String(options.naverAccountId || '').trim();
+  const resetSiteCount = !!options.resetSiteCount;
   const { ensureNaverSession, getNaverSessionStatus, onNaverSessionStatus, setNaverSessionProfileDir, pickStartNaverAccount, setKnownNaverSiteCount } = await import('./lib/naver-session.js');
   for (const a of (config.naverAccounts || [])) {
+    if (resetSiteCount && preferredId && String(a?.id || '').trim() === preferredId) continue;
     if (a?.id && a.siteCount != null) setKnownNaverSiteCount(a.id, a.siteCount);
   }
-  const preferred = preferredId
-    ? (config.naverAccounts || []).find((a) => a.id === preferredId)
-    : null;
-  const acct = pickStartNaverAccount(config.naverAccounts || [], preferred)
-    || (preferred?.id && preferred?.pw ? preferred : null);
+  let acct = null;
+  if (resetSiteCount) {
+    const target = (config.naverAccounts || []).find((a) => String(a?.id || '').trim() === preferredId && a?.pw)
+      || (config.naverAccounts || []).find((a) => a?.id && a?.pw);
+    if (!target?.id || !target?.pw) {
+      return { ok: false, error: '개수를 초기화할 네이버 계정이 없습니다. 설정 탭에 아이디와 비밀번호를 등록하세요.' };
+    }
+    clearNaverSiteCount(target.id);
+    setKnownNaverSiteCount(target.id, null);
+    acct = { id: String(target.id).trim(), pw: String(target.pw).trim(), siteCount: null };
+  } else {
+    const preferred = preferredId
+      ? (config.naverAccounts || []).find((a) => a.id === preferredId)
+      : null;
+    acct = pickStartNaverAccount(config.naverAccounts || [], preferred)
+      || (preferred?.id && preferred?.pw ? preferred : null);
+  }
   if (!acct?.id || !acct?.pw) {
     return {
       ok: false,
@@ -740,11 +781,17 @@ ipcMain.handle('naver-session-start', async (event, options = {}) => {
   try {
     await ensureNaverSession({
       naverAccount: acct,
-      naverAccounts: config.naverAccounts || [],
+      naverAccounts: resetSiteCount
+        ? (config.naverAccounts || []).map((a) => (
+          String(a?.id || '').trim() === acct.id ? { ...a, siteCount: null, siteCountAt: '' } : a
+        ))
+        : (config.naverAccounts || []),
       openaiApiKey: config.openaiApiKey || '',
       yesCaptchaClientKey: config.yesCaptchaClientKey || '',
       headless: false,
-      forceRelogin: !!options.forceRelogin,
+      forceRelogin: !!options.forceRelogin || resetSiteCount,
+      lockNaverAccount: resetSiteCount,
+      recountAfterReset: resetSiteCount,
       forceNewSession: true,
       userDataDir: profileDir,
       outputFolder: path.join(OUTPUT_ROOT, 'naver-session'),
@@ -878,6 +925,38 @@ ipcMain.handle('naver-account-credentials', async (_, payload = {}) => {
 });
 ipcMain.handle('load-results', () => loadResults());
 ipcMain.handle('save-results', (_, results) => { saveResults(results); return true; });
+
+/** 배포 결과: 로그인된 아이디로 자동 캡챠 후 수집 주기부터 진행 */
+ipcMain.handle('auto-captcha-collect', async (event, options = {}) => {
+  const config = loadConfig();
+  const sendLog = (line) => {
+    try { event.sender.send('log-line', line); } catch { /* ignore */ }
+  };
+  const url = String(options.siteUrl || options.url || '').trim();
+  if (!url) return { ok: false, error: '사이트 URL이 없습니다.' };
+  const wantId = String(options.naverAccountId || '').trim();
+  const accounts = Array.isArray(config.naverAccounts) ? config.naverAccounts : [];
+  const naverAccount = wantId
+    ? (accounts.find((a) => String(a?.id || '').trim() === wantId && a?.pw) || null)
+    : null;
+  try {
+    const { runAutoCaptchaAndCollect } = await import('./lib/manual-captcha.js');
+    return await runAutoCaptchaAndCollect({
+      siteUrl: url,
+      siteDir: options.siteDir || options.folder || '',
+      siteSlug: options.siteSlug || '',
+      naverAccountId: wantId,
+      naverAccount,
+      openaiApiKey: config.openaiApiKey || '',
+      yesCaptchaClientKey: config.yesCaptchaClientKey || '',
+      outputRoot: OUTPUT_ROOT,
+      sendLog,
+    });
+  } catch (e) {
+    sendLog(`[ERROR] 자동 캡챠: ${e.message}`);
+    return { ok: false, error: e.message || String(e), status: 'captcha' };
+  }
+});
 
 /** 배포결과·생성사이트 「수동캡챠」: 공유 네이버 창에서 캡챠 대기 → 수집 자동 진행 */
 ipcMain.handle('manual-captcha-collect', async (event, options = {}) => {

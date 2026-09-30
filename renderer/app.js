@@ -336,6 +336,7 @@ function renderNaverAccounts() {
       <div class="item-header">
         <span class="item-title" data-action="toggle-account" data-idx="${i}">${escapeHtml(label)} ${countTag}</span>
         <div style="display:flex;align-items:center;gap:6px;">
+          <button type="button" class="btn btn-ghost btn-sm" data-action="reset-account-count" data-idx="${i}" title="이 아이디의 저장된 등록 개수를 지우고 다시 로그인합니다">개수 초기화</button>
           <button type="button" class="btn btn-danger btn-sm" data-action="remove-account" data-idx="${i}">삭제</button>
           <span class="toggle-icon" data-action="toggle-account" data-idx="${i}">${expanded ? '▲' : '▼'}</span>
         </div>
@@ -865,6 +866,54 @@ function deployCredsHtml({ naverId = '', naverPw = '', zipName = '', sourceLabel
   </div>`;
 }
 
+const selectedResultCaptchaIdx = new Set();
+let resultsAutoCaptchaRunning = false;
+
+function resultNeedsCaptcha(row) {
+  if (!row) return false;
+  return row.status === 'captcha'
+    || row.status === 'meta_missing'
+    || row.status === 'access_fail'
+    || /메타\s*태그|메타미검출|찾을\s*수\s*없|접근\s*실패|access_fail/i.test(String(row.error || row.popupMessage || ''));
+}
+
+function canBulkAutoCaptchaResult(row) {
+  if (!resultNeedsCaptcha(row)) return false;
+  if (!String(row?.url || '').trim()) return false;
+  const loggedIn = String(naverSessionState?.accountId || '').trim();
+  const ready = naverSessionState?.status === 'ready' && !!loggedIn;
+  if (!ready || !sameNaverId(row.naverAccountId, loggedIn)) return false;
+  return true;
+}
+
+function allAutoCaptchaResults() {
+  return (savedResults || [])
+    .map((r, originalIndex) => ({ r, originalIndex }))
+    .filter(({ r }) => canBulkAutoCaptchaResult(r));
+}
+
+function updateResultsCaptchaButtons() {
+  for (const idx of [...selectedResultCaptchaIdx]) {
+    const row = savedResults[idx];
+    if (!canBulkAutoCaptchaResult(row)) selectedResultCaptchaIdx.delete(idx);
+  }
+  const rows = allAutoCaptchaResults();
+  const n = selectedResultCaptchaIdx.size;
+  const selectBtn = $('resultsSelectCaptchaBtn');
+  const runBtn = $('resultsAutoCaptchaBtn');
+  if (selectBtn) {
+    const allOn = rows.length > 0 && rows.every(({ originalIndex }) => selectedResultCaptchaIdx.has(originalIndex));
+    selectBtn.disabled = rows.length === 0 || resultsAutoCaptchaRunning;
+    selectBtn.textContent = allOn
+      ? '캡챠 선택 해제'
+      : `캡챠 가능 전체 선택${rows.length ? ` (${rows.length})` : ''}`;
+  }
+  if (runBtn) {
+    runBtn.disabled = n < 1 || resultsAutoCaptchaRunning;
+    runBtn.textContent = n > 0 ? `선택 캡챠 자동 (${n})` : '선택 캡챠 자동';
+  }
+}
+
 function renderResultsTable(results) {
   const list = $('resultsList');
   list.innerHTML = '';
@@ -873,11 +922,15 @@ function renderResultsTable(results) {
 
   if (!results?.length) {
     list.innerHTML = '<p class="empty-hint">저장된 결과가 없습니다.</p>';
+    updateResultsCaptchaButtons();
     return;
   }
 
   // 최신 등록이 위로 (registeredAt / createdAt 내림차순)
-  const indexed = results.map((r, originalIndex) => ({ r, originalIndex }));
+  const indexed = results.map((r, i) => ({
+    r,
+    originalIndex: Number.isInteger(r.originalIndex) ? r.originalIndex : i,
+  }));
   indexed.sort((a, b) => {
     const ta = Date.parse(a.r.registeredAt || a.r.createdAt || 0) || 0;
     const tb = Date.parse(b.r.registeredAt || b.r.createdAt || 0) || 0;
@@ -897,10 +950,10 @@ function renderResultsTable(results) {
 
   for (const { r, originalIndex } of indexed) {
     const st = STATUS_MAP[r.status] || { label: r.status || '-', cls: 'unknown' };
-    const showManualCaptcha = r.status === 'captcha'
-      || r.status === 'meta_missing'
-      || r.status === 'access_fail'
-      || /메타\s*태그|메타미검출|찾을\s*수\s*없|접근\s*실패|access_fail/i.test(String(r.error || r.popupMessage || ''));
+    const showManualCaptcha = resultNeedsCaptcha(r);
+    const captchaCheck = canBulkAutoCaptchaResult(r)
+      ? `<label class="site-select" title="기록된 네이버 아이디가 로그인된 아이디와 같습니다"><input type="checkbox" class="result-captcha-check" data-idx="${originalIndex}" ${selectedResultCaptchaIdx.has(originalIndex) ? 'checked' : ''}></label>`
+      : '';
     const manualBtn = showManualCaptcha
       ? manualCaptchaButtonHtml({
         attrs: `data-action="manual-captcha" data-idx="${originalIndex}"`,
@@ -930,6 +983,7 @@ function renderResultsTable(results) {
       <div class="site-card-body">
         <div class="site-card-top">
           <div class="site-card-title-row">
+            ${captchaCheck}
             <strong class="site-card-name" title="${escapeHtml(r.name || '')}">${escapeHtml(r.name || '-')}</strong>
             <span class="status-pill ${st.cls}">${escapeHtml(statusLabel)}</span>
           </div>
@@ -952,6 +1006,7 @@ function renderResultsTable(results) {
     wrap.appendChild(card);
   }
   list.appendChild(wrap);
+  updateResultsCaptchaButtons();
 
   const selectAll = $('selectAllResultUrls');
   if (selectAll) {
@@ -1014,6 +1069,110 @@ function getSelectedResultUrls() {
     if (u) urls.push(u);
   });
   return urls;
+}
+
+function toggleSelectResultCaptcha() {
+  const logged = loggedInNaverAccount();
+  if (!logged?.id) {
+    alert('로그인된 네이버 아이디가 없습니다.\n우측 상단 「네이버 로그인」 후 캡챠 대상을 선택하세요.');
+    return;
+  }
+  const rows = allAutoCaptchaResults();
+  if (!rows.length) {
+    alert(`기록된 네이버 아이디가 ${logged.id}인 수동캡챠 대상이 없습니다.`);
+    return;
+  }
+  const allOn = rows.every(({ originalIndex }) => selectedResultCaptchaIdx.has(originalIndex));
+  for (const { originalIndex } of rows) {
+    if (allOn) selectedResultCaptchaIdx.delete(originalIndex);
+    else selectedResultCaptchaIdx.add(originalIndex);
+  }
+  filterResults();
+}
+
+async function runSelectedResultAutoCaptcha() {
+  const logged = loggedInNaverAccount();
+  if (!logged?.id) {
+    return alert('로그인된 네이버 아이디가 없습니다.\n우측 상단 「네이버 로그인」 후 다시 시도하세요.');
+  }
+  if (logged.missingPw) {
+    return alert(`로그인된 네이버 아이디 ${logged.id}의 비밀번호가 설정에 없습니다.`);
+  }
+  const indexes = [...selectedResultCaptchaIdx].filter((idx) => canBulkAutoCaptchaResult(savedResults[idx]));
+  if (!indexes.length) {
+    return alert(`기록된 네이버 아이디가 ${logged.id}인 수동캡챠 대상을 선택하세요.`);
+  }
+  if (resultsAutoCaptchaRunning) return alert('자동 캡챠가 진행 중입니다.');
+  const names = indexes.map((idx) => {
+    const row = savedResults[idx];
+    return `${row?.name || row?.url || idx} (${row?.naverAccountId || logged.id})`;
+  });
+  if (!confirm(
+    `선택한 ${indexes.length}개를 ${logged.id}로 자동 캡챠한 뒤, 수집 주기부터 자동으로 이어갈까요?\n\n`
+    + `${names.join('\n')}\n\n`
+    + '한 건이 끝나야 다음 건을 시작합니다.',
+  )) return;
+
+  resultsAutoCaptchaRunning = true;
+  updateResultsCaptchaButtons();
+  let ok = 0;
+  let fail = 0;
+  try {
+    for (let i = 0; i < indexes.length; i++) {
+      const idx = indexes[i];
+      const row = savedResults[idx];
+      if (!row?.url) {
+        fail += 1;
+        continue;
+      }
+      logLine(`═══ 자동 캡챠 ${i + 1}/${indexes.length}: ${row.url} · 네이버 ${logged.id} ═══`);
+      setIndexProgress(`자동 캡챠 ${i + 1}/${indexes.length}: ${row.url}`, true);
+      try {
+        const out = await window.electronAPI.autoCaptchaCollect({
+          siteUrl: row.url,
+          siteDir: row.siteDir || row.folder || '',
+          siteSlug: row.siteSlug || '',
+          naverAccountId: row.naverAccountId || logged.id,
+          sourceType: row.sourceType || '',
+          sourcePath: row.sourcePath || '',
+        });
+        if (out?.ok) {
+          savedResults[idx] = {
+            ...savedResults[idx],
+            status: 'success',
+            error: undefined,
+            popupMessage: undefined,
+            registeredAt: new Date().toISOString(),
+            pageUrlCount: out.pageUrlCount ?? savedResults[idx].pageUrlCount,
+            siteDir: out.siteDir || savedResults[idx].siteDir,
+          };
+          selectedResultCaptchaIdx.delete(idx);
+          ok += 1;
+          logLine(`✔ 자동 캡챠 완료: ${out.message || row.url}`);
+        } else {
+          const failMsg = out?.message || out?.error || '실패';
+          savedResults[idx] = {
+            ...savedResults[idx],
+            status: 'captcha',
+            error: failMsg,
+            popupMessage: out?.popupMessage || savedResults[idx].popupMessage || '',
+          };
+          fail += 1;
+          logLine(`⚠ 자동 캡챠: ${failMsg}`);
+        }
+        await window.electronAPI.saveResults(savedResults);
+        filterResults();
+      } catch (e) {
+        fail += 1;
+        logLine(`[ERROR] 자동 캡챠: ${e.message}`);
+      }
+    }
+  } finally {
+    resultsAutoCaptchaRunning = false;
+    setIndexProgress('', false);
+    filterResults();
+    alert(`자동 캡챠 종료\n성공 ${ok}건 · 실패 ${fail}건`);
+  }
 }
 
 async function copySelectedResultUrls() {
@@ -1377,8 +1536,9 @@ function updateNaverSessionBadge(data) {
   updateNaverLoginButton();
   const nextId = String(naverSessionState.accountId || '');
   const nextSt = naverSessionState.status || 'idle';
-  if ((prevNaverSessionId !== nextId || prevNaverSessionStatus !== nextSt) && $('sitesList')) {
-    renderCreatedSites();
+  if (prevNaverSessionId !== nextId || prevNaverSessionStatus !== nextSt) {
+    if ($('sitesList')) renderCreatedSites();
+    if ($('resultsList')) filterResults();
   }
 }
 
@@ -1413,6 +1573,72 @@ async function startNaverLogin(ev) {
     updateNaverSessionBadge({ status: 'error', error: e.message || String(e), accountId: '', loggedIn: false });
     alert(e.message || '네이버 로그인 실패');
   } finally {
+    updateNaverLoginButton();
+  }
+}
+
+function resolveResetNaverAccountId(explicitId) {
+  const explicit = String(explicitId || '').trim();
+  if (explicit) return explicit;
+  const sessionId = String(naverSessionState?.accountId || '').trim();
+  if (sessionId && (config.naverAccounts || []).some((a) => String(a?.id || '').trim() === sessionId && a?.pw)) {
+    return sessionId;
+  }
+  const first = (config.naverAccounts || []).find((a) => a?.id && a?.pw);
+  return String(first?.id || '').trim();
+}
+
+async function resetNaverSiteCountAndLogin(explicitId) {
+  const id = resolveResetNaverAccountId(explicitId);
+  if (!id) {
+    return alert('초기화할 네이버 계정이 없습니다.\n설정 탭에 아이디와 비밀번호를 등록하세요.');
+  }
+  const row = (config.naverAccounts || []).find((a) => String(a?.id || '').trim() === id);
+  if (!row?.pw) {
+    return alert(`${id}의 비밀번호가 설정에 없습니다.`);
+  }
+  if (!confirm(
+    `${id}의 저장된 등록 개수를 지우고, 같은 아이디로 다시 로그인한 뒤 사이트 수를 다시 셀까요?`,
+  )) return;
+
+  const btn = $('naverSiteCountResetBtn');
+  const loginBtn = $('naverLoginBtn');
+  if (btn) btn.disabled = true;
+  if (loginBtn) loginBtn.disabled = true;
+  updateNaverSessionBadge({ status: 'starting', accountId: id });
+  try {
+    await window.electronAPI.saveConfig?.(collectConfig());
+    const res = await window.electronAPI.naverSessionStart?.({
+      resetSiteCount: true,
+      naverAccountId: id,
+      forceRelogin: true,
+    });
+    if (res && !res.ok) {
+      updateNaverSessionBadge({
+        status: 'error',
+        error: res.error || '로그인 실패',
+        accountId: '',
+        loggedIn: false,
+        siteCount: null,
+      });
+      if (res.code !== 'NAVER_SITE_LIMIT' && !/계정을 추가하거나 변경/.test(res.error || '')) {
+        alert(res.error || '개수 초기화 후 로그인 실패');
+      }
+      return;
+    }
+    if (res) updateNaverSessionBadge(res);
+    const n = res?.siteCount;
+    logLine(`[네이버] ${id} 개수 초기화 후 다시 로그인 · 등록 ${n ?? '?'}개`);
+    if (row) {
+      row.siteCount = n != null ? Number(n) : null;
+      row.siteCountAt = n != null ? new Date().toISOString() : '';
+      renderNaverAccounts();
+    }
+  } catch (e) {
+    updateNaverSessionBadge({ status: 'error', error: e.message || String(e), accountId: '', loggedIn: false });
+    alert(e.message || '개수 초기화 후 로그인 실패');
+  } finally {
+    if (btn) btn.disabled = false;
     updateNaverLoginButton();
   }
 }
@@ -4410,7 +4636,10 @@ function setupEvents() {
   $('seoNetlifyLoginBtn')?.addEventListener('click', startNetlifyCreditsLogin);
   $('seoNetlifyLoginBtn2')?.addEventListener('click', startNetlifyCreditsLogin);
   $('naverLoginBtn')?.addEventListener('click', (e) => startNaverLogin(e));
+  $('naverSiteCountResetBtn')?.addEventListener('click', () => resetNaverSiteCountAndLogin());
   $('naverSiteCountRefreshBtn')?.addEventListener('click', refreshNaverSiteCount);
+  $('resultsSelectCaptchaBtn')?.addEventListener('click', () => toggleSelectResultCaptcha());
+  $('resultsAutoCaptchaBtn')?.addEventListener('click', () => runSelectedResultAutoCaptcha());
   $('seoNetlifyCreditRefreshBtn')?.addEventListener('click', refreshNetlifyCreditsUi);
   $('seoRandomSlugBtn')?.addEventListener('click', () => randomSeoSlug(true));
   $('seoSiteSlug')?.addEventListener('input', updateSeoPreviewUrl);
@@ -4516,6 +4745,11 @@ function setupEvents() {
     const idx = parseInt(t.dataset.idx, 10);
     if (Number.isNaN(idx)) return;
     if (t.dataset.action === 'remove-account') { e.stopPropagation(); removeNaverAccount(idx); }
+    else if (t.dataset.action === 'reset-account-count') {
+      e.stopPropagation();
+      const acc = config.naverAccounts?.[idx];
+      resetNaverSiteCountAndLogin(acc?.id || '');
+    }
     else if (t.dataset.action === 'toggle-account') { e.stopPropagation(); toggleAccount(idx); }
   });
   $('naverAccounts').addEventListener('change', (e) => {
@@ -4546,6 +4780,16 @@ function setupEvents() {
     updateService(parseInt(t.dataset.idx, 10), t.dataset.field, t.value);
   });
 
+  $('resultsList').addEventListener('change', (e) => {
+    const box = e.target.closest('.result-captcha-check');
+    if (!box) return;
+    const idx = parseInt(box.dataset.idx, 10);
+    if (Number.isNaN(idx)) return;
+    const row = savedResults[idx];
+    if (box.checked && canBulkAutoCaptchaResult(row)) selectedResultCaptchaIdx.add(idx);
+    else selectedResultCaptchaIdx.delete(idx);
+    updateResultsCaptchaButtons();
+  });
   $('resultsList').addEventListener('click', (e) => {
     const t = e.target.closest('[data-action]');
     if (!t) return;
