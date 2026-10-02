@@ -56,6 +56,17 @@
 
     <div class="main">
       <header class="topbar">
+        <div class="account-memo-bar">
+          <span class="account-memo-label">계정 메모</span>
+          <input id="accountMemoInput" class="account-memo-input" type="text" autocomplete="off" spellcheck="false" placeholder="이메일    네이버아이디    비밀번호    이름">
+          <div class="account-memo-copies">
+            <button type="button" class="btn btn-ghost btn-sm account-memo-copy" data-memo-index="0" title="이메일 복사">이메일</button>
+            <button type="button" class="btn btn-ghost btn-sm account-memo-copy" data-memo-index="1" title="아이디 복사">아이디</button>
+            <button type="button" class="btn btn-ghost btn-sm account-memo-copy" data-memo-index="2" title="비밀번호 복사">비번</button>
+            <button type="button" class="btn btn-ghost btn-sm account-memo-copy" data-memo-index="3" title="이름 복사">이름</button>
+          </div>
+        </div>
+        <div class="topbar-main">
         <div class="topbar-left">
           <div class="topbar-title-row">
             <h2 id="pageTitle">설정</h2>
@@ -78,6 +89,7 @@
           <button type="button" class="btn btn-ghost btn-sm" id="naverSiteCountRefreshBtn" title="등록 사이트 수 새로고침" hidden>↻</button>
           <button type="button" class="btn btn-primary btn-sm" id="seoNetlifyLoginBtn" hidden>Netlify 로그인</button>
           <button type="button" class="btn btn-ghost btn-sm" id="seoNetlifyCreditRefreshBtn" title="크레딧 새로고침" hidden>↻</button>
+        </div>
         </div>
       </header>
 

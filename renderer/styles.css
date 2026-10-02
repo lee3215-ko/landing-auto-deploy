@@ -176,14 +176,62 @@ body {
 
 .topbar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 20px 28px;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 28px 16px;
   border-bottom: 1px solid var(--border);
   background: rgba(18, 24, 38, 0.6);
   backdrop-filter: blur(12px);
   flex-shrink: 0;
+}
+
+.topbar-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.account-memo-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.account-memo-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.account-memo-input {
+  flex: 1;
+  min-width: 120px;
+  width: auto;
+  height: 32px;
+  margin: 0;
+  padding: 4px 10px;
+}
+
+.account-memo-copies {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.account-memo-copy {
+  max-width: 148px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topbar-left {

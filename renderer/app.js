@@ -645,6 +645,7 @@ function collectConfig() {
       sitemap: !!$('crawlOptSitemap')?.checked,
       webpage: !!$('crawlOptWebpage')?.checked,
     },
+    accountMemo: ($('accountMemoInput')?.value || ''),
     cursorApiKey: ($('cursorApiKey')?.value || config.cursorApiKey || '').trim(),
     kkangBuilderPath: ($('seoBuilderPath')?.value || config.kkangBuilderPath || '').trim(),
     kkangFastAi: $('seoFastAi') ? !!$('seoFastAi').checked : (config.kkangFastAi !== false),
@@ -4336,6 +4337,49 @@ async function applyGenTokens() {
   switchTab('config');
 }
 
+const ACCOUNT_MEMO_LABELS = ['이메일', '아이디', '비번', '이름'];
+const ACCOUNT_MEMO_COPY_NAMES = ['이메일', '네이버아이디', '비밀번호', '이름'];
+let accountMemoSaveTimer = null;
+
+function parseAccountMemo(text) {
+  const line = String(text || '').replace(/\r/g, '\n').split('\n').map((s) => s.trim()).find(Boolean) || '';
+  if (!line) return ['', '', '', ''];
+  const parts = line.includes('\t')
+    ? line.split('\t').map((s) => s.trim())
+    : line.split(/\s+/).filter(Boolean);
+  while (parts.length < 4) parts.push('');
+  return parts.slice(0, 4);
+}
+
+function refreshAccountMemoButtons() {
+  const parts = parseAccountMemo($('accountMemoInput')?.value || '');
+  document.querySelectorAll('.account-memo-copy').forEach((btn) => {
+    const index = Number(btn.dataset.memoIndex);
+    const title = ACCOUNT_MEMO_LABELS[index] || '';
+    const value = parts[index] || '';
+    let shown = value ? `${title} ${value}` : title;
+    if (shown.length > 16) shown = `${shown.slice(0, 15)}…`;
+    btn.textContent = shown;
+    btn.title = value ? `${ACCOUNT_MEMO_COPY_NAMES[index] || title} 복사` : `${title} 복사`;
+  });
+}
+
+function scheduleAccountMemoSave() {
+  clearTimeout(accountMemoSaveTimer);
+  accountMemoSaveTimer = setTimeout(() => {
+    window.electronAPI?.saveConfig?.(collectConfig()).catch(() => {});
+  }, 400);
+}
+
+async function copyAccountMemoIndex(index) {
+  const parts = parseAccountMemo($('accountMemoInput')?.value || '');
+  const text = String(parts[index] || '').trim();
+  if (!text) return;
+  const name = ACCOUNT_MEMO_COPY_NAMES[index] || '항목';
+  const ok = await copyToClipboard(text, '');
+  if (ok) logLine(`${name} 항목을 복사했습니다.`);
+}
+
 async function load() {
   // 설정 로드 전에 탭 클릭부터 연결 (DNS/동기화 대기에 탭이 먹통 되지 않게)
   setupEvents();
@@ -4371,6 +4415,10 @@ async function load() {
     naverId: t.naverId || t.id || '',
   }));
 
+  if ($('accountMemoInput')) {
+    $('accountMemoInput').value = config.accountMemo || '';
+    refreshAccountMemoButtons();
+  }
   $('openaiApiKey').value = config.openaiApiKey || '';
   if ($('yesCaptchaClientKey')) $('yesCaptchaClientKey').value = config.yesCaptchaClientKey || '';
   if ($('crawlNaverId')) $('crawlNaverId').value = config.urlCrawlNaver?.id || '';
@@ -4635,6 +4683,13 @@ function setupEvents() {
   // 넷리파이 생성
   $('seoNetlifyLoginBtn')?.addEventListener('click', startNetlifyCreditsLogin);
   $('seoNetlifyLoginBtn2')?.addEventListener('click', startNetlifyCreditsLogin);
+  $('accountMemoInput')?.addEventListener('input', () => {
+    refreshAccountMemoButtons();
+    scheduleAccountMemoSave();
+  });
+  document.querySelectorAll('.account-memo-copy').forEach((btn) => {
+    btn.addEventListener('click', () => copyAccountMemoIndex(Number(btn.dataset.memoIndex)));
+  });
   $('naverLoginBtn')?.addEventListener('click', (e) => startNaverLogin(e));
   $('naverSiteCountResetBtn')?.addEventListener('click', () => resetNaverSiteCountAndLogin());
   $('naverSiteCountRefreshBtn')?.addEventListener('click', refreshNaverSiteCount);
