@@ -5690,7 +5690,7 @@ async function waitCfGapAfterDeploy({ hasMore = true } = {}) {
   const seconds = gap.minS + Math.random() * (gap.maxS - gap.minS);
   const totalMs = Math.round(seconds * 1000);
   const endAt = Date.now() + totalMs;
-  cfLog(`⏳ 배포 1건 완료 — 다음까지 약 ${Math.round(seconds)}초 대기 (${gap.minS}~${gap.maxS}초 랜덤)`);
+  cfLog(`⏳ 다음까지 약 ${Math.round(seconds)}초 대기 (${gap.minS}~${gap.maxS}초 랜덤, 성공·실패 동일)`);
   let lastLogAt = Date.now();
   while (Date.now() < endAt) {
     if (cfStopRequested) {
@@ -5762,17 +5762,18 @@ async function startCfGenerate() {
             dropCfZipPath(zipPath);
             failCount += 1;
             await window.electronAPI.saveConfig(collectConfig()).catch(() => {});
+            await waitCfGapAfterDeploy({ hasMore: i < queue.length - 1 && !cfStopRequested && !naverLimitStop });
             continue;
           }
         } catch (e) {
           cfLog(`✖ ZIP 검사 실패: ${e.message}`);
           dropCfZipPath(zipPath);
           failCount += 1;
+          await waitCfGapAfterDeploy({ hasMore: i < queue.length - 1 && !cfStopRequested && !naverLimitStop });
           continue;
         }
       }
 
-      let deployOk = false;
       try {
         const out = await window.electronAPI.cloudflareDeployZip({
           zipPath,
@@ -5794,7 +5795,6 @@ async function startCfGenerate() {
 
         if (out?.ok) {
           okCount += 1;
-          deployOk = true;
           cfLog(`✔ 완료: ${out.siteUrl || out.projectName}`);
           if (out.movedZip?.to) {
             cfLog(`📦 성공 ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
@@ -5815,11 +5815,8 @@ async function startCfGenerate() {
       }
       renderCreatedSites();
 
-      // 성공한 건만, 다음 ZIP이 남아 있으면 랜덤 대기
-      if (deployOk) {
-        const hasMore = i < queue.length - 1 && !cfStopRequested;
-        await waitCfGapAfterDeploy({ hasMore });
-      }
+      const hasMore = i < queue.length - 1 && !cfStopRequested && !naverLimitStop;
+      await waitCfGapAfterDeploy({ hasMore });
     }
 
     await loadCreatedSites(true);
@@ -6051,7 +6048,7 @@ async function waitDhGapAfterHostingDone({ hasMore = true } = {}) {
   const minutes = gap.minM + Math.random() * (gap.maxM - gap.minM);
   const totalMs = Math.round(minutes * 60_000);
   const endAt = Date.now() + totalMs;
-  dhLog(`⏳ 호스팅 1건 완료 — 다음까지 약 ${minutes.toFixed(1)}분 대기 (${gap.minM}~${gap.maxM}분 랜덤)`);
+  dhLog(`⏳ 다음까지 약 ${minutes.toFixed(1)}분 대기 (${gap.minM}~${gap.maxM}분 랜덤, 성공·실패 동일)`);
   let lastLogAt = Date.now();
   while (Date.now() < endAt) {
     if (dhStopRequested) {
@@ -6541,6 +6538,7 @@ async function startDhFullPipeline() {
             break;
           }
           i -= 1;
+          await waitDhGapAfterHostingDone({ hasMore: !dhStopRequested });
           continue;
         }
         captchaPreserveStreak = 0;
@@ -6557,11 +6555,7 @@ async function startDhFullPipeline() {
         } else {
           mailFailStreak = 0;
         }
-        // 연결 타임아웃 등은 잠깐 대기 후 다음 ZIP(같은 ZIP peek) 재시도
-        if (/TIMED_OUT|timeout|ECONN|ERR_CONNECTION/i.test(String(signup?.error || ''))) {
-          dhLog('⏳ 닷홈 접속 불안정 — 8초 대기 후 재시도…');
-          await new Promise((r) => setTimeout(r, 8000));
-        }
+        await waitDhGapAfterHostingDone({ hasMore: (i + 1 < count) && !dhStopRequested });
         continue;
       }
       mailFailStreak = 0;
@@ -6619,6 +6613,7 @@ async function startDhFullPipeline() {
           dnsAbandonLeft -= 1;
           i -= 1; // 같은 슬롯·같은 ZIP으로 재시도 (ZIP은 성공 시에만 제거됨)
           dhLog(`↻ 재가입 재시도 남음 ${dnsAbandonLeft}`);
+          await waitDhGapAfterHostingDone({ hasMore: !dhStopRequested });
         } else {
           dhLog('⏹ DNS 미개통 재시도 한도 초과 — 배치 중단');
           break;
@@ -6637,6 +6632,10 @@ async function startDhFullPipeline() {
         if (out?.movedZip?.to && !out.movedZip.skipped) {
           dhLog(`📦 FTP는 성공 — ZIP → 성공\\${String(out.movedZip.to).split(/[/\\]/).pop()}`);
         }
+        const hasMoreFail = zipMode
+          ? dhZipSources().length > 0
+          : (i + 1 < count);
+        await waitDhGapAfterHostingDone({ hasMore: hasMoreFail && !dhStopRequested && !naverLimitStop });
       }
     }
     if (!naverLimitStop) alert(`풀파이프라인 완료\n성공 ${okCount}/${count}`);

@@ -194,14 +194,14 @@
               </div>
 
               <div class="form-group" style="margin-top:14px;">
-                <label for="deployGapMinMin">배포 성공 후 다음까지 대기 (분)</label>
+                <label for="deployGapMinMin">다음 건까지 대기 (분)</label>
                 <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;">
                   <input type="number" id="deployGapMinMin" min="0" max="180" value="1" style="width:72px;" title="최소(분)">
                   <span style="color:var(--text-muted);">~</span>
                   <input type="number" id="deployGapMaxMin" min="0" max="180" value="5" style="width:72px;" title="최대(분)">
                   <span style="color:var(--text-muted);font-size:13px;">분 랜덤</span>
                 </div>
-                <p class="bulk-hint">한 건 배포에 성공하면 다음 소스 전에 이 구간에서 랜덤으로 쉽니다. 0~0이면 추가 대기 없음. 일시정지·정지로 대기 중에도 중단할 수 있습니다.</p>
+                <p class="bulk-hint">성공이든 실패든 다음 소스가 있으면 이 구간에서 랜덤으로 쉽니다. 0~0이면 추가 대기 없음. 일시정지·정지로 대기 중에도 중단할 수 있습니다.</p>
               </div>
 
               <div class="checkbox-row" style="margin-top:12px;">
@@ -546,7 +546,7 @@
               <div class="form-group" style="margin-top:12px;">
                 <label class="check-row" style="display:flex;align-items:center;gap:8px;font-weight:600;">
                   <input type="checkbox" id="cfGapAfterDone" checked>
-                  배포 1건 완료 후 대기
+                  다음 건까지 대기
                 </label>
                 <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;">
                   <input type="number" id="cfGapMinSec" min="1" max="3600" value="100" style="width:88px;" title="최소(초)">
@@ -554,7 +554,7 @@
                   <input type="number" id="cfGapMaxSec" min="1" max="3600" value="300" style="width:88px;" title="최대(초)">
                   <span style="color:var(--text-muted);font-size:13px;">초 랜덤</span>
                 </div>
-                <p class="bulk-hint">한 ZIP 배포가 끝나면 다음 ZIP 전에 설정 구간(기본 100~300초)에서 랜덤으로 쉽니다. 정지 버튼으로 대기 중에도 중단할 수 있습니다.</p>
+                <p class="bulk-hint">성공이든 실패든 다음 ZIP이 있으면 설정 구간(기본 100~300초)에서 랜덤으로 쉽니다. 정지 버튼으로 대기 중에도 중단할 수 있습니다.</p>
               </div>
 
               <div class="run-section" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
@@ -635,7 +635,7 @@
               <div class="form-group">
                 <label class="check-row" style="display:flex;align-items:center;gap:8px;font-weight:600;">
                   <input type="checkbox" id="dhGapAfterDone" checked>
-                  호스팅 1건 완료 후 대기
+                  다음 건까지 대기
                 </label>
                 <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;">
                   <input type="number" id="dhGapMinMin" min="1" max="180" value="15" style="width:72px;" title="최소(분)">
@@ -643,7 +643,7 @@
                   <input type="number" id="dhGapMaxMin" min="1" max="180" value="20" style="width:72px;" title="최대(분)">
                   <span style="color:var(--text-muted);font-size:13px;">분 랜덤</span>
                 </div>
-                <p class="bulk-hint">한 건이 끝나면 다음 건 전에 15~20분(설정값) 사이 랜덤으로 쉽니다. 정지 버튼으로 대기 중에도 중단할 수 있습니다.</p>
+                <p class="bulk-hint">성공이든 실패든 다음 건이 있으면 15~20분(설정값) 사이 랜덤으로 쉽니다. 정지 버튼으로 대기 중에도 중단할 수 있습니다.</p>
               </div>
 
               <details class="seo-advanced">

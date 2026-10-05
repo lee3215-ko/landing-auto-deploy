@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.124",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/604657874",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.124/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/604657874",
-    "asset_id":  604657874,
-    "notes":  "상단에 계정 메모를 넣고, 이메일·아이디·비밀번호·이름을 버튼으로 복사할 수 있게 했습니다.",
+    "version":  "3.8.125",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.125/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.125/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "설정·Cloudflare·닷홈에서 성공이든 실패든 다음 건이 있으면 설정한 시간만큼 쉰 뒤 진행합니다.",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/604657874",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.124/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.125/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
