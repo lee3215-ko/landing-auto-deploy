@@ -161,6 +161,71 @@ function requireNaverSessionSync() {
   return _naverSessionHelpers;
 }
 
+function broadcastNaverAccounts(payload) {
+  try {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.send('naver-accounts-updated', payload);
+    }
+  } catch { /* ignore */ }
+}
+
+/** 시트 H열이 이 컴퓨터 이름과 같은 행만 로그인 계정으로 쓴다. 등록 개수는 기존 값을 유지. */
+async function syncNaverAccountsFromSheet(programId) {
+  const { fetchProgramAccounts } = await import('./lib/naver-account-sheet.js');
+  const config = loadConfig();
+  const program = String(programId || config.naverSheetProgramId || '').trim();
+  if (!program) {
+    return {
+      ok: false,
+      error: '네이버 로그인 옆에 이 컴퓨터 이름을 입력하세요. 시트 H열과 같은 이름만 읽습니다.',
+      programId: '',
+      naverAccounts: config.naverAccounts || [],
+    };
+  }
+  const rows = await fetchProgramAccounts(program);
+  if (!rows.length) {
+    config.naverSheetProgramId = program;
+    config.naverAccounts = [];
+    saveConfig(config);
+    broadcastNaverAccounts({
+      naverAccounts: [],
+      sheetSync: true,
+      programId: program,
+      count: 0,
+    });
+    return {
+      ok: false,
+      error: `시트 H열에 「${program}」 계정이 없습니다.`,
+      programId: program,
+      naverAccounts: [],
+    };
+  }
+  const prev = Array.isArray(config.naverAccounts) ? config.naverAccounts : [];
+  const byId = new Map(prev.map((a) => [String(a?.id || '').trim().toLowerCase(), a]));
+  config.naverSheetProgramId = program;
+  config.naverAccounts = rows.map((row) => {
+    const old = byId.get(row.id.toLowerCase()) || {};
+    return {
+      ...row,
+      siteCount: old.siteCount != null && Number.isFinite(Number(old.siteCount)) ? Number(old.siteCount) : null,
+      siteCountAt: old.siteCountAt || '',
+    };
+  });
+  saveConfig(config);
+  broadcastNaverAccounts({
+    naverAccounts: config.naverAccounts,
+    sheetSync: true,
+    programId: program,
+    count: config.naverAccounts.length,
+  });
+  return {
+    ok: true,
+    programId: program,
+    count: config.naverAccounts.length,
+    naverAccounts: config.naverAccounts,
+  };
+}
+
 function clearNaverSiteCount(accountId) {
   const id = String(accountId || '').trim();
   if (!id) return null;
@@ -743,7 +808,23 @@ ipcMain.handle('naver-session-status', async () => {
   return getNaverSessionStatus();
 });
 
+ipcMain.handle('sync-naver-accounts-sheet', async (_event, options = {}) => {
+  try {
+    return await syncNaverAccountsFromSheet(options.programId);
+  } catch (e) {
+    return { ok: false, error: e.message || String(e) };
+  }
+});
+
 ipcMain.handle('naver-session-start', async (event, options = {}) => {
+  try {
+    const synced = await syncNaverAccountsFromSheet(options.programId);
+    if (!synced?.ok) {
+      return { ok: false, error: synced?.error || '이 컴퓨터 이름의 네이버 계정이 없습니다.' };
+    }
+  } catch (e) {
+    return { ok: false, error: `시트를 읽지 못했습니다. ${e.message || e}` };
+  }
   const config = loadConfig();
   const preferredId = String(options.naverAccountId || '').trim();
   const resetSiteCount = !!options.resetSiteCount;
@@ -941,7 +1022,7 @@ ipcMain.handle('auto-captcha-collect', async (event, options = {}) => {
     : null;
   try {
     const { runAutoCaptchaAndCollect } = await import('./lib/manual-captcha.js');
-    return await runAutoCaptchaAndCollect({
+    const out = await runAutoCaptchaAndCollect({
       siteUrl: url,
       siteDir: options.siteDir || options.folder || '',
       siteSlug: options.siteSlug || '',
@@ -952,6 +1033,48 @@ ipcMain.handle('auto-captcha-collect', async (event, options = {}) => {
       outputRoot: OUTPUT_ROOT,
       sendLog,
     });
+    let createdSites = null;
+    try {
+      const { loadSitesRegistry } = await import('./lib/sites-registry.js');
+      const sites = loadSitesRegistry(CREATED_SITES_PATH);
+      const key = url.replace(/\/$/, '').toLowerCase();
+      const createdId = String(options.createdSiteId || '').trim();
+      const site = (createdId && sites.find((s) => s.id === createdId))
+        || sites.find((s) => String(s?.url || '').replace(/\/$/, '').toLowerCase() === key);
+      if (site) {
+        createdSites = await upsertCreatedSite({
+          ...site,
+          url: site.url || url,
+          status: out?.ok ? 'deployed' : site.status,
+          detail: {
+            ...(site.detail || {}),
+            siteDir: out?.siteDir || options.siteDir || site.detail?.siteDir || site.detail?.output || '',
+            naverAuto: !!out?.ok,
+            naverStatus: out?.ok ? 'success' : (out?.status || 'captcha'),
+            naverError: out?.ok ? '' : (out?.message || out?.error || '자동 캡챠 실패'),
+            popupMessage: out?.ok ? '' : (out?.popupMessage || site.detail?.popupMessage || ''),
+            naverAccountId: naverAccount?.id || site.detail?.naverAccountId || wantId,
+            pageUrlCount: out?.pageUrlCount ?? site.detail?.pageUrlCount ?? 0,
+            autoCaptchaAt: new Date().toISOString(),
+          },
+        });
+        if (site.provider === 'dothome' && out?.ok) {
+          const ftpId = String(options.ftpId || site.detail?.ftpId || site.name || '').trim();
+          if (ftpId) {
+            const cfg = loadConfig();
+            patchDothomeAccount(cfg, ftpId, {
+              url: site.url || url,
+              deployedAt: new Date().toISOString(),
+              siteDir: out?.siteDir || options.siteDir || site.detail?.siteDir || '',
+              naverStatus: 'success',
+              naverError: '',
+              naverAccountId: naverAccount?.id || site.detail?.naverAccountId || wantId,
+            });
+          }
+        }
+      }
+    } catch { /* ignore */ }
+    return { ...out, createdSites };
   } catch (e) {
     sendLog(`[ERROR] 자동 캡챠: ${e.message}`);
     return { ok: false, error: e.message || String(e), status: 'captcha' };

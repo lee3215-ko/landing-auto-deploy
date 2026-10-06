@@ -84,6 +84,10 @@
           <p id="pageSubtitle">Netlify 대량 배포 및 네이버 서치어드바이저 자동 등록</p>
         </div>
         <div class="topbar-right" id="topbarLoginWrap">
+          <label class="pc-name-field" title="시트 H열과 같은 이 컴퓨터 이름만 읽습니다">
+            <span>컴퓨터 이름</span>
+            <input type="text" id="naverSheetProgramId" placeholder="이 PC 이름" autocomplete="off" spellcheck="false">
+          </label>
           <button type="button" class="btn btn-primary btn-sm" id="naverLoginBtn">네이버 로그인</button>
           <button type="button" class="btn btn-ghost btn-sm" id="naverSiteCountResetBtn" title="저장된 등록 개수를 지우고 같은 아이디로 다시 로그인한 뒤 사이트 수를 다시 셉니다">개수 초기화</button>
           <button type="button" class="btn btn-ghost btn-sm" id="naverSiteCountRefreshBtn" title="등록 사이트 수 새로고침" hidden>↻</button>
@@ -167,6 +171,7 @@
                 <div class="divider-header">
                   <h3>네이버 계정</h3>
                 </div>
+                <p class="bulk-hint">상단 네이버 로그인 옆 컴퓨터 이름과 시트 H열이 같은 행만 여기 표시됩니다. A 카카오 아이디 · B 네이버 아이디 · C 비밀번호 · D 이름.</p>
                 <div id="naverAccounts" class="item-list"></div>
                 <button type="button" class="add-btn" id="addAccountBtn">+ 계정 추가</button>
               </div>
@@ -754,6 +759,8 @@
               </div>
               <button class="btn btn-ghost btn-sm" id="sitesSelectRedeployableBtn" type="button" disabled title="기록된 네이버 아이디가 지금 로그인된 아이디와 같고, 다시 배포 가능한 닷홈만 전체 선택합니다">다시배포 가능 전체 선택</button>
               <button class="btn btn-primary btn-sm" id="sitesRedeploySelectedBtn" type="button" disabled title="닷홈 사이트를 2개 이상 선택하면 하나씩 다시 배포합니다">선택 다시 배포</button>
+              <button class="btn btn-ghost btn-sm" id="sitesSelectCaptchaBtn" type="button" disabled title="기록된 네이버 아이디가 로그인된 아이디와 같은 캡챠 대상만 전체 선택합니다">캡챠 가능 전체 선택</button>
+              <button class="btn btn-primary btn-sm" id="sitesAutoCaptchaBtn" type="button" disabled title="선택한 사이트를 자동 캡챠한 뒤 수집 주기부터 자동으로 이어갑니다">선택 캡챠 자동</button>
               <button class="btn btn-primary btn-sm" id="sitesCheckIndexBtn" type="button">🔍 인덱싱 확인</button>
               <button class="btn btn-ghost btn-sm" id="sitesCopyUrlsBtn" type="button">URL 복사</button>
               <button class="btn btn-ghost btn-sm" id="sitesSyncBtn" type="button">새로고침</button>

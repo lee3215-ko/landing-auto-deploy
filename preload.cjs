@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveResults: (results) => ipcRenderer.invoke('save-results', results),
   manualCaptchaCollect: (options) => ipcRenderer.invoke('manual-captcha-collect', options || {}),
   autoCaptchaCollect: (options) => ipcRenderer.invoke('auto-captcha-collect', options || {}),
+  syncNaverAccounts: (options) => ipcRenderer.invoke('sync-naver-accounts-sheet', options || {}),
   loadCreatedSites: (options) => ipcRenderer.invoke('load-created-sites', options || {}),
   saveCreatedSites: (sites) => ipcRenderer.invoke('save-created-sites', sites),
   upsertCreatedSite: (entry) => ipcRenderer.invoke('upsert-created-site', entry),

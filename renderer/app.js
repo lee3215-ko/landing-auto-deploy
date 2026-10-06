@@ -38,6 +38,8 @@ const manualCaptchaBusyUrls = new Set();
 const dothomeRedeployBusyIds = new Set();
 /** 생성 사이트에서 다시 배포로 고른 닷홈 사이트 id */
 const selectedRedeployIds = new Set();
+const selectedSiteCaptchaIds = new Set();
+let sitesAutoCaptchaRunning = false;
 
 function normManualCaptchaUrl(url) {
   return String(url || '').replace(/\/$/, '').toLowerCase().trim();
@@ -315,7 +317,7 @@ function renderNaverAccounts() {
   const visible = (config.naverAccounts || []).map((acc, i) => ({ acc, i }));
 
   if (!visible.length) {
-    el.innerHTML = '<p class="empty-hint">등록된 계정이 없습니다. 「+ 계정 추가」로 등록하세요.</p>';
+    el.innerHTML = '<p class="empty-hint">상단 컴퓨터 이름을 입력하면 시트 H열이 같은 계정이 표시됩니다.</p>';
     return;
   }
 
@@ -323,7 +325,8 @@ function renderNaverAccounts() {
     const expanded = acc.expanded !== false;
     const idLabel = acc.id || `빈 계정 ${i + 1}`;
     const pwLabel = acc.pw ? ` / ${acc.pw}` : ' / (PW 없음)';
-    const label = `${idLabel}${pwLabel}`;
+    const who = [acc.name, acc.kakaoId ? `카카오 ${acc.kakaoId}` : ''].filter(Boolean).join(' · ');
+    const label = `${idLabel}${pwLabel}${who ? ` · ${who}` : ''}`;
     const sc = acc.siteCount != null && Number.isFinite(Number(acc.siteCount))
       ? Number(acc.siteCount)
       : null;
@@ -433,6 +436,34 @@ function updateNaverAccount(i, field, value) {
     }
   }
 }
+async function refreshNaverAccountsFromSheet({ quiet = false } = {}) {
+  const programId = ($('naverSheetProgramId')?.value || '').trim();
+  if (!programId) {
+    if (!quiet) {
+      $('naverSheetProgramId')?.focus();
+      alert('네이버 로그인 옆에 이 컴퓨터 이름을 입력하세요.\n시트 H열과 같은 이름만 읽습니다.');
+    }
+    return { ok: false, error: '컴퓨터 이름 없음' };
+  }
+  try {
+    const out = await window.electronAPI.syncNaverAccounts?.({ programId });
+    if (!out?.ok) {
+      const msg = out?.error || '시트를 불러오지 못했습니다.';
+      if (!quiet) alert(msg);
+      else logLine(`[네이버] ${msg}`);
+      return out;
+    }
+    if ($('naverSheetProgramId') && out.programId) $('naverSheetProgramId').value = out.programId;
+    config.naverSheetProgramId = out.programId || programId;
+    return out;
+  } catch (e) {
+    const msg = e.message || String(e);
+    if (!quiet) alert(msg);
+    else logLine(`[네이버] 시트 연결 실패: ${msg}`);
+    return { ok: false, error: msg };
+  }
+}
+
 function toggleAccount(i) {
   config.naverAccounts[i].expanded = !config.naverAccounts[i].expanded;
   renderNaverAccounts();
@@ -603,10 +634,16 @@ function collectConfig() {
         ? { token: t, id: '', used: false, usedCount: 0 }
         : { token: (t.token || '').trim(), id: (t.id || '').trim(), used: !!t.used, usedCount: t.usedCount || 0 })
       .filter(t => t.token),
+    naverSheetProgramId: ($('naverSheetProgramId')?.value || '').trim(),
     naverAccounts: config.naverAccounts
       .map((a) => ({
         id: String(a.id || '').trim(),
         pw: String(a.pw || '').trim(),
+        name: String(a.name || '').trim(),
+        kakaoId: String(a.kakaoId || '').trim(),
+        kakaoPw: String(a.kakaoPw || '').trim(),
+        sheetRow: Number(a.sheetRow) > 0 ? Number(a.sheetRow) : 0,
+        programId: String(a.programId || '').trim(),
         siteCount: a.siteCount != null && Number.isFinite(Number(a.siteCount))
           ? Number(a.siteCount)
           : null,
@@ -1544,6 +1581,11 @@ function updateNaverSessionBadge(data) {
 }
 
 async function startNaverLogin(ev) {
+  const programId = ($('naverSheetProgramId')?.value || '').trim();
+  if (!programId) {
+    $('naverSheetProgramId')?.focus();
+    return alert('네이버 로그인 옆에 이 컴퓨터 이름을 입력하세요.\n시트 H열과 같은 이름만 읽습니다.');
+  }
   const btn = $('naverLoginBtn');
   if (btn) btn.disabled = true;
   updateNaverSessionBadge({ status: 'starting' });
@@ -1553,7 +1595,10 @@ async function startNaverLogin(ev) {
     // Shift+클릭 = 같은 계정이어도 강제 재로그인.
     await window.electronAPI.saveConfig?.(collectConfig());
     const forceRelogin = !!(ev && ev.shiftKey);
-    const res = await window.electronAPI.naverSessionStart?.({ forceRelogin });
+    const res = await window.electronAPI.naverSessionStart?.({
+      forceRelogin,
+      programId: ($('naverSheetProgramId')?.value || '').trim(),
+    });
     if (res && !res.ok) {
       updateNaverSessionBadge({
         status: 'error',
@@ -1613,6 +1658,7 @@ async function resetNaverSiteCountAndLogin(explicitId) {
       resetSiteCount: true,
       naverAccountId: id,
       forceRelogin: true,
+      programId: ($('naverSheetProgramId')?.value || '').trim(),
     });
     if (res && !res.ok) {
       updateNaverSessionBadge({
@@ -2283,7 +2329,8 @@ function renderCreatedSites() {
       <div class="site-card-body">
         <div class="site-card-top">
           <div class="site-card-title-row">
-            ${canBulkRedeploySite(s) ? `<label class="site-select" title="기록된 네이버 아이디가 로그인된 아이디와 같습니다"><input type="checkbox" data-sites-select="1" data-id="${escapeHtml(s.id)}" ${selectedRedeployIds.has(s.id) ? 'checked' : ''}></label>` : ''}
+            ${canBulkRedeploySite(s) ? `<label class="site-select" title="다시 배포 · 기록된 네이버 아이디가 로그인된 아이디와 같습니다"><input type="checkbox" data-sites-select="1" data-id="${escapeHtml(s.id)}" ${selectedRedeployIds.has(s.id) ? 'checked' : ''}></label>` : ''}
+            ${canBulkAutoCaptchaSite(s) ? `<label class="site-select" title="자동 캡챠 · 기록된 네이버 아이디가 로그인된 아이디와 같습니다"><input type="checkbox" data-sites-captcha="1" data-id="${escapeHtml(s.id)}" ${selectedSiteCaptchaIds.has(s.id) ? 'checked' : ''}></label>` : ''}
             <span class="provider-pill ${prov.cls}">${prov.label}</span>
             <strong class="site-card-name" title="${escapeHtml(s.name || '')}">${escapeHtml(s.name || '-')}</strong>
             ${statusPill}
@@ -2317,6 +2364,7 @@ function renderCreatedSites() {
   list.innerHTML = '';
   list.appendChild(wrap);
   updateSitesRedeployBtn();
+  updateSitesCaptchaButtons();
 }
 
 function allRedeployableSites() {
@@ -2352,6 +2400,144 @@ function updateSitesRedeployBtn() {
     selectBtn.textContent = allOn
       ? '다시배포 선택 해제'
       : `다시배포 가능 전체 선택${rows.length ? ` (${rows.length})` : ''}`;
+  }
+}
+
+function createdSiteNeedsAutoCaptcha(site) {
+  if (!site || !isCreatedSitesRow(site)) return false;
+  const d = site.detail || {};
+  return resultNeedsCaptcha({
+    status: String(d.naverStatus || '').toLowerCase(),
+    error: d.naverError || d.error || '',
+    popupMessage: d.popupMessage || '',
+    url: site.url,
+  });
+}
+
+function canBulkAutoCaptchaSite(site) {
+  if (!createdSiteNeedsAutoCaptcha(site)) return false;
+  if (!String(site?.url || '').trim()) return false;
+  const loggedIn = String(naverSessionState?.accountId || '').trim();
+  const ready = naverSessionState?.status === 'ready' && !!loggedIn;
+  if (!ready || !sameNaverId(recordedNaverId(site), loggedIn)) return false;
+  return true;
+}
+
+function allAutoCaptchaSites() {
+  return (createdSites || []).filter((s) => isCreatedSitesRow(s) && canBulkAutoCaptchaSite(s));
+}
+
+function updateSitesCaptchaButtons() {
+  for (const id of [...selectedSiteCaptchaIds]) {
+    const site = createdSites.find((s) => s.id === id);
+    if (!canBulkAutoCaptchaSite(site)) selectedSiteCaptchaIds.delete(id);
+  }
+  const rows = allAutoCaptchaSites();
+  const n = selectedSiteCaptchaIds.size;
+  const selectBtn = $('sitesSelectCaptchaBtn');
+  const runBtn = $('sitesAutoCaptchaBtn');
+  if (selectBtn) {
+    const allOn = rows.length > 0 && rows.every((s) => selectedSiteCaptchaIds.has(s.id));
+    selectBtn.disabled = rows.length === 0 || sitesAutoCaptchaRunning;
+    selectBtn.textContent = allOn
+      ? '캡챠 선택 해제'
+      : `캡챠 가능 전체 선택${rows.length ? ` (${rows.length})` : ''}`;
+  }
+  if (runBtn) {
+    runBtn.disabled = n < 1 || sitesAutoCaptchaRunning;
+    runBtn.textContent = n > 0 ? `선택 캡챠 자동 (${n})` : '선택 캡챠 자동';
+  }
+}
+
+function toggleSelectCaptchaSites() {
+  const logged = loggedInNaverAccount();
+  if (!logged?.id) {
+    alert('로그인된 네이버 아이디가 없습니다.\n우측 상단 「네이버 로그인」 후 캡챠할 사이트를 선택하세요.');
+    return;
+  }
+  const rows = allAutoCaptchaSites();
+  if (!rows.length) {
+    alert(`기록된 네이버 아이디가 ${logged.id}인 캡챠 대상이 없습니다.`);
+    return;
+  }
+  const allOn = rows.every((s) => selectedSiteCaptchaIds.has(s.id));
+  for (const site of rows) {
+    if (allOn) selectedSiteCaptchaIds.delete(site.id);
+    else selectedSiteCaptchaIds.add(site.id);
+  }
+  renderCreatedSites();
+}
+
+async function runSelectedSiteAutoCaptcha() {
+  const logged = loggedInNaverAccount();
+  if (!logged?.id) {
+    return alert('로그인된 네이버 아이디가 없습니다.\n우측 상단 「네이버 로그인」 후 다시 시도하세요.');
+  }
+  if (logged.missingPw) {
+    return alert(`로그인된 네이버 아이디 ${logged.id}의 비밀번호가 설정에 없습니다.`);
+  }
+  const ids = [...selectedSiteCaptchaIds].filter((id) => canBulkAutoCaptchaSite(createdSites.find((s) => s.id === id)));
+  if (!ids.length) {
+    return alert(`기록된 네이버 아이디가 ${logged.id}인 캡챠 대상을 선택하세요.`);
+  }
+  if (sitesAutoCaptchaRunning) return alert('자동 캡챠가 진행 중입니다.');
+  const names = ids.map((id) => {
+    const site = createdSites.find((s) => s.id === id);
+    const label = site?.name || site?.url || id;
+    const recorded = recordedNaverId(site);
+    return recorded ? `${label} (${recorded})` : label;
+  });
+  if (!confirm(
+    `선택한 ${ids.length}개를 ${logged.id}로 자동 캡챠한 뒤, 수집 주기부터 자동으로 이어갈까요?\n\n`
+    + `${names.join('\n')}\n\n`
+    + '한 건이 끝나야 다음 건을 시작합니다.',
+  )) return;
+
+  sitesAutoCaptchaRunning = true;
+  updateSitesCaptchaButtons();
+  let ok = 0;
+  let fail = 0;
+  try {
+    for (let i = 0; i < ids.length; i += 1) {
+      const id = ids[i];
+      const site = createdSites.find((s) => s.id === id);
+      if (!site?.url) {
+        fail += 1;
+        continue;
+      }
+      logLine(`═══ 자동 캡챠 ${i + 1}/${ids.length}: ${site.url} · 네이버 ${logged.id} ═══`);
+      setSitesIndexProgress(`자동 캡챠 ${i + 1}/${ids.length}: ${site.url}`, true);
+      try {
+        const out = await window.electronAPI.autoCaptchaCollect({
+          siteUrl: site.url,
+          siteDir: site.detail?.siteDir || site.detail?.output || '',
+          siteSlug: site.detail?.projectName || site.detail?.ftpId || site.name || '',
+          ftpId: site.detail?.ftpId || '',
+          naverAccountId: recordedNaverId(site) || logged.id,
+          createdSiteId: site.id,
+          sourceType: site.detail?.sourceType || '',
+          sourcePath: site.detail?.sourcePath || '',
+        });
+        if (out?.createdSites) createdSites = out.createdSites;
+        if (out?.ok) {
+          selectedSiteCaptchaIds.delete(id);
+          ok += 1;
+          logLine(`✔ 자동 캡챠 완료: ${out.message || site.url}`);
+        } else {
+          fail += 1;
+          logLine(`⚠ 자동 캡챠: ${out?.message || out?.error || '실패'}`);
+        }
+        renderCreatedSites();
+      } catch (e) {
+        fail += 1;
+        logLine(`[ERROR] 자동 캡챠: ${e.message}`);
+      }
+    }
+  } finally {
+    sitesAutoCaptchaRunning = false;
+    setSitesIndexProgress('', false);
+    renderCreatedSites();
+    alert(`자동 캡챠 종료\n성공 ${ok}건 · 실패 ${fail}건`);
   }
 }
 
@@ -4527,6 +4713,12 @@ async function load() {
   updateDhPreviewUrl();
   renderDhAccounts();
 
+  if ($('naverSheetProgramId')) {
+    $('naverSheetProgramId').value = config.naverSheetProgramId || '';
+  }
+  if (($('naverSheetProgramId')?.value || '').trim()) {
+    await refreshNaverAccountsFromSheet({ quiet: true });
+  }
   renderNetlifyTokens();
   renderNaverAccounts();
   renderServices();
@@ -4585,15 +4777,27 @@ function setupEvents() {
   $('sitesClearBtn')?.addEventListener('click', clearCreatedSites);
   $('sitesSelectRedeployableBtn')?.addEventListener('click', () => toggleSelectRedeployableSites());
   $('sitesRedeploySelectedBtn')?.addEventListener('click', () => redeploySelectedDothomeSites());
+  $('sitesSelectCaptchaBtn')?.addEventListener('click', () => toggleSelectCaptchaSites());
+  $('sitesAutoCaptchaBtn')?.addEventListener('click', () => runSelectedSiteAutoCaptcha());
   $('sitesList')?.addEventListener('change', (e) => {
-    const box = e.target.closest('[data-sites-select]');
-    if (!box) return;
-    const id = box.dataset.id || '';
+    const redeployBox = e.target.closest('[data-sites-select]');
+    if (redeployBox) {
+      const id = redeployBox.dataset.id || '';
+      if (!id) return;
+      const site = createdSites.find((s) => s.id === id);
+      if (redeployBox.checked && canBulkRedeploySite(site)) selectedRedeployIds.add(id);
+      else selectedRedeployIds.delete(id);
+      updateSitesRedeployBtn();
+      return;
+    }
+    const captchaBox = e.target.closest('[data-sites-captcha]');
+    if (!captchaBox) return;
+    const id = captchaBox.dataset.id || '';
     if (!id) return;
     const site = createdSites.find((s) => s.id === id);
-    if (box.checked && canBulkRedeploySite(site)) selectedRedeployIds.add(id);
-    else selectedRedeployIds.delete(id);
-    updateSitesRedeployBtn();
+    if (captchaBox.checked && canBulkAutoCaptchaSite(site)) selectedSiteCaptchaIds.add(id);
+    else selectedSiteCaptchaIds.delete(id);
+    updateSitesCaptchaButtons();
   });
   $('sitesFilters')?.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-sites-filter]');
@@ -4689,6 +4893,13 @@ function setupEvents() {
   });
   document.querySelectorAll('.account-memo-copy').forEach((btn) => {
     btn.addEventListener('click', () => copyAccountMemoIndex(Number(btn.dataset.memoIndex)));
+  });
+  $('naverSheetProgramId')?.addEventListener('change', () => refreshNaverAccountsFromSheet({ quiet: false }));
+  $('naverSheetProgramId')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      refreshNaverAccountsFromSheet({ quiet: false });
+    }
   });
   $('naverLoginBtn')?.addEventListener('click', (e) => startNaverLogin(e));
   $('naverSiteCountResetBtn')?.addEventListener('click', () => resetNaverSiteCountAndLogin());
@@ -6731,7 +6942,9 @@ window.electronAPI.onNaverAccountsUpdated?.((data) => {
       : false,
   }));
   renderNaverAccounts();
-  if (data.removedAccountId) {
+  if (data.sheetSync) {
+    logLine(`[네이버] 시트에서 ${data.count || (data.naverAccounts || []).length}개 계정 인식 · H열 ${data.programId || ''}`);
+  } else if (data.removedAccountId) {
     logLine(`[네이버] 대량생성 ID 목록에서 삭제: ${data.removedAccountId}`);
   } else if (data.accountId != null && data.siteCount != null) {
     logLine(`[네이버] ${data.accountId} 등록 수 기록: ${data.siteCount}개`);
