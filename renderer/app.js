@@ -1612,6 +1612,7 @@ async function startNaverLogin(ev) {
       }
     } else if (res) {
       updateNaverSessionBadge(res);
+      if (res.activeAccount) applyActiveAccountMemo(res.activeAccount);
       if (res.siteCount != null) logLine(`[네이버] 로그인 완료 · 등록 ${res.siteCount}개`);
       else if (res.loggedIn || res.status === 'ready') logLine(`[네이버] 세션 연결됨 · ${res.accountId || ''}`);
     }
@@ -1673,7 +1674,10 @@ async function resetNaverSiteCountAndLogin(explicitId) {
       }
       return;
     }
-    if (res) updateNaverSessionBadge(res);
+    if (res) {
+      updateNaverSessionBadge(res);
+      if (res.activeAccount) applyActiveAccountMemo(res.activeAccount);
+    }
     const n = res?.siteCount;
     logLine(`[네이버] ${id} 개수 초기화 후 다시 로그인 · 등록 ${n ?? '?'}개`);
     if (row) {
@@ -4537,6 +4541,26 @@ function parseAccountMemo(text) {
   return parts.slice(0, 4);
 }
 
+function applyActiveAccountMemo(account) {
+  if (!account?.id) return;
+  const next = [
+    String(account.kakaoId || '').trim(),
+    String(account.id || '').trim(),
+    String(account.pw || '').trim(),
+    String(account.name || '').trim(),
+  ];
+  if (!next[1]) return;
+  const cur = parseAccountMemo($('accountMemoInput')?.value || '');
+  if (next.every((value, index) => value === String(cur[index] || ''))) return;
+  const input = $('accountMemoInput');
+  if (input && document.activeElement === input) return;
+  const line = next.join('\t');
+  if (input) input.value = line;
+  config.accountMemo = line;
+  refreshAccountMemoButtons();
+  scheduleAccountMemoSave();
+}
+
 function refreshAccountMemoButtons() {
   const parts = parseAccountMemo($('accountMemoInput')?.value || '');
   document.querySelectorAll('.account-memo-copy').forEach((btn) => {
@@ -6921,13 +6945,14 @@ window.electronAPI.onNaverSessionUpdate?.((data) => {
   // 배지 사이트 수 → 현재 로그인 계정 행에도 반영
   const id = String(data?.accountId || '').trim();
   const n = data?.siteCount;
-  if (id && n != null && Array.isArray(config.naverAccounts)) {
-    const acc = config.naverAccounts.find((a) => String(a?.id || '').trim() === id);
-    if (acc && acc.siteCount !== n) {
+  if (id && Array.isArray(config.naverAccounts)) {
+    const acc = config.naverAccounts.find((a) => String(a?.id || '').trim().toLowerCase() === id.toLowerCase());
+    if (acc && n != null && acc.siteCount !== n) {
       acc.siteCount = Number(n);
       acc.siteCountAt = new Date().toISOString();
       renderNaverAccounts();
     }
+    if (acc && data?.status === 'ready') applyActiveAccountMemo(acc);
   }
 });
 window.electronAPI.onNaverAccountsUpdated?.((data) => {
@@ -6943,7 +6968,13 @@ window.electronAPI.onNaverAccountsUpdated?.((data) => {
   }));
   renderNaverAccounts();
   if (data.sheetSync) {
-    logLine(`[네이버] 시트에서 ${data.count || (data.naverAccounts || []).length}개 계정 인식 · H열 ${data.programId || ''}`);
+    const skipped = Number(data.skipped) || 0;
+    logLine(`[네이버] 시트에서 ${data.count || (data.naverAccounts || []).length}개 계정 인식 · H열 ${data.programId || ''}${skipped ? ` · I열 제외 ${skipped}개` : ''}`);
+    const loggedId = String(naverSessionState?.accountId || '').trim().toLowerCase();
+    if (loggedId && naverSessionState?.status === 'ready') {
+      const acc = (config.naverAccounts || []).find((a) => String(a?.id || '').trim().toLowerCase() === loggedId);
+      if (acc) applyActiveAccountMemo(acc);
+    }
   } else if (data.removedAccountId) {
     logLine(`[네이버] 대량생성 ID 목록에서 삭제: ${data.removedAccountId}`);
   } else if (data.accountId != null && data.siteCount != null) {

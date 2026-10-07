@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.126",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/615082331",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.126/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/615082331",
-    "asset_id":  615082331,
-    "notes":  "생성사이트에 로그인된 아이디 기준 선택 자동 캡챠를 넣고, 네이버 로그인은 상단 컴퓨터 이름과 시트 H열이 같은 계정만 사용합니다.",
+    "version":  "3.8.127",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.127/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.127/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "시트 I열이 빈 계정만 자동 등록하고, 네이버 로그인 때 시트를 다시 읽어 비밀번호를 맞춥니다. 상단에는 지금 쓰는 이메일·아이디·비밀번호·이름이 표시됩니다.",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/615082331",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.126/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.127/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }

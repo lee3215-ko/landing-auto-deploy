@@ -182,7 +182,8 @@ async function syncNaverAccountsFromSheet(programId) {
       naverAccounts: config.naverAccounts || [],
     };
   }
-  const rows = await fetchProgramAccounts(program);
+  const fetched = await fetchProgramAccounts(program);
+  const rows = fetched.accounts || [];
   if (!rows.length) {
     config.naverSheetProgramId = program;
     config.naverAccounts = [];
@@ -193,18 +194,24 @@ async function syncNaverAccountsFromSheet(programId) {
       programId: program,
       count: 0,
     });
+    const error = fetched.matched
+      ? `시트 H열 「${program}」 계정은 I열에 값이 있어 자동 등록하지 않습니다. I열이 빈 계정만 등록합니다.`
+      : `시트 H열에 「${program}」 계정이 없습니다.`;
     return {
       ok: false,
-      error: `시트 H열에 「${program}」 계정이 없습니다.`,
+      error,
       programId: program,
       naverAccounts: [],
     };
   }
   const prev = Array.isArray(config.naverAccounts) ? config.naverAccounts : [];
   const byId = new Map(prev.map((a) => [String(a?.id || '').trim().toLowerCase(), a]));
+  const passwordChangedIds = [];
   config.naverSheetProgramId = program;
   config.naverAccounts = rows.map((row) => {
     const old = byId.get(row.id.toLowerCase()) || {};
+    const oldPw = String(old.pw || '');
+    if (oldPw && oldPw !== row.pw) passwordChangedIds.push(row.id);
     return {
       ...row,
       siteCount: old.siteCount != null && Number.isFinite(Number(old.siteCount)) ? Number(old.siteCount) : null,
@@ -212,16 +219,26 @@ async function syncNaverAccountsFromSheet(programId) {
     };
   });
   saveConfig(config);
+  try {
+    const { setNaverAccountPasswordOverride } = await import('./lib/naver-session.js');
+    for (const row of config.naverAccounts) {
+      setNaverAccountPasswordOverride(row.id, row.pw);
+    }
+  } catch { /* ignore */ }
   broadcastNaverAccounts({
     naverAccounts: config.naverAccounts,
     sheetSync: true,
     programId: program,
     count: config.naverAccounts.length,
+    skipped: fetched.skipped || 0,
+    passwordChangedIds,
   });
   return {
     ok: true,
     programId: program,
     count: config.naverAccounts.length,
+    skipped: fetched.skipped || 0,
+    passwordChangedIds,
     naverAccounts: config.naverAccounts,
   };
 }
@@ -817,8 +834,9 @@ ipcMain.handle('sync-naver-accounts-sheet', async (_event, options = {}) => {
 });
 
 ipcMain.handle('naver-session-start', async (event, options = {}) => {
+  let synced = null;
   try {
-    const synced = await syncNaverAccountsFromSheet(options.programId);
+    synced = await syncNaverAccountsFromSheet(options.programId);
     if (!synced?.ok) {
       return { ok: false, error: synced?.error || '이 컴퓨터 이름의 네이버 계정이 없습니다.' };
     }
@@ -850,6 +868,18 @@ ipcMain.handle('naver-session-start', async (event, options = {}) => {
     acct = pickStartNaverAccount(config.naverAccounts || [], preferred)
       || (preferred?.id && preferred?.pw ? preferred : null);
   }
+  const full = (config.naverAccounts || []).find(
+    (a) => String(a?.id || '').trim().toLowerCase() === String(acct?.id || '').trim().toLowerCase(),
+  );
+  if (full && acct) {
+    acct = { ...full, ...acct, pw: String(full.pw || acct.pw || '').trim() };
+  }
+  const passwordChanged = (synced?.passwordChangedIds || []).some(
+    (id) => String(id || '').trim().toLowerCase() === String(acct?.id || '').trim().toLowerCase(),
+  );
+  if (passwordChanged) {
+    try { event.sender.send('log-line', `[네이버] ${acct.id} 시트 비밀번호가 바뀌어 다시 로그인합니다.`); } catch { /* ignore */ }
+  }
   if (!acct?.id || !acct?.pw) {
     return {
       ok: false,
@@ -870,7 +900,7 @@ ipcMain.handle('naver-session-start', async (event, options = {}) => {
       openaiApiKey: config.openaiApiKey || '',
       yesCaptchaClientKey: config.yesCaptchaClientKey || '',
       headless: false,
-      forceRelogin: !!options.forceRelogin || resetSiteCount,
+      forceRelogin: !!options.forceRelogin || resetSiteCount || passwordChanged,
       lockNaverAccount: resetSiteCount,
       recountAfterReset: resetSiteCount,
       forceNewSession: true,
@@ -879,7 +909,16 @@ ipcMain.handle('naver-session-start', async (event, options = {}) => {
       onLog: (msg) => event.sender.send('log-line', `[네이버세션] ${msg}`),
       onSiteCount: makeOnSiteCount(),
     });
-    return { ok: true, ...getNaverSessionStatus() };
+    return {
+      ok: true,
+      ...getNaverSessionStatus(),
+      activeAccount: {
+        id: acct.id,
+        pw: acct.pw,
+        name: acct.name || '',
+        kakaoId: acct.kakaoId || '',
+      },
+    };
   } catch (e) {
     return { ok: false, error: e.message, code: e.code || '', ...getNaverSessionStatus() };
   }
