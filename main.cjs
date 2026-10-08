@@ -582,6 +582,18 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    } catch (e) {
+      console.error('[main] openExternal failed', e);
+    }
+    return { action: 'deny' };
+  });
+
+  return mainWindow;
+}
+
 let advisorIndexWindow = null;
 let advisorIndexReady = false;
 let advisorIndexQueue = [];
@@ -631,18 +643,6 @@ function sendAdvisorIndex(payload) {
     return;
   }
   win.webContents.send('advisor-index-data', payload);
-}
-
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    try {
-      if (/^https?:\/\//i.test(url)) shell.openExternal(url);
-    } catch (e) {
-      console.error('[main] openExternal failed', e);
-    }
-    return { action: 'deny' };
-  });
-
-  return mainWindow;
 }
 
 function focusMainWindow() {
