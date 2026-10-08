@@ -1,11 +1,12 @@
 {
     "version":  "3.8.130",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.130/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/620779511",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.130/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/620779511",
+    "asset_id":  620779511,
     "notes":  "로그인된 서치어드바이저 창이 열려 있어도 색인 확인이 창이 없다고 하던 오류를 고쳤습니다.",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/620779511",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.130/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
