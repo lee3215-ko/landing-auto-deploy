@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.127",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/617418288",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.127/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/617418288",
-    "asset_id":  617418288,
-    "notes":  "시트 I열이 빈 계정만 자동 등록하고, 네이버 로그인 때 시트를 다시 읽어 비밀번호를 맞춥니다. 상단에는 지금 쓰는 이메일·아이디·비밀번호·이름이 표시됩니다.",
+    "version":  "3.8.128",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.128/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.128/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "네이버 로그인·개수 초기화 때 시트 비밀번호를 다시 읽어 입력합니다. 자동 캡챠는 탭 하나에서 이어가고, 색인 확인으로 서치어드바이저 주소를 확인한 뒤 색인 안 된 사이트를 삭제할 수 있습니다.",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/617418288",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.127/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.128/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }

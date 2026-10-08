@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>색인 확인</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Segoe UI", sans-serif;
+      background: #0b0f1a;
+      color: #f1f5f9;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px 10px;
+    }
+    h1 { font-size: 16px; margin: 0; }
+    p { margin: 4px 0 0; color: #94a3b8; font-size: 12px; }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-weight: 700;
+      cursor: pointer;
+      background: #f43f5e;
+      color: white;
+    }
+    button:disabled { opacity: 0.45; cursor: default; }
+    #status { padding: 0 18px 10px; color: #94a3b8; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid rgba(148,163,184,.15); }
+    th { color: #94a3b8; font-weight: 600; }
+    a { color: #93c5fd; }
+    .ok { color: #34d399; }
+    .no { color: #fb7185; }
+    .wait { color: #fbbf24; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1 id="title">색인 확인</h1>
+      <p>로그인된 서치어드바이저 주소를 site: 검색으로 확인합니다.</p>
+    </div>
+    <button type="button" id="deleteBtn" disabled>색인 안된 사이트 삭제</button>
+  </header>
+  <div id="status">목록을 읽는 중…</div>
+  <table>
+    <thead>
+      <tr><th>주소</th><th>site: 검색</th><th>결과</th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <script>
+    const rowsEl = document.getElementById('rows');
+    const statusEl = document.getElementById('status');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const titleEl = document.getElementById('title');
+    let rows = [];
+
+    function esc(s) {
+      return String(s || '').replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[c]));
+    }
+
+    function label(row) {
+      if (row.deleted) return '<span class="wait">삭제됨</span>';
+      if (row.indexed === true) return '<span class="ok">색인됨</span>';
+      if (row.indexed === false) return '<span class="no">색인 안 됨</span>';
+      if (row.indexed == null && row.message) return '<span class="wait">확인 실패</span>';
+      return '<span class="wait">확인 중</span>';
+    }
+
+    function unindexed() {
+      return rows.filter((r) => r.indexed === false && !r.deleted);
+    }
+
+    function render() {
+      const bad = unindexed();
+      deleteBtn.disabled = bad.length === 0;
+      deleteBtn.textContent = bad.length ? `색인 안된 사이트 삭제 (${bad.length})` : '색인 안된 사이트 삭제';
+      rowsEl.innerHTML = rows.map((r) => `
+        <tr>
+          <td>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a>` : ''}</td>
+          <td>${esc(r.query || (r.url ? 'site:' + r.url : ''))}</td>
+          <td>${label(r)}${r.message && r.indexed !== true && r.indexed !== false ? ' · ' + esc(r.message) : ''}</td>
+        </tr>
+      `).join('');
+    }
+
+    deleteBtn.addEventListener('click', async () => {
+      const bad = unindexed();
+      if (!bad.length) return;
+      if (!confirm(`색인 안 된 ${bad.length}개를 서치어드바이저 목록에서 삭제할까요?`)) return;
+      deleteBtn.disabled = true;
+      statusEl.textContent = '색인 안 된 사이트를 체크하고 삭제하는 중…';
+      const out = await window.electronAPI.advisorDeleteUnindexed(bad.map((r) => r.url));
+      const removed = new Set((out?.removed || []).map((u) => String(u).replace(/\/$/, '').toLowerCase()));
+      rows = rows.map((r) => (
+        removed.has(String(r.url).replace(/\/$/, '').toLowerCase()) ? { ...r, deleted: true } : r
+      ));
+      statusEl.textContent = out?.ok
+        ? `삭제 ${removed.size}개`
+        : (out?.error || '삭제하지 못했습니다.');
+      render();
+    });
+
+    window.electronAPI.onAdvisorIndexData((data) => {
+      if (!data) return;
+      if (data.accountId) titleEl.textContent = `색인 확인 · ${data.accountId}`;
+      if (data.message) statusEl.textContent = data.message;
+      if (Array.isArray(data.rows)) {
+        rows = data.rows;
+        render();
+      }
+    });
+  </script>
+</body>
+</html>

@@ -221,6 +221,7 @@ async function syncNaverAccountsFromSheet(programId) {
   saveConfig(config);
   try {
     const { setNaverAccountPasswordOverride } = await import('./lib/naver-session.js');
+    for (const row of prev) setNaverAccountPasswordOverride(row?.id, '');
     for (const row of config.naverAccounts) {
       setNaverAccountPasswordOverride(row.id, row.pw);
     }
@@ -581,6 +582,57 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
+let advisorIndexWindow = null;
+let advisorIndexReady = false;
+let advisorIndexQueue = [];
+
+function openAdvisorIndexWindow() {
+  if (advisorIndexWindow && !advisorIndexWindow.isDestroyed()) {
+    advisorIndexWindow.focus();
+    return advisorIndexWindow;
+  }
+  advisorIndexReady = false;
+  advisorIndexQueue = [];
+  advisorIndexWindow = new BrowserWindow({
+    width: 880,
+    height: 680,
+    title: '색인 확인',
+    backgroundColor: '#0b0f1a',
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  advisorIndexWindow.on('closed', () => {
+    advisorIndexWindow = null;
+    advisorIndexReady = false;
+    advisorIndexQueue = [];
+  });
+  advisorIndexWindow.webContents.on('did-finish-load', () => {
+    advisorIndexReady = true;
+    const pending = advisorIndexQueue.splice(0);
+    for (const item of pending) {
+      if (!advisorIndexWindow?.isDestroyed()) {
+        advisorIndexWindow.webContents.send('advisor-index-data', item);
+      }
+    }
+  });
+  advisorIndexWindow.loadFile(path.join(__dirname, 'renderer', 'advisor-index.html'));
+  return advisorIndexWindow;
+}
+
+function sendAdvisorIndex(payload) {
+  const win = advisorIndexWindow;
+  if (!win || win.isDestroyed()) return;
+  if (!advisorIndexReady) {
+    advisorIndexQueue.push(payload);
+    return;
+  }
+  win.webContents.send('advisor-index-data', payload);
+}
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     try {
       if (/^https?:\/\//i.test(url)) shell.openExternal(url);
@@ -833,6 +885,85 @@ ipcMain.handle('sync-naver-accounts-sheet', async (_event, options = {}) => {
   }
 });
 
+ipcMain.handle('advisor-index-audit', async (event) => {
+  const { getNaverSessionStatus, getNaverSessionPage } = await import('./lib/naver-session.js');
+  const st = getNaverSessionStatus();
+  if (st?.status !== 'ready' || !st?.accountId) {
+    return { ok: false, error: '로그인된 네이버 계정이 없습니다. 네이버 로그인 후 다시 누르세요.' };
+  }
+  openAdvisorIndexWindow();
+  const sendLog = (line) => {
+    try { event.sender.send('log-line', `[색인] ${line}`); } catch { /* ignore */ }
+  };
+  try {
+    const page = await getNaverSessionPage();
+    if (!page) return { ok: false, error: '서치어드바이저 창이 없습니다. 네이버 로그인 후 다시 누르세요.' };
+    sendAdvisorIndex({
+      accountId: st.accountId,
+      message: '서치어드바이저 사이트 목록을 읽는 중…',
+      rows: [],
+    });
+    const { listAdvisorBoardSites } = await import('./lib/advisor-index-audit.js');
+    const { checkNaverIndex } = await import('./lib/naver-index-check.js');
+    const urls = await listAdvisorBoardSites(page, { onLog: sendLog });
+    if (!urls.length) {
+      sendAdvisorIndex({ accountId: st.accountId, message: '등록된 사이트가 없습니다.', rows: [] });
+      return { ok: true, count: 0 };
+    }
+    const rows = [];
+    for (let i = 0; i < urls.length; i += 1) {
+      sendAdvisorIndex({
+        accountId: st.accountId,
+        message: `site: 확인 ${i + 1}/${urls.length}`,
+        rows: [...rows, { url: urls[i], query: `site:${urls[i]}`, message: '확인 중' }],
+      });
+      const result = await checkNaverIndex(urls[i]);
+      rows.push({
+        url: urls[i],
+        indexed: result.indexed,
+        message: result.message || '',
+        query: result.query || `site:${urls[i]}`,
+      });
+      const mark = result.indexed === true ? '색인됨' : (result.indexed === false ? '색인 안 됨' : (result.message || '확인 실패'));
+      sendLog(`${urls[i]} · ${mark}`);
+      if (i < urls.length - 1) await new Promise((r) => setTimeout(r, 1200));
+    }
+    const bad = rows.filter((r) => r.indexed === false).length;
+    sendAdvisorIndex({
+      accountId: st.accountId,
+      message: `${rows.length}개 확인 · 색인 안 됨 ${bad}개`,
+      rows,
+    });
+    return { ok: true, count: rows.length, unindexed: bad };
+  } catch (e) {
+    sendAdvisorIndex({ accountId: st.accountId, message: e.message || String(e), rows: [] });
+    return { ok: false, error: e.message || String(e) };
+  }
+});
+
+ipcMain.handle('advisor-delete-unindexed', async (event, payload = {}) => {
+  const urls = Array.isArray(payload.urls) ? payload.urls : [];
+  if (!urls.length) return { ok: false, error: '삭제할 주소가 없습니다.' };
+  const { getNaverSessionPage } = await import('./lib/naver-session.js');
+  const page = await getNaverSessionPage();
+  if (!page) return { ok: false, error: '서치어드바이저 창이 없습니다. 네이버 로그인 후 다시 누르세요.' };
+  const logMain = (line) => {
+    try { event.sender.send('log-line', `[색인] ${line}`); } catch { /* ignore */ }
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('log-line', `[색인] ${line}`);
+    } catch { /* ignore */ }
+  };
+  try {
+    const { deleteAdvisorSites } = await import('./lib/advisor-index-audit.js');
+    logMain(`색인 안 된 ${urls.length}개 삭제 시작`);
+    const removed = await deleteAdvisorSites(page, urls, { onLog: logMain });
+    logMain(`삭제 처리 ${removed.length}개`);
+    return { ok: true, removed };
+  } catch (e) {
+    return { ok: false, error: e.message || String(e) };
+  }
+});
+
 ipcMain.handle('naver-session-start', async (event, options = {}) => {
   let synced = null;
   try {
@@ -877,8 +1008,11 @@ ipcMain.handle('naver-session-start', async (event, options = {}) => {
   const passwordChanged = (synced?.passwordChangedIds || []).some(
     (id) => String(id || '').trim().toLowerCase() === String(acct?.id || '').trim().toLowerCase(),
   );
-  if (passwordChanged) {
-    try { event.sender.send('log-line', `[네이버] ${acct.id} 시트 비밀번호가 바뀌어 다시 로그인합니다.`); } catch { /* ignore */ }
+  if (acct?.id && acct?.pw && (passwordChanged || options.preferSheetPassword)) {
+    const rowNo = acct.sheetRow ? `시트 ${acct.sheetRow}행 ` : '';
+    try {
+      event.sender.send('log-line', `[네이버] ${rowNo}비밀번호로 로그인 · ${acct.id} · ${String(acct.pw).length}자`);
+    } catch { /* ignore */ }
   }
   if (!acct?.id || !acct?.pw) {
     return {
@@ -900,7 +1034,8 @@ ipcMain.handle('naver-session-start', async (event, options = {}) => {
       openaiApiKey: config.openaiApiKey || '',
       yesCaptchaClientKey: config.yesCaptchaClientKey || '',
       headless: false,
-      forceRelogin: !!options.forceRelogin || resetSiteCount || passwordChanged,
+      forceRelogin: !!options.forceRelogin || resetSiteCount || passwordChanged || !!options.preferSheetPassword,
+      preferSheetPassword: !!options.preferSheetPassword,
       lockNaverAccount: resetSiteCount,
       recountAfterReset: resetSiteCount,
       forceNewSession: true,

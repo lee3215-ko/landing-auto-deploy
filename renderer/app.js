@@ -1580,6 +1580,25 @@ function updateNaverSessionBadge(data) {
   }
 }
 
+async function startAdvisorIndexAudit() {
+  const ready = naverSessionState?.status === 'ready' && naverSessionState?.accountId;
+  if (!ready) {
+    return alert('로그인된 네이버 계정이 없습니다.\n네이버 로그인 후 색인 확인을 누르세요.');
+  }
+  const btn = $('naverIndexAuditBtn');
+  if (btn) btn.disabled = true;
+  logLine(`[색인] ${naverSessionState.accountId} 서치어드바이저 주소 확인 시작`);
+  try {
+    const out = await window.electronAPI.advisorIndexAudit?.();
+    if (out && !out.ok) alert(out.error || '색인 확인 실패');
+    else if (out) logLine(`[색인] 확인 끝 · ${out.count || 0}개 · 색인 안 됨 ${out.unindexed || 0}개`);
+  } catch (e) {
+    alert(e.message || '색인 확인 실패');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 async function startNaverLogin(ev) {
   const programId = ($('naverSheetProgramId')?.value || '').trim();
   if (!programId) {
@@ -1594,9 +1613,9 @@ async function startNaverLogin(ev) {
     // 계정을 바꿨으면 자동으로 이전 세션 로그아웃 후 재로그인.
     // Shift+클릭 = 같은 계정이어도 강제 재로그인.
     await window.electronAPI.saveConfig?.(collectConfig());
-    const forceRelogin = !!(ev && ev.shiftKey);
     const res = await window.electronAPI.naverSessionStart?.({
-      forceRelogin,
+      forceRelogin: true,
+      preferSheetPassword: true,
       programId: ($('naverSheetProgramId')?.value || '').trim(),
     });
     if (res && !res.ok) {
@@ -1659,6 +1678,7 @@ async function resetNaverSiteCountAndLogin(explicitId) {
       resetSiteCount: true,
       naverAccountId: id,
       forceRelogin: true,
+      preferSheetPassword: true,
       programId: ($('naverSheetProgramId')?.value || '').trim(),
     });
     if (res && !res.ok) {
@@ -4926,6 +4946,7 @@ function setupEvents() {
     }
   });
   $('naverLoginBtn')?.addEventListener('click', (e) => startNaverLogin(e));
+  $('naverIndexAuditBtn')?.addEventListener('click', () => startAdvisorIndexAudit());
   $('naverSiteCountResetBtn')?.addEventListener('click', () => resetNaverSiteCountAndLogin());
   $('naverSiteCountRefreshBtn')?.addEventListener('click', refreshNaverSiteCount);
   $('resultsSelectCaptchaBtn')?.addEventListener('click', () => toggleSelectResultCaptcha());

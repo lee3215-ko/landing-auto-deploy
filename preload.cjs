@@ -8,6 +8,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveResults: (results) => ipcRenderer.invoke('save-results', results),
   manualCaptchaCollect: (options) => ipcRenderer.invoke('manual-captcha-collect', options || {}),
   autoCaptchaCollect: (options) => ipcRenderer.invoke('auto-captcha-collect', options || {}),
+  advisorIndexAudit: () => ipcRenderer.invoke('advisor-index-audit'),
+  advisorDeleteUnindexed: (urls) => ipcRenderer.invoke('advisor-delete-unindexed', { urls: urls || [] }),
+  onAdvisorIndexData: (callback) => {
+    ipcRenderer.removeAllListeners('advisor-index-data');
+    ipcRenderer.on('advisor-index-data', (_, data) => callback(data));
+  },
   syncNaverAccounts: (options) => ipcRenderer.invoke('sync-naver-accounts-sheet', options || {}),
   loadCreatedSites: (options) => ipcRenderer.invoke('load-created-sites', options || {}),
   saveCreatedSites: (sites) => ipcRenderer.invoke('save-created-sites', sites),
