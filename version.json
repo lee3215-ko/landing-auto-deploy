@@ -1,11 +1,12 @@
 {
     "version":  "3.8.129",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.129/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/620741771",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.129/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/620741771",
+    "asset_id":  620741771,
     "notes":  "색인 확인 버튼을 눌렀을 때 결과 창이 열리지 않던 오류를 고쳤습니다.",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/620741771",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.129/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
