@@ -1,11 +1,12 @@
 {
     "version":  "3.8.131",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.131/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/629831124",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.131/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/629831124",
+    "asset_id":  629831124,
     "notes":  "5개 사이트마다 카드 이미지 모양과 본문 구성을 새로 만들고, 생성 이미지 하단에 연락처가 크게 보이게 했습니다.",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/629831124",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.131/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
