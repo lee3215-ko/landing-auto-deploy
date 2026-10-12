@@ -1,11 +1,12 @@
 {
     "version":  "3.8.132",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.132/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/632522195",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.132/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/632522195",
+    "asset_id":  632522195,
     "notes":  "Netlify API 한도(429)가 나오면 재시도하지 않고 팝업을 띄운 뒤 작업을 멈춥니다.",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/632522195",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.132/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
