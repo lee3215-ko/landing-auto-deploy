@@ -5689,6 +5689,11 @@ async function startSeoGenerate() {
           seoLog('⏹ 생성이 중지되었습니다.');
           break;
         }
+        if (result?.rateLimited || /API 한도에 걸렸습니다|NETLIFY_RATE_LIMIT/i.test(String(result?.error || result?.deployError || result?.naverAutoError || ''))) {
+          seoLog('⏹ Netlify API 한도 — 남은 생성을 멈춥니다.');
+          seoStopRequested = true;
+          break;
+        }
         if (result?.ok) {
           okCount += 1;
           seoBatchUsedSlugs.add(slug);

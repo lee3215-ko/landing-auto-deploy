@@ -788,6 +788,20 @@ async function initNaverSessionListeners() {
   setDefaultOnSiteCount(makeOnSiteCount());
   setDefaultOnMassCreatedId(makeOnMassCreatedId());
   setDefaultOnSiteLimit(makeOnNaverSiteLimit());
+  const { setOnNetlifyRateLimit } = await import('./lib/deploy.js');
+  setOnNetlifyRateLimit(async ({ message, detail } = {}) => {
+    const parent = BrowserWindow.getFocusedWindow() || mainWindow || undefined;
+    await dialog.showMessageBox(parent, {
+      type: 'warning',
+      buttons: ['확인'],
+      defaultId: 0,
+      cancelId: 0,
+      title: 'Netlify API 한도',
+      message: message || 'Netlify API 한도에 걸렸습니다.',
+      detail: detail || '사이트 생성·배포 호출이 잠시 막혔습니다.\n재시도하지 않고 작업을 멈췄습니다.\n몇 분 뒤에 다시 시작하세요.',
+      noLink: true,
+    });
+  });
   try {
     const {
       setNaverProtectionAlertHandler,
@@ -1685,7 +1699,9 @@ ipcMain.handle('read-text-file', async (_, filePath) => {
 ipcMain.handle('start-run', async (event, config) => {
   saveConfig(config);
   const { resetRunControl } = await import('./lib/run-pause.js');
+  const { resetNetlifyRateLimitNotice } = await import('./lib/deploy.js');
   resetRunControl();
+  resetNetlifyRateLimitNotice();
   const { runFullPipeline } = await import('./lib/runner.js');
   try {
     const runTotal = Array.isArray(config?.deploySources) ? config.deploySources.length : 0;
@@ -2242,6 +2258,8 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
     event.sender.send('kkang-log', 'ℹ 네이버 HTML 선수집 모드: 사이트 생성 → 메타 삽입 → Netlify 1회 배포');
   }
 
+  const { resetNetlifyRateLimitNotice } = await import('./lib/deploy.js');
+  resetNetlifyRateLimitNotice();
   const { generateKkangSite, registerNaverMetaForKkangSite } = await import('./lib/kkang-site-builder.js');
   const sendLog = (line) => event.sender.send('kkang-log', line);
   try {
@@ -2316,6 +2334,7 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
           } catch (depErr) {
             sendLog(`[ERROR] Netlify 배포 실패: ${depErr.message}`);
             result.deployError = depErr.message;
+            if (depErr?.code === 'NETLIFY_RATE_LIMIT') result.rateLimited = true;
           }
         }
       } else if (!netlifyToken) {
@@ -2371,8 +2390,15 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
             sendLog('   → 「생성 사이트」탭에서 「수동캡챠」로 소유확인·수집을 이어갈 수 있습니다.');
           }
         } catch (naverErr) {
-          sendLog(`[ERROR] 네이버 HTML 인증 자동 삽입 실패: ${naverErr.message}`);
-          sendLog('   → 「생성 사이트」탭에서 「네이버 인증」또는 「수동캡챠」로 재시도할 수 있습니다.');
+          const rateLimited = naverErr?.code === 'NETLIFY_RATE_LIMIT'
+            || /429|rate limit|배포 호출 한도|API 한도/i.test(naverErr?.message || '');
+          if (rateLimited) {
+            result.rateLimited = true;
+            sendLog('⏹ Netlify API 한도 — 재시도하지 않고 작업을 멈춥니다.');
+          } else {
+            sendLog(`[ERROR] 네이버 HTML 인증 자동 삽입 실패: ${naverErr.message}`);
+            sendLog('   → 「생성 사이트」탭에서 「네이버 인증」또는 「수동캡챠」로 재시도할 수 있습니다.');
+          }
           result.naverAccountId = naverAccount.id;
           result.netlifyAccountId = netlifyAccountId || result.netlifyAccountId || '';
           result.naverAuto = {
@@ -2382,7 +2408,7 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
           };
           result.naverAutoError = naverErr.message;
           // 선수집 모드: 메타 없이 배포하지 않음 (소유확인용 메타가 있어야만 공개 배포)
-          if (deferDeployForNaver && !result.deployed) {
+          if (!rateLimited && deferDeployForNaver && !result.deployed) {
             const hasMeta = !!(result.naverAuto?.metaContent);
             if (!hasMeta) {
               sendLog('⚠ 네이버 메타를 받지 못해 Netlify 공개 배포를 건너뜁니다. (로컬 생성만 유지)');
@@ -2405,6 +2431,7 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
               } catch (depErr) {
                 sendLog(`[ERROR] Netlify 배포 실패: ${depErr.message}`);
                 result.deployError = depErr.message;
+                if (depErr?.code === 'NETLIFY_RATE_LIMIT') result.rateLimited = true;
               }
             }
           }
@@ -2451,7 +2478,11 @@ ipcMain.handle('kkang-generate', async (event, job = {}) => {
     event.sender.send('kkang-log', `[ERROR] ${e.message}`);
     event.sender.send('job-progress', { job: 'kkang', phase: 'error', active: false, label: e.message });
     try { focusMainWindow(); } catch { /* ignore */ }
-    return { ok: false, error: e.message };
+    return {
+      ok: false,
+      error: e.message,
+      rateLimited: e?.code === 'NETLIFY_RATE_LIMIT',
+    };
   }
 });
 
