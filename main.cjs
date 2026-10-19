@@ -3643,6 +3643,8 @@ ipcMain.handle('vercel-login', async (event) => {
     });
     let account = await refreshVercelAccount({
       token: raw.token,
+      refreshToken: raw.refreshToken || '',
+      expiresAt: raw.expiresAt || 0,
       userId: raw.userId,
       teamId: raw.teamId,
       configDir,
@@ -3722,6 +3724,9 @@ ipcMain.handle('vercel-deploy-zip', async (event, options = {}) => {
       const day = a.deployDay === todayKey() ? Number(a.deployCount) || 0 : 0;
       return {
         ...a,
+        token: account.token || a.token,
+        refreshToken: account.refreshToken || a.refreshToken || '',
+        expiresAt: account.expiresAt || a.expiresAt || 0,
         deployDay: todayKey(),
         deployCount: deploy ? day + 1 : day,
         projectCount: project ? (Number(a.projectCount) || 0) + 1 : (Number(a.projectCount) || 0),

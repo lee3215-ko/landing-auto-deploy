@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.133",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/655482613",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.133/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/655482613",
-    "asset_id":  655482613,
-    "notes":  "버셀 사이트는 이번 소유확인이 끝난 뒤에만 네이버 완료로 두고, 권한이 없는 주소는 수집 화면으로 들어가지 않습니다. 실패 건은 로그인된 네이버 아이디로 수동·자동 캡챠를 할 수 있습니다.",
+    "version":  "3.8.134",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.134/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.134/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "버셀 로그인을 Node.js 설치 없이 앱에서 직접 처리",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/655482613",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.133/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.134/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
