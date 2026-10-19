@@ -22,6 +22,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   syncCreatedSites: () => ipcRenderer.invoke('sync-created-sites'),
   cloudflareSaveSite: (project) => ipcRenderer.invoke('cloudflare-save-site', project || {}),
   cloudflareDeployZip: (options) => ipcRenderer.invoke('cloudflare-deploy-zip', options || {}),
+  vercelLogin: () => ipcRenderer.invoke('vercel-login'),
+  vercelAccountStatus: () => ipcRenderer.invoke('vercel-account-status'),
+  vercelDeployZip: (options) => ipcRenderer.invoke('vercel-deploy-zip', options || {}),
+  onVercelLog: (callback) => {
+    ipcRenderer.removeAllListeners('vercel-log');
+    ipcRenderer.on('vercel-log', (_, line) => callback(line));
+  },
   onCloudflareLog: (callback) => {
     ipcRenderer.removeAllListeners('cloudflare-log');
     ipcRenderer.on('cloudflare-log', (_, line) => callback(line));

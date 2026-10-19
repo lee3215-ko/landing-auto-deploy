@@ -15,7 +15,7 @@
         <div class="brand-icon">🚀</div>
         <div>
           <h1>Landing Auto Deploy</h1>
-          <p>Netlify · Cloudflare · 닷홈 · Naver</p>
+          <p>Netlify · Cloudflare · Vercel · 닷홈 · Naver</p>
         </div>
       </div>
       <nav class="nav">
@@ -27,6 +27,9 @@
         </button>
         <button class="nav-btn" id="nav-cf-pages" type="button" data-tab="cf-pages">
           <span class="icon">☁️</span> Cloudflare Pages 생성
+        </button>
+        <button class="nav-btn" id="nav-vercel" type="button" data-tab="vercel">
+          <span class="icon">▲</span> 버셀 생성
         </button>
         <button class="nav-btn" id="nav-dothome" type="button" data-tab="dothome">
           <span class="icon">🏠</span> 닷홈 호스팅 생성
@@ -587,6 +590,58 @@
           </div>
         </div>
 
+        <!-- 버셀 생성 패널 -->
+        <div id="vercelPanel" class="panel">
+          <div class="grid-2 seo-gen-grid">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title"><span class="emoji">▲</span> Vercel · ZIP 배포</div>
+                  <div class="card-sub">주소 선점 → 네이버 HTML 파일 → 재압축 배포 → 수집</div>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" id="vcLoginBtn">Vercel 로그인</button>
+              </div>
+              <p class="bulk-hint" id="vcAccountStatus">로그인하면 프로젝트 수를 확인합니다. 100개 또는 오늘 100회면 다음 아이디로 로그인합니다.</p>
+
+              <div class="form-group">
+                <label>배포 소스 (ZIP)</label>
+                <div class="row" style="gap:8px;flex-wrap:wrap;">
+                  <button type="button" class="btn btn-ghost btn-sm" id="vcSelectZipsBtn">📦 ZIP 다중 선택</button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="vcClearZipsBtn">지우기</button>
+                  <span id="vcZipLabel" style="font-size:13px;color:var(--text-muted);"></span>
+                </div>
+                <p class="bulk-hint" id="vcZipInfo" style="display:none;"></p>
+              </div>
+
+              <div class="form-group">
+                <label for="vcProjectName">프로젝트명 (선택 · 비우면 ZIP 제목)</label>
+                <input type="text" id="vcProjectName" placeholder="비우면 한글 제목을 영문+숫자로">
+                <p class="bulk-hint" id="vcPreviewUrl">한글 ZIP 제목은 관련 영문과 숫자로 주소가 만들어집니다.</p>
+              </div>
+
+              <div class="checkbox-row" style="margin-top:14px;">
+                <label><input type="checkbox" id="vcRegisterNaver" checked> 네이버 HTML 파일 · 소유확인 · 수집</label>
+              </div>
+
+              <div class="run-section" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-success" id="vcGenerateBtn" type="button" style="flex:1;">▶ ZIP → Vercel 배포 + 네이버</button>
+                <button class="btn btn-danger" id="vcStopBtn" type="button" disabled>⏹ 정지</button>
+              </div>
+              <p class="bulk-hint" style="margin-top:10px;">네이버 아이디는 <strong>설정</strong> 탭 계정을 사용합니다. 로그는 「버셀」필터.</p>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title"><span class="emoji">📋</span> 대기 ZIP</div>
+                  <div class="card-sub">선택된 ZIP 목록</div>
+                </div>
+              </div>
+              <ul id="vcZipList" class="bulk-hint" style="margin:0;padding-left:18px;max-height:280px;overflow:auto;"></ul>
+              <p class="bulk-hint" style="margin-top:12px;">배포가 끝나면 주소와 HTML 파일이 들어 있는 ZIP을 원본 옆 <strong>성공</strong> 폴더에 저장합니다.</p>
+            </div>
+          </div>
+        </div>
+
         <!-- 닷홈 호스팅 생성 패널 -->
         <div id="dothomePanel" class="panel">
           <div class="grid-2 seo-gen-grid">
@@ -737,6 +792,10 @@
               <div class="label">Cloudflare</div>
             </div>
             <div class="stat-card manual">
+              <div class="value" id="siteStatVercel">0</div>
+              <div class="label">Vercel</div>
+            </div>
+            <div class="stat-card manual">
               <div class="value" id="siteStatDothome">0</div>
               <div class="label">닷홈</div>
             </div>
@@ -752,6 +811,7 @@
                 <button type="button" class="chip active" data-sites-filter="all">전체</button>
                 <button type="button" class="chip" data-sites-filter="netlify">Netlify</button>
                 <button type="button" class="chip" data-sites-filter="cloudflare">Cloudflare</button>
+                <button type="button" class="chip" data-sites-filter="vercel">Vercel</button>
                 <button type="button" class="chip" data-sites-filter="dothome">닷홈</button>
               </div>
               <div class="form-group" style="margin:0;min-width:180px;flex:1;">

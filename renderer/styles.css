@@ -1290,6 +1290,7 @@ textarea {
 .provider-pill.netlify { background: rgba(50, 211, 168, 0.14); color: #34d3a8; }
 .provider-pill.cloudflare { background: rgba(245, 158, 11, 0.14); color: #f59e0b; }
 .provider-pill.dothome { background: rgba(56, 189, 248, 0.14); color: #38bdf8; }
+.provider-pill.vercel { background: rgba(255, 255, 255, 0.08); color: #e7e5e4; }
 
 .sites-detail {
   font-size: 11px;

@@ -25,10 +25,13 @@ let seoCounts = {};
 let seoSelected = new Set();
 let seoFolder = 'all';
 let seoKeywordsLoaded = false;
-/** CF / 닷홈 ZIP·실행 상태 */
+/** CF / Vercel / 닷홈 ZIP·실행 상태 */
 let cfBusy = false;
 let cfStopRequested = false;
 let cfDeploySources = [];
+let vcBusy = false;
+let vcDeploySources = [];
+let vcStopRequested = false;
 let dhBusy = false;
 let dhDeploySources = [];
 let dhStopRequested = false;
@@ -90,9 +93,10 @@ const PAGE_META = {
   config: { title: '설정', subtitle: 'Netlify 대량 배포 및 네이버 서치어드바이저 자동 등록' },
   'seo-gen': { title: '넷리파이 생성', subtitle: '롱폼 SEO 미리보기 스타일 · 이미지 카드 · Netlify 배포' },
   'cf-pages': { title: 'Cloudflare Pages', subtitle: 'ZIP → Pages 배포 · 네이버 메타·소유확인·사이트맵 수집' },
+  vercel: { title: '버셀 생성', subtitle: 'ZIP → 주소 선점 · 네이버 HTML 파일 · Vercel 배포 · 수집' },
   dothome: { title: '닷홈 호스팅 생성', subtitle: '닷홈 회원가입 자동화 · 이후 FTP/사이트 배포' },
   'url-crawl': { title: 'URL 수집', subtitle: '하위 URL 수집 후 네이버 웹페이지 수집 일괄 신청' },
-  sites: { title: '생성 사이트', subtitle: 'Netlify · Cloudflare Pages · 닷홈 생성 목록 (생성일 포함)' },
+  sites: { title: '생성 사이트', subtitle: 'Netlify · Cloudflare Pages · Vercel · 닷홈 생성 목록 (생성일 포함)' },
   keywords: { title: '통합키워드결과', subtitle: '플랫폼 태그 · 날짜별 타이틀·H1 · ZIP/AI · 인덱싱 확인 · 실패 삭제' },
   results: { title: '배포/등록 결과', subtitle: '저장된 배포 URL 및 네이버 등록 현황' },
   logs: { title: '로그', subtitle: '탭별 실행 로그 · 필터로 구분해서 보기' },
@@ -104,6 +108,7 @@ const LOG_CHANNELS = [
   { id: 'config', label: '설정' },
   { id: 'seo-gen', label: '넷리파이 생성' },
   { id: 'cf-pages', label: 'Cloudflare' },
+  { id: 'vercel', label: '버셀' },
   { id: 'dothome', label: '닷홈' },
   { id: 'url-crawl', label: 'URL 수집' },
   { id: 'sites', label: '생성 사이트' },
@@ -208,6 +213,7 @@ function setLogFilterChannel(id) {
 const SITE_PROVIDER_META = {
   netlify: { label: 'Netlify', cls: 'netlify' },
   cloudflare: { label: 'Cloudflare', cls: 'cloudflare' },
+  vercel: { label: 'Vercel', cls: 'vercel' },
   dothome: { label: '닷홈', cls: 'dothome' },
 };
 
@@ -710,6 +716,13 @@ function collectConfig() {
       gapAfterDone: !!$('cfGapAfterDone')?.checked,
       gapMinSec: Math.max(1, parseInt($('cfGapMinSec')?.value || '100', 10) || 100),
       gapMaxSec: Math.max(1, parseInt($('cfGapMaxSec')?.value || '300', 10) || 300),
+    },
+    vercel: {
+      projectName: ($('vcProjectName')?.value || '').trim(),
+      registerNaver: $('vcRegisterNaver') ? !!$('vcRegisterNaver').checked : true,
+      accounts: Array.isArray(config.vercel?.accounts) ? config.vercel.accounts : [],
+      activeUserId: config.vercel?.activeUserId || '',
+      deploySources: Array.isArray(vcDeploySources) ? [...vcDeploySources] : [],
     },
     dothome: {
       hostId: ($('dhHostId')?.value || '').trim(),
@@ -1442,6 +1455,7 @@ function switchTab(name) {
   $('configPanel').classList.toggle('active', name === 'config');
   $('seoGenPanel')?.classList.toggle('active', name === 'seo-gen');
   $('cfPagesPanel')?.classList.toggle('active', name === 'cf-pages');
+  $('vercelPanel')?.classList.toggle('active', name === 'vercel');
   $('dothomePanel')?.classList.toggle('active', name === 'dothome');
   $('urlCrawlPanel').classList.toggle('active', name === 'url-crawl');
   $('sitesPanel')?.classList.toggle('active', name === 'sites');
@@ -1451,6 +1465,7 @@ function switchTab(name) {
   $('nav-config').classList.toggle('active', name === 'config');
   $('nav-seo-gen')?.classList.toggle('active', name === 'seo-gen');
   $('nav-cf-pages')?.classList.toggle('active', name === 'cf-pages');
+  $('nav-vercel')?.classList.toggle('active', name === 'vercel');
   $('nav-dothome')?.classList.toggle('active', name === 'dothome');
   $('nav-url-crawl').classList.toggle('active', name === 'url-crawl');
   $('nav-sites')?.classList.toggle('active', name === 'sites');
@@ -1828,11 +1843,13 @@ function updateSitesStats(list) {
   const all = Array.isArray(list) ? list : [];
   const n = all.filter((s) => s.provider === 'netlify').length;
   const c = all.filter((s) => s.provider === 'cloudflare').length;
+  const v = all.filter((s) => s.provider === 'vercel').length;
   const d = all.filter((s) => s.provider === 'dothome').length;
   const indexed = all.filter((s) => s.indexed === true).length;
   if ($('siteStatTotal')) $('siteStatTotal').textContent = all.length;
   if ($('siteStatNetlify')) $('siteStatNetlify').textContent = n;
   if ($('siteStatCloudflare')) $('siteStatCloudflare').textContent = c;
+  if ($('siteStatVercel')) $('siteStatVercel').textContent = v;
   if ($('siteStatDothome')) $('siteStatDothome').textContent = d;
   if ($('siteStatIndexed')) $('siteStatIndexed').textContent = indexed;
   const badge = $('sitesBadge');
@@ -2081,6 +2098,19 @@ function siteDetailHtml(site) {
     if (d.notes) bits.push(d.notes);
     return bits.join(' · ') || 'Cloudflare Pages';
   }
+  if (site.provider === 'vercel') {
+    const bits = [];
+    if (d.teamSlug || d.vercelUser) bits.push(d.teamSlug || d.vercelUser);
+    if (d.naverAccountId) bits.push(`네이버 ${d.naverAccountId}`);
+    if (d.naverFile) bits.push(d.naverFile);
+    const zipNm = pathBasename(d.sourcePath);
+    if (zipNm) bits.push(`ZIP ${zipNm}`);
+    if (isSiteNaverDone(site)) bits.push('네이버 완료');
+    else if (d.naverError) bits.push(`원인: ${String(d.naverError).slice(0, 48)}`);
+    else if (d.naverStatus) bits.push(`네이버 ${d.naverStatus}`);
+    if (d.deployedAt) bits.push(`배포 ${formatDate(d.deployedAt)}`);
+    return bits.join(' · ') || 'Vercel';
+  }
   if (site.provider === 'dothome') {
     const bits = [];
     const next = resolveDothomeNextAction(site);
@@ -2117,6 +2147,12 @@ function siteAccountIds(site) {
       netlifyId: d.accountId || '',
     };
   }
+  if (site.provider === 'vercel') {
+    return {
+      naverId: d.naverAccountId || '',
+      netlifyId: d.teamSlug || d.vercelUser || '',
+    };
+  }
   if (site.provider === 'dothome') {
     return {
       naverId: d.naverAccountId || '',
@@ -2146,7 +2182,8 @@ function getFilteredCreatedSites() {
       const hay = [
         s.name, s.url, s.status, s.provider,
         d.brand, d.keyword, d.title, d.h1, d.ftpId, d.hostId, d.email, d.notes, d.phone,
-        d.naverAccountId, d.netlifyAccountId, cred.pw, zip, d.sourceType, d.sourcePath,
+        d.naverAccountId, d.netlifyAccountId, d.vercelUser, d.teamSlug, d.naverFile, d.projectName,
+        cred.pw, zip, d.sourceType, d.sourcePath,
       ].join(' ').toLowerCase();
       return hay.includes(q);
     })
@@ -2163,7 +2200,7 @@ function renderCreatedSites() {
   const rows = getFilteredCreatedSites();
   updateSitesStats(rows);
   if (!rows.length) {
-    list.innerHTML = '<p class="empty-hint">표시할 생성 사이트가 없습니다. 넷리파이/Cloudflare/닷홈에서 만들거나 「새로고침」으로 기존 데이터를 불러오세요.</p>';
+    list.innerHTML = '<p class="empty-hint">표시할 생성 사이트가 없습니다. 넷리파이/Cloudflare/Vercel/닷홈에서 만들거나 「새로고침」으로 기존 데이터를 불러오세요.</p>';
     updateSitesRedeployBtn();
     return;
   }
@@ -2176,7 +2213,7 @@ function renderCreatedSites() {
     const st = SITE_STATUS_META[s.status] || { label: s.status || '-', cls: 'unknown' };
     const url = (s.url || '').trim();
     const accounts = siteAccountIds(s);
-    const canRetryNaver = (s.provider === 'netlify' || s.provider === 'cloudflare') && !!(s.url || '').trim();
+    const canRetryNaver = (s.provider === 'netlify' || s.provider === 'cloudflare' || s.provider === 'vercel') && !!(s.url || '').trim();
     const naverDone = canRetryNaver && isSiteNaverDone(s);
     const indexRetry = canRetryNaver && needsNaverIndexRetry(s);
     let naverBtn = '';
@@ -2228,6 +2265,40 @@ function renderCreatedSites() {
                 url: s.url,
                 cls: 'btn btn-primary btn-sm',
                 title: '수동캡챠로 소유확인·수집 진행',
+              })}
+            </div>
+          </div>`;
+      }
+    } else if (s.provider === 'vercel' && canRetryNaver) {
+      const captchaBusy = isManualCaptchaBusy(s.url);
+      const busyHint = captchaBusy ? '<div class="site-card-busy">수동캡챠 진행 중…</div>' : '';
+      const reason = s.detail?.naverError || s.detail?.naverStatus || '소유확인·수집 미완료';
+      if (naverDone) {
+        naverBtn = `
+          <div class="site-card-next">
+            <span class="status-pill success" title="Vercel 배포·네이버 완료${accounts.naverId ? ` · ${accounts.naverId}` : ''}">네이버 완료</span>
+            ${busyHint}
+            <div class="site-card-actions-inline">
+              ${manualCaptchaButtonHtml({
+                attrs: `data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}"`,
+                url: s.url,
+                cls: 'btn btn-ghost btn-sm',
+                title: 'HTML 파일 소유확인을 다시 수동으로 진행',
+              })}
+            </div>
+          </div>`;
+      } else {
+        naverBtn = `
+          <div class="site-card-next">
+            <span class="status-pill manual" title="${escapeHtml(reason)}">캡챠 대기</span>
+            <div class="site-card-hint" title="${escapeHtml(reason)}">${escapeHtml(String(reason).split('\n')[0])}</div>
+            ${busyHint}
+            <div class="site-card-actions-inline">
+              ${manualCaptchaButtonHtml({
+                attrs: `data-sites-action="manual-captcha" data-id="${escapeHtml(s.id)}"`,
+                url: s.url,
+                cls: 'btn btn-warning btn-sm',
+                title: '로그인된 네이버 창에서 HTML 파일 선택·캡챠 수동 입력 → 수집 자동 진행',
               })}
             </div>
           </div>`;
@@ -2339,8 +2410,9 @@ function renderCreatedSites() {
     const detailText = siteDetailHtml(s);
     const naverCred = lookupNaverCredentials(accounts.naverId || s.detail?.naverAccountId);
     const srcInfo = siteSourceInfo(s);
+    const hostLabel = s.provider === 'vercel' ? 'Vercel' : 'Netlify';
     const metaBits = [
-      accounts.netlifyId ? `Netlify ${accounts.netlifyId}` : '',
+      accounts.netlifyId ? `${hostLabel} ${accounts.netlifyId}` : '',
       s.createdAt ? formatDate(s.createdAt) : '',
     ].filter(Boolean);
     const naverIdBtn = accounts.naverId
@@ -2429,9 +2501,14 @@ function updateSitesRedeployBtn() {
 
 function createdSiteNeedsAutoCaptcha(site) {
   if (!site || !isCreatedSitesRow(site)) return false;
+  if (!(site.url || '').trim() || isSiteNaverDone(site)) return false;
   const d = site.detail || {};
+  const st = String(d.naverStatus || '').toLowerCase();
+  if (site.provider === 'vercel' && (st === 'captcha' || st === 'error' || st === 'fail' || st === 'failed' || d.naverError)) {
+    return true;
+  }
   return resultNeedsCaptcha({
-    status: String(d.naverStatus || '').toLowerCase(),
+    status: st,
     error: d.naverError || d.error || '',
     popupMessage: d.popupMessage || '',
     url: site.url,
@@ -2541,6 +2618,7 @@ async function runSelectedSiteAutoCaptcha() {
           createdSiteId: site.id,
           sourceType: site.detail?.sourceType || '',
           sourcePath: site.detail?.sourcePath || '',
+          verifyMethod: site.provider === 'vercel' ? 'file' : 'meta',
         });
         if (out?.createdSites) createdSites = out.createdSites;
         if (out?.ok) {
@@ -3258,8 +3336,8 @@ async function siteManualCaptcha(id) {
   if (!id) return;
   const site = createdSites.find((s) => s.id === id);
   if (!site) return alert('사이트를 찾을 수 없습니다.');
-  if (site.provider !== 'netlify' && site.provider !== 'dothome' && site.provider !== 'cloudflare') {
-    return alert('Netlify / Cloudflare / 닷홈 사이트만 가능합니다.');
+  if (site.provider !== 'netlify' && site.provider !== 'dothome' && site.provider !== 'cloudflare' && site.provider !== 'vercel') {
+    return alert('Netlify / Cloudflare / Vercel / 닷홈 사이트만 가능합니다.');
   }
   if (!(site.url || '').trim()) return alert('사이트 URL이 없습니다.');
   if (isManualCaptchaBusy(site.url)) {
@@ -3272,7 +3350,9 @@ async function siteManualCaptcha(id) {
   if (!confirm(
     `수동캡챠를 시작할까요?\n\n${site.url}\n\n`
     + '서치어드바이저 창에 전용 새 탭을 연 뒤\n'
-    + 'HTML 태그 → 소유확인 캡챠를 진행합니다.\n'
+    + (site.provider === 'vercel'
+      ? 'HTML 파일 → 소유확인 캡챠를 진행합니다.\n'
+      : 'HTML 태그 → 소유확인 캡챠를 진행합니다.\n')
     + '여러 사이트를 연속으로 눌러 동시에 진행할 수 있습니다.\n'
     + (site.provider === 'dothome'
       ? '(닷홈: 메타 재반영 시 FTP로 업로드합니다)\n'
@@ -3303,6 +3383,7 @@ async function siteManualCaptcha(id) {
       createdSiteId: site.id,
       sourceType: site.detail?.sourceType || '',
       sourcePath: site.detail?.sourcePath || '',
+      verifyMethod: site.provider === 'vercel' ? 'file' : 'meta',
     });
     if (out?.createdSites) createdSites = out.createdSites;
     else await loadCreatedSites(true);
@@ -4722,6 +4803,21 @@ async function load() {
   cfDeploySources = Array.isArray(cf.deploySources)
     ? cf.deploySources.filter((s) => s?.type === 'zip' && s?.path).map((s) => ({ ...s }))
     : [];
+  const vc = config.vercel || {};
+  if ($('vcProjectName') && vc.projectName) $('vcProjectName').value = vc.projectName;
+  if ($('vcRegisterNaver')) $('vcRegisterNaver').checked = vc.registerNaver !== false;
+  vcDeploySources = Array.isArray(vc.deploySources)
+    ? vc.deploySources.filter((s) => s?.type === 'zip' && s?.path).map((s) => ({ ...s }))
+    : [];
+  renderVercelAccount(vc);
+  updateVcZipUi();
+  if ((vc.accounts || []).some((a) => a?.token)) {
+    window.electronAPI.vercelAccountStatus?.().then((out) => {
+      if (!out?.vercel) return;
+      config.vercel = out.vercel;
+      renderVercelAccount(out.vercel);
+    }).catch(() => {});
+  }
   updateCfZipUi();
   updateCfPreviewUrl();
 
@@ -6100,6 +6196,207 @@ async function stopCfGenerate() {
   cfLog('⏹ 정지 요청… (현재 ZIP 끝나면 중단)');
 }
 
+/* ── Vercel ZIP → 네이버 HTML 파일 ── */
+function vcLog(line) {
+  appendAppLog('vercel', line);
+}
+
+function renderVercelAccount(vercel) {
+  const el = $('vcAccountStatus');
+  if (!el) return;
+  const accounts = Array.isArray(vercel?.accounts) ? vercel.accounts : (config.vercel?.accounts || []);
+  const active = accounts.find((a) => a?.userId && a.userId === (vercel?.activeUserId || config.vercel?.activeUserId))
+    || accounts.find((a) => !a.full) || accounts[0];
+  if (!active) {
+    el.textContent = '로그인하면 프로젝트 수를 확인합니다. 100개 또는 오늘 100회면 다음 아이디로 로그인합니다.';
+    return;
+  }
+  const projects = Number(active.projectCount) || 0;
+  const day = Number(active.deployCount) || 0;
+  const name = active.teamSlug || active.username || active.userId;
+  const full = active.full || projects >= 100 || day >= 100;
+  el.textContent = full
+    ? `${name} · 프로젝트 ${projects}/100 · 오늘 ${day}/100 · 한도 도달. 다음 아이디로 로그인하세요.`
+    : `${name} · 프로젝트 ${projects}/100 · 오늘 ${day}/100`;
+}
+
+function vcZipSources() {
+  return (vcDeploySources || []).filter((s) => s?.type === 'zip' && s?.path);
+}
+
+function updateVcZipUi() {
+  const zips = vcZipSources();
+  const label = $('vcZipLabel');
+  const info = $('vcZipInfo');
+  const list = $('vcZipList');
+  if (label) label.textContent = zips.length ? `ZIP ${zips.length}개 선택됨` : 'ZIP 없음';
+  if (info) {
+    info.style.display = zips.length ? 'block' : 'none';
+    info.textContent = zips.slice(0, 6).map((s) => s.name || s.path).join(', ');
+  }
+  if (list) {
+    list.innerHTML = zips.length
+      ? zips.map((s) => `<li>${escapeHtml(s.name || s.path)}</li>`).join('')
+      : '<li style="list-style:none;color:var(--text-muted);">선택된 ZIP이 없습니다.</li>';
+  }
+  const btn = $('vcGenerateBtn');
+  if (btn && !vcBusy) {
+    btn.textContent = zips.length
+      ? `▶ ZIP → Vercel 배포 + 네이버 (${zips.length}개)`
+      : '▶ ZIP → Vercel 배포 + 네이버';
+  }
+  const preview = $('vcPreviewUrl');
+  if (preview) {
+    const manual = ($('vcProjectName')?.value || '').trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '');
+    const fromZip = zips[0] ? String(zips[0].name || '').replace(/\.zip$/i, '') : '';
+    if (manual && !/[가-힣]/.test($('vcProjectName')?.value || '')) {
+      preview.textContent = `https://${manual}.vercel.app`;
+    } else if (/[가-힣]/.test(fromZip) || /[가-힣]/.test($('vcProjectName')?.value || '')) {
+      preview.textContent = '한글 제목은 관련 영문과 숫자로 주소가 만들어집니다. 예: phone-content-fee-cash-4821';
+    } else if (fromZip) {
+      const slug = fromZip.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '') || 'site';
+      preview.textContent = `https://${slug}.vercel.app`;
+    } else {
+      preview.textContent = '한글 ZIP 제목은 관련 영문과 숫자로 주소가 만들어집니다.';
+    }
+  }
+}
+
+async function selectVcZips() {
+  const paths = await window.electronAPI.selectFiles({
+    title: 'Vercel에 배포할 ZIP 선택 (여러 개 가능)',
+    filters: [
+      { name: 'ZIP 파일', extensions: ['zip'] },
+      { name: '모든 파일', extensions: ['*'] },
+    ],
+  });
+  if (!paths?.length) return;
+  const seen = new Set(vcDeploySources.map((s) => String(s.path || '').toLowerCase()));
+  let added = 0;
+  for (const filePath of paths) {
+    const p = String(filePath || '').trim();
+    if (!p.toLowerCase().endsWith('.zip')) continue;
+    const key = p.toLowerCase();
+    if (seen.has(key)) continue;
+    if (window.electronAPI?.validateZipIndex) {
+      const check = await window.electronAPI.validateZipIndex(p);
+      if (!check?.ok) {
+        vcLog(`제외: ${p.split(/[\\/]/).pop()} — ${check?.error || 'index.html 없음'}`);
+        continue;
+      }
+    }
+    seen.add(key);
+    vcDeploySources.push({ type: 'zip', path: p, name: p.split(/[\\/]/).pop() || p });
+    added += 1;
+  }
+  updateVcZipUi();
+  await window.electronAPI.saveConfig(collectConfig());
+  if (added) vcLog(`📦 ZIP ${added}개 추가 (총 ${vcZipSources().length}개)`);
+}
+
+function setVcBusy(busy) {
+  vcBusy = busy;
+  if ($('vcGenerateBtn')) $('vcGenerateBtn').disabled = busy;
+  if ($('vcStopBtn')) $('vcStopBtn').disabled = !busy;
+  if ($('vcSelectZipsBtn')) $('vcSelectZipsBtn').disabled = busy;
+  if ($('vcLoginBtn')) $('vcLoginBtn').disabled = busy;
+}
+
+async function startVcLogin() {
+  vcLog('Vercel 로그인 시작…');
+  const out = await window.electronAPI.vercelLogin();
+  if (out?.vercel) {
+    config.vercel = out.vercel;
+    renderVercelAccount(out.vercel);
+  }
+  if (!out?.ok) {
+    vcLog(`✖ 로그인 실패: ${out?.error || '알 수 없음'}`);
+    alert(out?.error || 'Vercel 로그인에 실패했습니다.');
+    return;
+  }
+  const a = out.account;
+  vcLog(`✔ ${a?.teamSlug || a?.username} · 프로젝트 ${a?.projectCount}/100 · 오늘 ${a?.deployCount}/100`);
+  if (a?.full) alert('이 계정은 한도에 도달했습니다. 다음 아이디로 다시 로그인하세요.');
+}
+
+async function startVcGenerate() {
+  if (vcBusy) return;
+  const zips = vcZipSources();
+  if (!zips.length) return alert('배포할 ZIP을 선택하세요.');
+  const registerNaver = $('vcRegisterNaver') ? !!$('vcRegisterNaver').checked : true;
+  if (registerNaver && !(config.naverAccounts || []).some((a) => a?.id && a?.pw)) {
+    return alert('설정 탭에 네이버 계정(아이디/비밀번호)을 등록하세요.');
+  }
+  vcStopRequested = false;
+  setVcBusy(true);
+  vcLog(`▲ Vercel ZIP 배치 시작 — ${zips.length}개`);
+  let okCount = 0;
+  let failCount = 0;
+  try {
+    await window.electronAPI.saveConfig(collectConfig());
+    for (let i = 0; i < zips.length; i++) {
+      if (vcStopRequested) {
+        vcLog('⏹ 정지됨');
+        break;
+      }
+      const zip = zips[i];
+      const zipName = zip.name || zip.path;
+      vcLog(`─── [${i + 1}/${zips.length}] ${zipName} ───`);
+      const out = await window.electronAPI.vercelDeployZip({
+        zipPath: zip.path,
+        projectName: ($('vcProjectName')?.value || '').trim(),
+        registerNaver,
+      });
+      if (out?.vercel) {
+        config.vercel = out.vercel;
+        renderVercelAccount(out.vercel);
+      }
+      if (Array.isArray(out?.deploySources)) {
+        vcDeploySources = out.deploySources;
+        updateVcZipUi();
+      }
+      if (out?.createdSites) createdSites = out.createdSites;
+      renderCreatedSites();
+      if (out?.ok) {
+        okCount += 1;
+        vcLog(`✔ 완료: ${out.siteUrl || out.projectName}`);
+      } else {
+        failCount += 1;
+        vcLog(`✖ 실패: ${out?.error || '알 수 없음'}`);
+        if (out?.needLogin) {
+          vcLog('다음 Vercel 아이디 로그인이 필요합니다.');
+          alert(out.error || '다음 Vercel 아이디로 로그인하세요.');
+          break;
+        }
+      }
+      await window.electronAPI.saveConfig(collectConfig()).catch(() => {});
+    }
+    await loadCreatedSites(true);
+    renderCreatedSites();
+    vcLog(`▲ 배치 종료 — 성공 ${okCount} / 실패 ${failCount}`);
+  } catch (e) {
+    vcLog(`✖ ${e.message}`);
+    alert(e.message);
+  } finally {
+    setVcBusy(false);
+    updateVcZipUi();
+  }
+}
+
+$('vcLoginBtn')?.addEventListener('click', () => { startVcLogin().catch((e) => alert(e.message)); });
+$('vcSelectZipsBtn')?.addEventListener('click', () => { selectVcZips().catch((e) => alert(e.message)); });
+$('vcClearZipsBtn')?.addEventListener('click', () => {
+  vcDeploySources = [];
+  updateVcZipUi();
+  window.electronAPI.saveConfig(collectConfig()).catch(() => {});
+});
+$('vcGenerateBtn')?.addEventListener('click', () => { startVcGenerate().catch((e) => alert(e.message)); });
+$('vcStopBtn')?.addEventListener('click', () => {
+  vcStopRequested = true;
+  vcLog('⏹ 정지 요청… (현재 ZIP 끝나면 중단)');
+});
+$('vcProjectName')?.addEventListener('input', updateVcZipUi);
+
 /* ── 닷홈 호스팅 회원가입 ── */
 function dhLog(line) {
   appendAppLog('dothome', line);
@@ -7016,6 +7313,7 @@ window.electronAPI.getAppVersion?.().then((v) => {
 }).catch(() => {});
 window.electronAPI.onDothomeLog(dhLog);
 window.electronAPI.onCloudflareLog?.(cfLog);
+window.electronAPI.onVercelLog?.(vcLog);
 window.electronAPI.onDothomeMailSessionUpdate?.((data) => {
   updateDhMailSessionBadge(data || {});
 });

@@ -10,6 +10,15 @@ app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu');
 app.commandLine.appendSwitch('disable-gpu-compositing');
 
+// 작업 파일은 E 드라이브에 둔다. C의 AppData를 쓰지 않는다.
+const USER_DATA_DIR = 'E:\\LandingAutoDeploy\\user-data';
+try {
+  if (process.platform === 'win32' && fs.existsSync('E:\\')) {
+    fs.mkdirSync(USER_DATA_DIR, { recursive: true });
+    app.setPath('userData', USER_DATA_DIR);
+  }
+} catch { /* E가 없으면 기본 경로 */ }
+
 // 단일 인스턴스 — 더블클릭/바로가기 중복으로 두 번 뜨는 현상 방지
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -456,7 +465,7 @@ function loadResults() {
   // 배포결과 = 설정 탭 전용 (kkang 등 제외). 동기 require 없이 인라인 판별
   return all.filter((r) => {
     const s = String(r?.source || '').toLowerCase();
-    if (/kkang|dothome|cloudflare|cf-pages|cf_pages/.test(s)) return false;
+    if (/kkang|dothome|cloudflare|cf-pages|cf_pages|vercel/.test(s)) return false;
     if (/settings|pipeline/.test(s)) return true;
     return !s;
   });
@@ -466,7 +475,7 @@ function saveResults(results) {
   fs.mkdirSync(path.dirname(RESULTS_PATH), { recursive: true });
   const cleaned = (Array.isArray(results) ? results : []).filter((r) => {
     const s = String(r?.source || '').toLowerCase();
-    if (/kkang|dothome|cloudflare|cf-pages|cf_pages/.test(s)) return false;
+    if (/kkang|dothome|cloudflare|cf-pages|cf_pages|vercel/.test(s)) return false;
     if (/settings|pipeline/.test(s)) return true;
     return !s;
   });
@@ -1220,6 +1229,7 @@ ipcMain.handle('auto-captcha-collect', async (event, options = {}) => {
       yesCaptchaClientKey: config.yesCaptchaClientKey || '',
       outputRoot: OUTPUT_ROOT,
       sendLog,
+      verifyMethod: options.verifyMethod || 'meta',
     });
     let createdSites = null;
     try {
@@ -1458,6 +1468,7 @@ ipcMain.handle('manual-captcha-collect', async (event, options = {}) => {
       waitTimeoutMs: Number(options.waitTimeoutMs) || 10 * 60 * 1000,
       ensureMetaLive,
       onRecordStatus: persistManualCaptchaStatus,
+      verifyMethod: options.verifyMethod || 'meta',
     });
 
     // results.json 갱신 + 성공 시 ZIP → 「성공」폴더 이동
@@ -3581,6 +3592,242 @@ ipcMain.handle('cloudflare-deploy-zip', async (event, options = {}) => {
       projectName: projectNameOut,
       naverStatus,
       failKind: failKind || naverStatus,
+    };
+  }
+});
+
+let vercelLoginWindow = null;
+
+function openVercelLoginWindow(url) {
+  if (vercelLoginWindow && !vercelLoginWindow.isDestroyed()) {
+    vercelLoginWindow.loadURL(url);
+    vercelLoginWindow.focus();
+    return;
+  }
+  vercelLoginWindow = new BrowserWindow({
+    width: 980,
+    height: 760,
+    title: 'Vercel 로그인',
+    autoHideMenuBar: true,
+    webPreferences: { partition: 'persist:vercel-login' },
+  });
+  vercelLoginWindow.on('closed', () => { vercelLoginWindow = null; });
+  vercelLoginWindow.loadURL(url);
+}
+
+function upsertVercelAccount(config, account) {
+  const vercel = { ...(config.vercel || {}) };
+  const accounts = Array.isArray(vercel.accounts) ? [...vercel.accounts] : [];
+  const idx = accounts.findIndex((a) => a?.userId && a.userId === account.userId);
+  if (idx >= 0) accounts[idx] = { ...accounts[idx], ...account };
+  else accounts.push(account);
+  vercel.accounts = accounts;
+  vercel.activeUserId = account.userId || vercel.activeUserId || '';
+  config.vercel = vercel;
+  saveConfig(config);
+  return vercel;
+}
+
+ipcMain.handle('vercel-login', async (event) => {
+  const { startVercelDeviceLogin, refreshVercelAccount, publicVercelAccount } = await import('./lib/vercel-deploy.js');
+  const sendLog = (line) => event.sender.send('vercel-log', line);
+  const configDir = path.join(app.getPath('userData'), 'vercel-cli', `login-${Date.now()}`);
+  sendLog('Vercel 로그인 창을 엽니다. 올릴 계정으로 승인하세요.');
+  try {
+    const raw = await startVercelDeviceLogin({
+      configDir,
+      onVisit: (url) => {
+        sendLog(url);
+        openVercelLoginWindow(url);
+      },
+    });
+    let account = await refreshVercelAccount({
+      token: raw.token,
+      userId: raw.userId,
+      teamId: raw.teamId,
+      configDir,
+      deployDay: '',
+      deployCount: 0,
+      projectCount: 0,
+    });
+    const config = loadConfig();
+    const vercel = upsertVercelAccount(config, account);
+    const pub = publicVercelAccount(account);
+    sendLog(`✔ Vercel 로그인: ${pub.teamSlug || pub.username} · 프로젝트 ${pub.projectCount}/100 · 오늘 ${pub.deployCount}/100`);
+    if (pub.full) sendLog('이 계정은 한도에 도달했습니다. 다음 아이디로 로그인하세요.');
+    if (vercelLoginWindow && !vercelLoginWindow.isDestroyed()) vercelLoginWindow.close();
+    return { ok: true, account: pub, vercel };
+  } catch (e) {
+    sendLog(`[ERROR] Vercel 로그인: ${e.message}`);
+    return { ok: false, error: e.message };
+  }
+});
+
+ipcMain.handle('vercel-account-status', async () => {
+  const { refreshVercelAccount, publicVercelAccount, pickVercelAccount } = await import('./lib/vercel-deploy.js');
+  const config = loadConfig();
+  const accounts = Array.isArray(config.vercel?.accounts) ? config.vercel.accounts : [];
+  const next = [];
+  for (const account of accounts) {
+    if (!account?.token) continue;
+    try {
+      next.push(await refreshVercelAccount(account));
+    } catch {
+      next.push(account);
+    }
+  }
+  const vercel = { ...(config.vercel || {}), accounts: next };
+  const active = pickVercelAccount(next, vercel.activeUserId);
+  vercel.activeUserId = active?.userId || vercel.activeUserId || '';
+  config.vercel = vercel;
+  saveConfig(config);
+  return {
+    ok: true,
+    vercel,
+    active: publicVercelAccount(active),
+    accounts: next.map(publicVercelAccount).filter(Boolean),
+  };
+});
+
+ipcMain.handle('vercel-deploy-zip', async (event, options = {}) => {
+  const config = loadConfig();
+  const {
+    deployVercelZipSite,
+    pickVercelAccount,
+    publicVercelAccount,
+    todayKey,
+  } = await import('./lib/vercel-deploy.js');
+  const sendLog = (line) => event.sender.send('vercel-log', line);
+  const zipPath = String(options.zipPath || '').trim();
+  const registerNaver = options.registerNaver !== false;
+  const naverAccount = pickNaverAccountForDothome(config, options);
+  let account = pickVercelAccount(config.vercel?.accounts || [], config.vercel?.activeUserId || '');
+  if (!account) {
+    return {
+      ok: false,
+      needLogin: true,
+      error: '사용할 Vercel 계정이 없습니다. 로그인하거나, 한도에 걸린 계정이면 다음 아이디로 로그인하세요.',
+    };
+  }
+  if (!zipPath) return { ok: false, error: '배포할 ZIP 경로가 없습니다.' };
+  if (registerNaver && !naverAccount) {
+    return { ok: false, error: '설정 탭에 네이버 계정(아이디/비밀번호)을 등록하세요.' };
+  }
+
+  const bump = (userId, { project = false, deploy = false } = {}) => {
+    const fresh = loadConfig();
+    const vercel = { ...(fresh.vercel || {}) };
+    vercel.accounts = (vercel.accounts || []).map((a) => {
+      if (a.userId !== userId) return a;
+      const day = a.deployDay === todayKey() ? Number(a.deployCount) || 0 : 0;
+      return {
+        ...a,
+        deployDay: todayKey(),
+        deployCount: deploy ? day + 1 : day,
+        projectCount: project ? (Number(a.projectCount) || 0) + 1 : (Number(a.projectCount) || 0),
+      };
+    });
+    fresh.vercel = vercel;
+    saveConfig(fresh);
+    return vercel;
+  };
+
+  try {
+    const out = await deployVercelZipSite({
+      zipPath,
+      projectName: String(options.projectName || '').trim(),
+      account,
+      registerNaver,
+      naverAccount,
+      naverAccounts: config.naverAccounts || [],
+      openaiApiKey: config.openaiApiKey || '',
+      yesCaptchaClientKey: config.yesCaptchaClientKey || '',
+      headless: !!config.headless,
+      outputRoot: OUTPUT_ROOT,
+      sendLog,
+    });
+    const vercel = bump(account.userId, { project: true, deploy: true });
+    const siteUrl = String(out.siteUrl || '').replace(/\/?$/, '/');
+    const deployedAt = new Date().toISOString();
+    const fromKey = zipPath.toLowerCase();
+    const toKey = String(out.movedZip?.to || '').toLowerCase();
+    vercel.deploySources = (Array.isArray(vercel.deploySources) ? vercel.deploySources : [])
+      .filter((s) => {
+        const p = String(s?.path || '').toLowerCase();
+        return p && p !== fromKey && p !== toKey;
+      });
+    const latest = loadConfig();
+    latest.vercel = { ...latest.vercel, ...vercel, accounts: vercel.accounts };
+    saveConfig(latest);
+
+    let createdSites;
+    try {
+      const { entryFromVercel } = await import('./lib/sites-registry.js');
+      const siteEntry = entryFromVercel({
+        name: out.projectName,
+        url: siteUrl,
+        status: 'deployed',
+        accountId: account.userId,
+        vercelUser: account.username || account.teamSlug || '',
+        teamSlug: account.teamSlug || '',
+        siteDir: out.siteDir || '',
+        sourcePath: out.movedZip?.to || out.sourcePath || zipPath,
+        sourceType: 'zip',
+        naverStatus: out.naverStatus || '',
+        naverError: out.naverStatus === 'success' ? '' : (out.naverError || ''),
+        naverAccountId: naverAccount?.id || '',
+        naverFile: out.naverFile?.fileName || '',
+        deployedAt,
+        from: 'vercel-deploy-zip',
+      });
+      if (siteEntry) createdSites = await upsertCreatedSite(siteEntry);
+    } catch (e) {
+      sendLog(`[WARN] 생성 사이트 목록 저장 실패: ${e.message}`);
+    }
+    return {
+      ok: true,
+      ...out,
+      account: publicVercelAccount((vercel.accounts || []).find((a) => a.userId === account.userId)),
+      createdSites,
+      deploySources: vercel.deploySources || [],
+      vercel,
+    };
+  } catch (e) {
+    sendLog(`[ERROR] ${e.message}`);
+    let vercel = config.vercel || {};
+    if (e?.reservedProject) {
+      vercel = bump(e.vercelUserId || account.userId, { project: true, deploy: false });
+    }
+    const needLogin = e?.code === 'VERCEL_LOGIN' || e?.code === 'VERCEL_ACCOUNT_FULL';
+    let createdSites;
+    try {
+      if (e?.reservedProject) {
+        const { entryFromVercel } = await import('./lib/sites-registry.js');
+        const siteEntry = entryFromVercel({
+          name: e.reservedProject,
+          url: `https://${e.reservedProject}.vercel.app/`,
+          status: 'error',
+          accountId: account.userId,
+          vercelUser: account.username || account.teamSlug || '',
+          teamSlug: account.teamSlug || '',
+          sourcePath: zipPath,
+          sourceType: 'zip',
+          naverStatus: 'error',
+          naverError: e.message,
+          naverAccountId: naverAccount?.id || '',
+          from: 'vercel-deploy-fail',
+        });
+        if (siteEntry) createdSites = await upsertCreatedSite(siteEntry);
+      }
+    } catch { /* ignore */ }
+    return {
+      ok: false,
+      error: e.message,
+      needLogin,
+      createdSites,
+      vercel,
+      deploySources: vercel.deploySources || [],
+      zipMissing: e?.code === 'ZIP_MISSING',
     };
   }
 });
