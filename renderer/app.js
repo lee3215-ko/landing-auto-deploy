@@ -242,6 +242,90 @@ function formatDate(iso) {
   return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+const dateFoldOverride = { sites: new Map(), results: new Map() };
+const DATE_WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+function dateGroupKey(iso) {
+  const d = new Date(iso || 0);
+  if (!iso || Number.isNaN(d.getTime())) return '날짜 없음';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
+}
+
+function dateGroupLabel(key, iso) {
+  if (key === '날짜 없음') return key;
+  const d = new Date(iso || 0);
+  if (Number.isNaN(d.getTime())) return key;
+  return `${key} (${DATE_WEEKDAYS[d.getDay()]})`;
+}
+
+function indexSortRank(value) {
+  if (value === true) return 0;
+  if (value === false) return 1;
+  return 2;
+}
+
+function mountDateFolds(container, items, { panel, dateOf, indexedOf, renderItem, onCheck }) {
+  const groups = [];
+  const index = new Map();
+  for (const item of items) {
+    const iso = dateOf(item);
+    const key = dateGroupKey(iso);
+    let group = index.get(key);
+    if (!group) {
+      group = { key, iso, items: [] };
+      index.set(key, group);
+      groups.push(group);
+    }
+    group.items.push(item);
+  }
+  const newest = groups[0]?.key || '';
+  const overrides = dateFoldOverride[panel];
+  for (const group of groups) {
+    group.items.sort((a, b) => indexSortRank(indexedOf(a)) - indexSortRank(indexedOf(b)));
+    const total = group.items.length;
+    const indexedN = group.items.filter((item) => indexedOf(item) === true).length;
+    const notN = group.items.filter((item) => indexedOf(item) === false).length;
+    const details = document.createElement('details');
+    details.className = 'date-fold';
+    const open = groups.length === 1
+      ? true
+      : (overrides.has(group.key) ? overrides.get(group.key) : group.key === newest);
+    if (open) details.open = true;
+    const summary = document.createElement('summary');
+    summary.className = 'date-fold-summary';
+    summary.innerHTML = `
+      <span class="date-fold-date">${escapeHtml(dateGroupLabel(group.key, group.iso))}</span>
+      <span class="date-fold-count">총 ${total}</span>
+      <span class="date-fold-count indexed">인덱싱 ${indexedN}</span>
+      <span class="date-fold-count not">미인덱싱 ${notN}</span>`;
+    if (typeof onCheck === 'function') {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-ghost btn-sm date-fold-check';
+      btn.textContent = '인덱싱 확인';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        details.open = true;
+        onCheck(group);
+      });
+      summary.appendChild(btn);
+    }
+    summary.addEventListener('click', (e) => {
+      if (e.target.closest('button')) e.preventDefault();
+    });
+    const body = document.createElement('div');
+    body.className = 'date-fold-body';
+    for (const item of group.items) renderItem(body, item);
+    details.append(summary, body);
+    container.appendChild(details);
+    details.addEventListener('toggle', () => {
+      overrides.set(group.key, details.open);
+    });
+  }
+}
+
 function parseLines(text) {
   return text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
 }
@@ -998,6 +1082,7 @@ function renderResultsTable(results) {
         <span>전체 선택</span>
       </label>
     </div>`;
+  const resultCards = [];
 
   for (const { r, originalIndex } of indexed) {
     const st = STATUS_MAP[r.status] || { label: r.status || '-', cls: 'unknown' };
@@ -1054,8 +1139,28 @@ function renderResultsTable(results) {
           <button class="btn btn-danger btn-sm" type="button" data-action="delete-result" data-idx="${originalIndex}">삭제</button>
         </div>
       </div>`;
-    wrap.appendChild(card);
+    resultCards.push({
+      iso: r.registeredAt || r.createdAt,
+      indexed: r.indexed,
+      originalIndex,
+      node: card,
+    });
   }
+  const resultFolds = document.createElement('div');
+  resultFolds.className = 'date-fold-list';
+  mountDateFolds(resultFolds, resultCards, {
+    panel: 'results',
+    dateOf: (item) => item.iso,
+    indexedOf: (item) => item.indexed,
+    renderItem: (body, item) => body.appendChild(item.node),
+    onCheck: (group) => {
+      const indices = group.items
+        .map((item) => item.originalIndex)
+        .filter((n) => Number.isInteger(n));
+      runIndexCheck(indices);
+    },
+  });
+  wrap.appendChild(resultFolds);
   list.appendChild(wrap);
   updateResultsCaptchaButtons();
 
@@ -2207,6 +2312,7 @@ function renderCreatedSites() {
 
   const wrap = document.createElement('div');
   wrap.className = 'site-card-list';
+  const siteCards = [];
 
   for (const s of rows) {
     const prov = SITE_PROVIDER_META[s.provider] || { label: s.provider, cls: 'unknown' };
@@ -2455,8 +2561,26 @@ function renderCreatedSites() {
           <button class="btn btn-danger btn-sm" type="button" data-sites-action="delete" data-id="${escapeHtml(s.id)}">삭제</button>
         </div>
       </div>`;
-    wrap.appendChild(card);
+    siteCards.push({
+      iso: s.createdAt || s.updatedAt || s.detail?.deployedAt,
+      indexed: s.indexed,
+      id: s.id,
+      node: card,
+    });
   }
+  const siteFolds = document.createElement('div');
+  siteFolds.className = 'date-fold-list';
+  mountDateFolds(siteFolds, siteCards, {
+    panel: 'sites',
+    dateOf: (item) => item.iso,
+    indexedOf: (item) => item.indexed,
+    renderItem: (body, item) => body.appendChild(item.node),
+    onCheck: (group) => {
+      const ids = group.items.map((item) => item.id).filter(Boolean);
+      runSitesIndexCheck(ids);
+    },
+  });
+  wrap.appendChild(siteFolds);
   list.innerHTML = '';
   list.appendChild(wrap);
   updateSitesRedeployBtn();

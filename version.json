@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.135",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/661393253",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.135/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/661393253",
-    "asset_id":  661393253,
-    "notes":  "서치어드바이저 사이트 등록창에 주소를 넣고, 소유확인이 안 된 사이트는 수집으로 넘어가지 않음",
+    "version":  "3.8.136",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.136/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.136/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "생성 사이트와 배포 결과를 날짜별로 접고, 날짜별 인덱싱 확인과 개수를 표시",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/661393253",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.135/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.136/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }

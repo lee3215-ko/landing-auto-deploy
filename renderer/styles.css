@@ -1306,6 +1306,77 @@ textarea {
   gap: 10px;
 }
 
+.date-fold-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.date-fold {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.date-fold-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.date-fold-summary::-webkit-details-marker {
+  display: none;
+}
+
+.date-fold-summary::before {
+  content: '▸';
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.date-fold[open] > .date-fold-summary::before {
+  content: '▾';
+}
+
+.date-fold[open] > .date-fold-summary {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+
+.date-fold-date {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.date-fold-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.date-fold-count.indexed {
+  color: var(--success, #34d399);
+}
+
+.date-fold-count.not {
+  color: #fbbf24;
+}
+
+.date-fold-check {
+  margin-left: auto;
+}
+
+.date-fold-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 10px 10px;
+}
+
 .site-card-list-toolbar {
   display: flex;
   align-items: center;
