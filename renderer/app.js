@@ -5412,9 +5412,10 @@ function seoLog(line) {
 }
 
 function updateSeoPreviewUrl() {
-  const slug = sanitizeSeoSlug($('seoSiteSlug')?.value || '');
+  const raw = $('seoSiteSlug')?.value || '';
+  const slug = raw.trim() ? clampHomepageSlug(raw) : '';
   const el = $('seoPreviewUrl');
-  if (el) el.textContent = `https://${slug || 'keyword-ab123'}.netlify.app`;
+  if (el) el.textContent = `https://${slug || 'appleusage42'}.netlify.app`;
 }
 
 function sanitizeSeoSlug(raw) {
@@ -5427,17 +5428,20 @@ function sanitizeSeoSlug(raw) {
     .replace(/^-|-$/g, '') || '';
 }
 
-function randomSeoLetters(len = 2) {
-  const alphabet = 'abcdefghijklmnopqrstuvwxyz';
-  let out = '';
-  for (let i = 0; i < len; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
-  return out;
-}
-
-function randomSeoDigits(len = 3) {
+function randomSeoDigits(len = 2) {
   let out = '';
   for (let i = 0; i < len; i++) out += String(Math.floor(Math.random() * 10));
   return out;
+}
+
+/** 홈페이지 주소: 영문 10자 이하, 숫자 2자 이하. 빈 값은 빈 문자열 */
+function clampHomepageSlug(raw, { digits } = {}) {
+  const source = String(raw || '').trim();
+  if (!source && digits == null) return '';
+  const letters = source.toLowerCase().replace(/[^a-z]/g, '').slice(0, 10);
+  const stem = letters || 'site';
+  const nums = String(digits != null ? digits : source.replace(/\D/g, '')).replace(/\D/g, '').slice(0, 2);
+  return `${stem}${nums}`;
 }
 
 /** 이미 쓴 Netlify 사이트명 (생성 사이트 + 배치 중) */
@@ -5471,21 +5475,20 @@ function pickSeoSlugPrefix(preferredItems) {
     };
     base = folderMap[folder] || 'site';
   }
-  // 짧게: 최대 14자 (예: mobile-cash-out → mobile-cash-ou)
-  if (base.length > 14) base = base.slice(0, 14).replace(/-$/, '');
-  return base || 'site';
+  const letters = base.replace(/[^a-z]/g, '').slice(0, 10);
+  return letters || 'site';
 }
 
 /**
- * 사이트명: {키워드슬러그}-{영문2자}{숫자3자}
- * 예: mobile-cash-xk847
+ * 사이트명: 영문 10자 이하 + 숫자 2자
+ * 예: appleusage42
  */
 function randomSeoSlug(logIt = true, preferredItems) {
   const prefix = pickSeoSlugPrefix(preferredItems) || 'site';
   const used = collectUsedSeoSlugs();
   let slug = '';
-  for (let attempt = 0; attempt < 60; attempt++) {
-    slug = `${prefix}-${randomSeoLetters(2)}${randomSeoDigits(3)}`;
+  for (let attempt = 0; attempt < 90; attempt++) {
+    slug = `${prefix}${randomSeoDigits(2)}`;
     if (!used.has(slug)) break;
   }
   seoBatchUsedSlugs.add(slug);
@@ -5870,7 +5873,9 @@ async function startSeoGenerate() {
         seoRandomSelect({ updateSlug: false, updateBrand: false });
       }
       unlockSeoInputs();
-      const slug = sanitizeSeoSlug($('seoSiteSlug')?.value || '') || randomSeoSlug(true);
+      const typed = sanitizeSeoSlug($('seoSiteSlug')?.value || '');
+      const slug = typed ? clampHomepageSlug(typed) : randomSeoSlug(true);
+      if ($('seoSiteSlug') && slug) $('seoSiteSlug').value = slug;
       if (!slug) {
         seoLog('✖ 사이트명 생성 실패');
         failCount += 1;
@@ -6002,13 +6007,7 @@ function cfLog(line) {
 }
 
 function sanitizeCfSlug(raw) {
-  return String(raw || '')
-    .toLowerCase()
-    .replace(/\.zip$/i, '')
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 58);
+  return clampHomepageSlug(String(raw || '').replace(/\.zip$/i, ''));
 }
 
 function updateCfPreviewUrl() {
@@ -6023,8 +6022,7 @@ function updateCfPreviewUrl() {
 }
 
 function randomCfSlug(logIt = true) {
-  const suffix = Math.random().toString(36).slice(2, 8);
-  const name = `landing-${suffix}`;
+  const name = clampHomepageSlug('landing', { digits: randomSeoDigits(2) });
   if ($('cfProjectName')) $('cfProjectName').value = name;
   updateCfPreviewUrl();
   if (logIt) cfLog(`프로젝트명 랜덤: ${name}`);
