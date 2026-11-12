@@ -1,11 +1,12 @@
 {
     "version":  "3.8.138",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.138/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/738646608",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.138/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/738646608",
+    "asset_id":  738646608,
     "notes":  "이메일로 보호조치를 풀 수 없으면 안내 후 다음 네이버 아이디로 넘어갑니다. 버셀 배포 전에 로그인 화면이면 다시 로그인합니다.",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/738646608",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.138/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
