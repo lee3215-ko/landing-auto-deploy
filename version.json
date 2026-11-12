@@ -1,11 +1,12 @@
 {
     "version":  "3.8.141",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.141/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/738887859",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.141/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/738887859",
+    "asset_id":  738887859,
     "notes":  "인증번호 메일의 여섯 자리만 읽어 입력칸에 한 번에 넣고 확인합니다.",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/738887859",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.141/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
