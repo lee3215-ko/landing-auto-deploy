@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.139",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/738769467",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.139/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/738769467",
-    "asset_id":  738769467,
-    "notes":  "메일함 로그인 쿠키를 유지해서 인증번호를 읽습니다.",
+    "version":  "3.8.140",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.140/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.140/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "비활성 인증번호 칸을 켠 뒤 번호를 입력하고 인증 확인 버튼만 누릅니다.",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/738769467",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.139/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.140/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
