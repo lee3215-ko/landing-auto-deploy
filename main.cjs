@@ -404,6 +404,55 @@ function makeOnNaverSiteLimit() {
   };
 }
 
+function makeOnEmailUnlockUnavailable() {
+  return async ({ accountId, nextAccount } = {}) => {
+    const parent = BrowserWindow.getFocusedWindow() || mainWindow || undefined;
+    const id = String(accountId || '').trim();
+    const nextId = String(nextAccount?.id || '').trim();
+    await dialog.showMessageBox(parent, {
+      type: 'warning',
+      buttons: ['확인'],
+      defaultId: 0,
+      cancelId: 0,
+      title: '이메일로 보호조치 해제 할수 없음',
+      message: '이메일로 보호조치 해제 할수 없음',
+      detail: nextId
+        ? `${id}\n다음 아이디(${nextId})로 넘어갑니다.`
+        : `${id}\n다음으로 쓸 네이버 계정이 없습니다.`,
+      noLink: true,
+    });
+  };
+}
+
+function makeOnNaverPasswordChanged() {
+  return async ({ id, pw } = {}) => {
+    const accountId = String(id || '').trim();
+    const nextPw = String(pw || '');
+    if (!accountId || !nextPw) return;
+    const config = loadConfig();
+    const accounts = Array.isArray(config.naverAccounts) ? config.naverAccounts : [];
+    let changed = false;
+    config.naverAccounts = accounts.map((a) => {
+      if (String(a?.id || '').trim() !== accountId) return a;
+      changed = true;
+      return { ...a, pw: nextPw };
+    });
+    if (!changed) return;
+    saveConfig(config);
+    try {
+      const { setNaverAccountPasswordOverride } = await import('./lib/naver-session.js');
+      setNaverAccountPasswordOverride(accountId, nextPw);
+    } catch { /* ignore */ }
+    try {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('naver-accounts-updated', { naverAccounts: config.naverAccounts });
+        }
+      }
+    } catch { /* ignore */ }
+  };
+}
+
 function makeOnNaverProtection() {
   return async ({ detail, source } = {}) => {
     const parent = BrowserWindow.getFocusedWindow() || mainWindow || undefined;
@@ -789,6 +838,8 @@ async function initNaverSessionListeners() {
     setDefaultOnSiteCount,
     setDefaultOnMassCreatedId,
     setDefaultOnSiteLimit,
+    setDefaultOnEmailUnlockUnavailable,
+    setDefaultOnNaverPasswordChanged,
     setKnownNaverSiteCount,
     closeOrphanNaverChromeOnStartup,
   } = await import('./lib/naver-session.js');
@@ -797,6 +848,8 @@ async function initNaverSessionListeners() {
   setDefaultOnSiteCount(makeOnSiteCount());
   setDefaultOnMassCreatedId(makeOnMassCreatedId());
   setDefaultOnSiteLimit(makeOnNaverSiteLimit());
+  setDefaultOnEmailUnlockUnavailable(makeOnEmailUnlockUnavailable());
+  setDefaultOnNaverPasswordChanged(makeOnNaverPasswordChanged());
   const { setOnNetlifyRateLimit } = await import('./lib/deploy.js');
   setOnNetlifyRateLimit(async ({ message, detail } = {}) => {
     const parent = BrowserWindow.getFocusedWindow() || mainWindow || undefined;
