@@ -1,11 +1,12 @@
 {
     "version":  "3.8.143",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.143/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/742183093",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.143/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/742183093",
+    "asset_id":  742183093,
     "notes":  "다른 컴퓨터에서도 메일함 비밀번호로 인증번호를 읽습니다.",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/742183093",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.143/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
