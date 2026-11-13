@@ -1,11 +1,12 @@
 {
     "version":  "3.8.145",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.145/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/742410643",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.145/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/742410643",
+    "asset_id":  742410643,
     "notes":  "로그인할 때마다 시트의 현재 비밀번호를 다시 읽어 입력하고, 새 비밀번호를 로그에 남깁니다.",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/742410643",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.145/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
