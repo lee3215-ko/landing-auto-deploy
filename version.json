@@ -1,13 +1,12 @@
 {
-    "version":  "3.8.142",
-    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/742141543",
-    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.142/LandingAutoDeploy.zip",
-    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/742141543",
-    "asset_id":  742141543,
-    "notes":  "인증번호 6자리를 입력칸에 키보드로 넣고, 이메일 해제 중에는 보호조치 중지 팝업을 띄우지 않습니다.",
+    "version":  "3.8.143",
+    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.143/LandingAutoDeploy.zip",
+    "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.143/LandingAutoDeploy.zip",
+    "api_download_url":  null,
+    "asset_id":  null,
+    "notes":  "다른 컴퓨터에서도 메일함 비밀번호로 인증번호를 읽습니다.",
     "download_urls":  [
-                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/742141543",
-                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.142/LandingAutoDeploy.zip",
+                          "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.143/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
 }
