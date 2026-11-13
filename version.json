@@ -1,11 +1,12 @@
 {
     "version":  "3.8.146",
-    "url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.146/LandingAutoDeploy.zip",
+    "url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/742640494",
     "download_url":  "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.146/LandingAutoDeploy.zip",
-    "api_download_url":  null,
-    "asset_id":  null,
+    "api_download_url":  "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/742640494",
+    "asset_id":  742640494,
     "notes":  "보호조치 자동입력 방지문자는 화면에 보이는 칸만 찍어서 읽습니다.",
     "download_urls":  [
+                          "https://api.github.com/repos/lee3215-ko/landing-auto-deploy/releases/assets/742640494",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/download/v3.8.146/LandingAutoDeploy.zip",
                           "https://github.com/lee3215-ko/landing-auto-deploy/releases/latest/download/LandingAutoDeploy.zip"
                       ]
